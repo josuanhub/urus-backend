@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+
+// OpenAI SDK (CommonJS)
 const OpenAI = require("openai");
 
 const app = express();
@@ -8,7 +10,6 @@ app.use(express.json({ limit: "1mb" }));
 
 const PORT = process.env.PORT || 3000;
 
-// Railway variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const URUS_CORE_MODE = process.env.URUS_CORE_MODE || "production";
 const URUS_CORE_VERSION = process.env.URUS_CORE_VERSION || "A33";
@@ -18,6 +19,8 @@ if (!OPENAI_API_KEY) {
   console.error("Missing OPENAI_API_KEY (Railway Variables).");
 }
 
+// Nota: si te diera error “OpenAI is not a constructor”, cambia a:
+// const OpenAI = require("openai").default;
 const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // Health
@@ -31,7 +34,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ✅ REAL URUS Core LM Gateway
+// URUS Core (real)
 app.post("/v1/urus/ingest_session", async (req, res) => {
   try {
     const { input = "", mode = "URUS_CORE", meta = {}, model } = req.body || {};
@@ -42,7 +45,7 @@ app.post("/v1/urus/ingest_session", async (req, res) => {
     }
 
     const system = `Eres URUS Core LM Gateway (v=${URUS_CORE_VERSION}, mode=${URUS_CORE_MODE}).
-Devuelve SIEMPRE JSON válido EXACTAMENTE con esta forma:
+Devuelve SIEMPRE JSON válido con esta forma EXACTA:
 {
   "activation_id": "string",
   "core_version": "string",
@@ -79,23 +82,18 @@ No incluyas texto fuera del JSON.`;
         final_output: {
           summary: text || "No output",
           signals: [],
-          next_action: "Model did not return strict JSON. Tighten prompt.",
+          next_action: "Adjust prompt to force strict JSON.",
         },
       };
     }
 
-    // ✅ Railway Logs proof
     console.log("URUS_CALL", {
       route: "/v1/urus/ingest_session",
       selectedModel,
       core_version: URUS_CORE_VERSION,
-      core_mode: URUS_CORE_MODE,
     });
 
-    return res.json({
-      ...parsed,
-      model_used: selectedModel, // auditoría rápida
-    });
+    return res.json({ ...parsed, model_used: selectedModel });
   } catch (err) {
     console.error("URUS_ERROR", err?.message || err);
     return res.status(500).json({
@@ -105,7 +103,7 @@ No incluyas texto fuera del JSON.`;
   }
 });
 
-// (Opcional) endpoints fake auxiliares
+// Endpoints “fake” opcionales (déjalos si los necesitas)
 app.post("/v1/auth/signup", (req, res) => {
   res.json({
     user_id: "usr_test",
