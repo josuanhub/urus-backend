@@ -13,10 +13,13 @@ const URUS_CORE_MODE = process.env.URUS_CORE_MODE || "production";
 const URUS_CORE_VERSION = process.env.URUS_CORE_VERSION || "A33";
 const URUS_DEFAULT_MODEL = process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini";
 
-// Debug seguro (opcional mientras arreglas)
+// Debug seguro (NO imprime la key completa)
 console.log("OPENAI_KEY_PRESENT", !!process.env.OPENAI_API_KEY);
 console.log("OPENAI_KEY_LEN", process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0);
-console.log("OPENAI_KEY_PREFIX", process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.slice(0, 7) : "none");
+console.log(
+  "OPENAI_KEY_PREFIX",
+  process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.slice(0, 7) : "none"
+);
 
 if (!OPENAI_API_KEY) {
   console.error("Missing OPENAI_API_KEY (Railway Variables).");
@@ -24,7 +27,6 @@ if (!OPENAI_API_KEY) {
 
 const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-// Health
 app.get("/health", (req, res) => {
   res.json({
     ok: true,
@@ -35,7 +37,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Minimal “real” URUS Core call
 app.post("/v1/urus/ingest_session", async (req, res) => {
   try {
     const { input = "", mode = "URUS_CORE", meta = {}, model } = req.body || {};
@@ -75,7 +76,7 @@ No incluyas texto fuera del JSON.`;
     let parsed;
     try {
       parsed = JSON.parse(text);
-    } catch (e) {
+    } catch {
       parsed = {
         activation_id: `act_${Date.now()}`,
         core_version: URUS_CORE_VERSION,
@@ -94,10 +95,7 @@ No incluyas texto fuera del JSON.`;
       core_version: URUS_CORE_VERSION,
     });
 
-    res.json({
-      ...parsed,
-      model_used: selectedModel,
-    });
+    res.json({ ...parsed, model_used: selectedModel });
   } catch (err) {
     console.error("URUS_ERROR", err?.message || err);
     res.status(500).json({
@@ -107,7 +105,7 @@ No incluyas texto fuera del JSON.`;
   }
 });
 
-// Fake endpoints (ok por ahora)
+// endpoints fake (opcional)
 app.post("/v1/auth/signup", (req, res) => {
   res.json({ user_id: "usr_test", email: req.body?.email, token: "fake_token_for_now" });
 });
