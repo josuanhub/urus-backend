@@ -1,7 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-
-// OpenAI SDK (CommonJS)
 const OpenAI = require("openai");
 
 const app = express();
@@ -15,12 +13,15 @@ const URUS_CORE_MODE = process.env.URUS_CORE_MODE || "production";
 const URUS_CORE_VERSION = process.env.URUS_CORE_VERSION || "A33";
 const URUS_DEFAULT_MODEL = process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini";
 
+// Debug seguro (opcional mientras arreglas)
+console.log("OPENAI_KEY_PRESENT", !!process.env.OPENAI_API_KEY);
+console.log("OPENAI_KEY_LEN", process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0);
+console.log("OPENAI_KEY_PREFIX", process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.slice(0, 7) : "none");
+
 if (!OPENAI_API_KEY) {
   console.error("Missing OPENAI_API_KEY (Railway Variables).");
 }
 
-// Nota: si te diera error “OpenAI is not a constructor”, cambia a:
-// const OpenAI = require("openai").default;
 const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // Health
@@ -34,7 +35,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// URUS Core (real)
+// Minimal “real” URUS Core call
 app.post("/v1/urus/ingest_session", async (req, res) => {
   try {
     const { input = "", mode = "URUS_CORE", meta = {}, model } = req.body || {};
@@ -45,15 +46,15 @@ app.post("/v1/urus/ingest_session", async (req, res) => {
     }
 
     const system = `Eres URUS Core LM Gateway (v=${URUS_CORE_VERSION}, mode=${URUS_CORE_MODE}).
-Devuelve SIEMPRE JSON válido con esta forma EXACTA:
+Devuelve SIEMPRE JSON válido con esta forma:
 {
-  "activation_id": "string",
-  "core_version": "string",
-  "mode": "string",
+  "activation_id": string,
+  "core_version": string,
+  "mode": string,
   "final_output": {
-    "summary": "string",
-    "signals": ["string"],
-    "next_action": "string"
+    "summary": string,
+    "signals": string[],
+    "next_action": string
   }
 }
 No incluyas texto fuera del JSON.`;
@@ -74,7 +75,7 @@ No incluyas texto fuera del JSON.`;
     let parsed;
     try {
       parsed = JSON.parse(text);
-    } catch {
+    } catch (e) {
       parsed = {
         activation_id: `act_${Date.now()}`,
         core_version: URUS_CORE_VERSION,
@@ -82,7 +83,7 @@ No incluyas texto fuera del JSON.`;
         final_output: {
           summary: text || "No output",
           signals: [],
-          next_action: "Adjust prompt to force strict JSON.",
+          next_action: "Refine prompt for strict JSON.",
         },
       };
     }
@@ -93,33 +94,26 @@ No incluyas texto fuera del JSON.`;
       core_version: URUS_CORE_VERSION,
     });
 
-    return res.json({ ...parsed, model_used: selectedModel });
+    res.json({
+      ...parsed,
+      model_used: selectedModel,
+    });
   } catch (err) {
     console.error("URUS_ERROR", err?.message || err);
-    return res.status(500).json({
+    res.status(500).json({
       error: "URUS Core call failed",
       details: err?.message || String(err),
     });
   }
 });
 
-// Endpoints “fake” opcionales (déjalos si los necesitas)
+// Fake endpoints (ok por ahora)
 app.post("/v1/auth/signup", (req, res) => {
-  res.json({
-    user_id: "usr_test",
-    email: req.body?.email,
-    token: "fake_token_for_now",
-  });
+  res.json({ user_id: "usr_test", email: req.body?.email, token: "fake_token_for_now" });
 });
-
 app.post("/v1/auth/login", (req, res) => {
-  res.json({
-    user_id: "usr_test",
-    email: req.body?.email,
-    token: "fake_token_for_now",
-  });
+  res.json({ user_id: "usr_test", email: req.body?.email, token: "fake_token_for_now" });
 });
-
 app.post("/v1/billing/checkout", (req, res) => {
   res.json({ url: "https://stripe.com/test" });
 });
