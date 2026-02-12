@@ -10,7 +10,7 @@ app.use(express.json({ limit: "1mb" }));
 
 const PORT = process.env.PORT || 3000;
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const URUS_CORE_MODE = process.env.URUS_CORE_MODE || "production";
 const URUS_CORE_VERSION = process.env.URUS_CORE_VERSION || "A33";
 const URUS_DEFAULT_MODEL = process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini";
