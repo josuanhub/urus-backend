@@ -8,6 +8,7 @@ app.use(express.json({ limit: "1mb" }));
 
 const PORT = process.env.PORT || 3000;
 
+// Railway variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const URUS_CORE_MODE = process.env.URUS_CORE_MODE || "production";
 const URUS_CORE_VERSION = process.env.URUS_CORE_VERSION || "A33";
@@ -30,61 +31,47 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Minimal “real” URUS Core call
+// ✅ REAL URUS Core LM Gateway
 app.post("/v1/urus/ingest_session", async (req, res) => {
   try {
-    const {
-      input = "",
-      mode = "URUS_CORE",
-      meta = {},
-      model,
-    } = req.body || {};
-
+    const { input = "", mode = "URUS_CORE", meta = {}, model } = req.body || {};
     const selectedModel = model || URUS_DEFAULT_MODEL;
 
     if (!OPENAI_API_KEY) {
-      return res.status(500).json({
-        error: "OPENAI_API_KEY not set",
-      });
+      return res.status(500).json({ error: "OPENAI_API_KEY not set" });
     }
 
-    // Prompt mínimo, pero ya “real” y estructurado
     const system = `Eres URUS Core LM Gateway (v=${URUS_CORE_VERSION}, mode=${URUS_CORE_MODE}).
-Devuelve SIEMPRE JSON válido con esta forma:
+Devuelve SIEMPRE JSON válido EXACTAMENTE con esta forma:
 {
-  "activation_id": string,
-  "core_version": string,
-  "mode": string,
+  "activation_id": "string",
+  "core_version": "string",
+  "mode": "string",
   "final_output": {
-    "summary": string,
-    "signals": string[],
-    "next_action": string
+    "summary": "string",
+    "signals": ["string"],
+    "next_action": "string"
   }
 }
 No incluyas texto fuera del JSON.`;
 
     const user = `INPUT:\n${input}\n\nMETA:\n${JSON.stringify(meta)}\n\nMODE:\n${mode}`;
 
-    // Usamos Responses API
     const r = await client.responses.create({
       model: selectedModel,
       input: [
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      // Si luego quieres más “consistencia”, sube esto:
       temperature: 0.4,
     });
 
-    // Extraer texto final
     const text = (r.output_text || "").trim();
 
-    // Intentar parsear JSON
     let parsed;
     try {
       parsed = JSON.parse(text);
-    } catch (e) {
-      // fallback seguro si el modelo no devolvió JSON perfecto
+    } catch {
       parsed = {
         activation_id: `act_${Date.now()}`,
         core_version: URUS_CORE_VERSION,
@@ -92,40 +79,49 @@ No incluyas texto fuera del JSON.`;
         final_output: {
           summary: text || "No output",
           signals: [],
-          next_action: "Refine prompt for strict JSON.",
+          next_action: "Model did not return strict JSON. Tighten prompt.",
         },
       };
     }
 
-    // Log para ver “modelo real usado” en Railway Logs
+    // ✅ Railway Logs proof
     console.log("URUS_CALL", {
       route: "/v1/urus/ingest_session",
       selectedModel,
       core_version: URUS_CORE_VERSION,
+      core_mode: URUS_CORE_MODE,
     });
 
-    // Respuesta final
-    res.json({
+    return res.json({
       ...parsed,
-      // Te lo devuelvo también fuera para auditoría rápida
-      model_used: selectedModel,
+      model_used: selectedModel, // auditoría rápida
     });
   } catch (err) {
     console.error("URUS_ERROR", err?.message || err);
-    res.status(500).json({
+    return res.status(500).json({
       error: "URUS Core call failed",
       details: err?.message || String(err),
     });
   }
 });
 
-// (Opcional) Mantén tus endpoints fake si quieres, pero ya tienes core real arriba
+// (Opcional) endpoints fake auxiliares
 app.post("/v1/auth/signup", (req, res) => {
-  res.json({ user_id: "usr_test", email: req.body?.email, token: "fake_token_for_now" });
+  res.json({
+    user_id: "usr_test",
+    email: req.body?.email,
+    token: "fake_token_for_now",
+  });
 });
+
 app.post("/v1/auth/login", (req, res) => {
-  res.json({ user_id: "usr_test", email: req.body?.email, token: "fake_token_for_now" });
+  res.json({
+    user_id: "usr_test",
+    email: req.body?.email,
+    token: "fake_token_for_now",
+  });
 });
+
 app.post("/v1/billing/checkout", (req, res) => {
   res.json({ url: "https://stripe.com/test" });
 });
@@ -133,51 +129,4 @@ app.post("/v1/billing/checkout", (req, res) => {
 app.listen(PORT, () => {
   console.log("URUS Backend running on", PORT);
 });
-const express = require("express");
-const cors = require("cors");
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/health", (req, res) => {
-  res.json({ ok: true });
-});
-
-app.post("/v1/auth/signup", (req, res) => {
-  res.json({
-    user_id: "usr_test",
-    email: req.body.email,
-    token: "fake_token_for_now"
-  });
-});
-
-app.post("/v1/auth/login", (req, res) => {
-  res.json({
-    user_id: "usr_test",
-    email: req.body.email,
-    token: "fake_token_for_now"
-  });
-});
-
-app.post("/v1/urus/ingest_session", (req, res) => {
-  res.json({
-    activation_id: "act_test",
-    final_output: {
-      summary: "URUS conectado correctamente 🚀"
-    }
-  });
-});
-
-app.post("/v1/billing/checkout", (req, res) => {
-  res.json({
-    url: "https://stripe.com/test"
-  });
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("URUS Backend running");
-});
