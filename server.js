@@ -1,120 +1,103 @@
 /**
- * URUS Backend — A1 (Memoria real) + Prompt Johnson + Endpoints mínimos
+ * URUS Backend — A1 (Memoria real) + Prompt JSON fijo + Endpoints mínimos
+ *
+ * Endpoints:
+ * - GET  /health
  * - POST /v1/auth/signup
  * - POST /v1/auth/login
  * - POST /v1/urus/ingest_session   (auth) -> llama modelo + guarda en DB
  * - GET  /v1/urus/sessions         (auth) -> historial
- * - GET  /health
  *
- * ENV:
- * OPENAI_API_KEY, DATABASE_URL, JWT_SECRET
- * URUS_DEFAULT_MODEL, URUS_CORE_VERSION, URUS_CORE_MODE
+ * ENV requeridas:
+ * - OPENAI_API_KEY
+ * - DATABASE_URL
+ * - JWT_SECRET
+ *
+ * ENV opcionales:
+ * - URUS_CORE_MODE (production/development)
+ * - URUS_CORE_VERSION (ej: A33)
+ * - URUS_DEFAULT_MODEL (ej: gpt-4o-mini)
  */
 
 const express = require("express");
 const cors = require("cors");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const OpenAI = require("openai");
 
 const app = express();
+app.use(cors());
+app.use(express.json({ limit: "1mb" }));
 
-// ---------- Config ----------
+// ----------------- Config
 const PORT = process.env.PORT || 3000;
 
-const URUS_CORE_MODE = process.env.URUS_CORE_MODE || "development";
+const URUS_CORE_MODE = process.env.URUS_CORE_MODE || "production";
 const URUS_CORE_VERSION = process.env.URUS_CORE_VERSION || "A33";
 const URUS_DEFAULT_MODEL = process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
+const JWT_SECRET = process.env.JWT_SECRET;
 const DATABASE_URL = process.env.DATABASE_URL;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-if (!DATABASE_URL) console.warn("[WARN] DATABASE_URL missing");
-if (!OPENAI_API_KEY) console.warn("[WARN] OPENAI_API_KEY missing");
+if (!JWT_SECRET) console.warn("[WARN] Missing JWT_SECRET");
+if (!DATABASE_URL) console.warn("[WARN] Missing DATABASE_URL");
+if (!OPENAI_API_KEY) console.warn("[WARN] Missing OPENAI_API_KEY");
 
-// ---------- Middleware ----------
-app.use(helmet());
-app.use(express.json({ limit: "1mb" }));
+// Safe log (no keys leaked)
+console.log("[BOOT]", {
+  mode: URUS_CORE_MODE,
+  core_version: URUS_CORE_VERSION,
+  default_model: URUS_DEFAULT_MODEL,
+  openai_key_present: !!OPENAI_API_KEY,
+  db_url_present: !!DATABASE_URL,
+  jwt_present: !!JWT_SECRET
+});
 
-// Ajusta CORS si quieres: origin: ["https://tu-front.com"]
-app.use(cors({ origin: true, credentials: true }));
-
-app.use(
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 180,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
-
-// ---------- DB ----------
 const pool = new Pool({ connectionString: DATABASE_URL });
-
-// Auto-asegura tablas (así NO dependes de “dónde pego el SQL”)
-async function ensureSchema() {
-  // idempotente
-  await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      plan TEXT NOT NULL DEFAULT 'free',
-      monthly_usage INT NOT NULL DEFAULT 0,
-      monthly_limit INT NOT NULL DEFAULT 30,
-      usage_reset_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '1 month'),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-      mode TEXT NOT NULL DEFAULT 'URUS_CORE',
-      input TEXT NOT NULL,
-      meta JSONB NOT NULL DEFAULT '{}'::jsonb,
-      model_used TEXT,
-      response JSONB NOT NULL DEFAULT '{}'::jsonb,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-  `);
-
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_sessions_user_id_created_at
-    ON sessions(user_id, created_at DESC);
-  `);
-
-  // Si vienes de versiones previas con otras columnas, aquí haces ALTER safe:
-  // await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb;`);
-}
-
-// ---------- OpenAI ----------
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-// ---------- System Prompt (Johnson corto, sin “mil restricciones”) ----------
-const SYSTEM_PROMPT = `Eres URUS Cognitive OS (URUS-A33). Operas como un motor de claridad estratégica y coherencia decisional.
-No eres un chatbot genérico. Tu trabajo es transformar el input del usuario en un diagnóstico estratégico y un mapa cognitivo estructurado.
+// ----------------- Helpers
+function isEmail(s) {
+  return typeof s === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
 
-INSTRUCCIÓN CRÍTICA:
-- Devuelve SIEMPRE y SOLO un JSON válido. No incluyas texto fuera del JSON.
-- Mantén el lenguaje en español neutro (a menos que el usuario pida otro idioma).
-- Sé directo, sin motivación, sin terapia, sin adornos.
+function authRequired(req, res, next) {
+  try {
+    const h = req.headers.authorization || "";
+    const token = h.startsWith("Bearer ") ? h.slice(7) : "";
+    if (!token) return res.status(401).json({ error: "Missing Bearer token" });
 
-PROCESO INTERNO (implícito):
-1) Intent Engine: objetivo explícito/implícito, fricción interna, vector de incoherencia.
-2) Pattern Detection: patrón dominante, sesgo, narrativa limitante.
-3) Ethical Coherence: truth/consistency/sustainability/systemic_impact (0.0–1.0).
-4) Evolution Marker: etapa estratégica.
-5) Strategic Output: diagnóstico, punto ciego, riesgo, movimiento recomendado.
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = { id: payload.sub, email: payload.email };
+    return next();
+  } catch (e) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+}
 
-FORMATO JSON EXACTO (no agregues llaves nuevas):
+function safeJsonParse(s) {
+  try {
+    return { ok: true, value: JSON.parse(s) };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+// ----------------- System Prompt (JSON fijo)
+const URUS_SYSTEM_PROMPT = `
+Eres URUS Cognitive OS v1 (URUS-${URUS_CORE_VERSION}).
+No eres un chatbot. Eres un motor de claridad estratégica, coherencia decisional y ejecución.
+
+Objetivo: procesar el input del usuario y devolver una respuesta ESTRUCTURADA y accionable.
+
+INSTRUCCIONES IMPORTANTES:
+- Responde SIEMPRE en español neutro (a menos que el usuario pida otro idioma).
+- Sé directo, sobrio, sin motivación, sin terapia, sin misticismo.
+- Devuelve SIEMPRE un ÚNICO JSON válido. No texto fuera del JSON. No markdown.
+
+FORMATO JSON EXACTO (respeta llaves/campos):
 {
   "activation_id": "string",
   "core_version": "string",
@@ -144,285 +127,188 @@ FORMATO JSON EXACTO (no agregues llaves nuevas):
   }
 }
 
-REGLAS DE CALIDAD:
-- No inventes datos personales. Si falta contexto, infiere con cautela y baja confidence_score.
-- recommended_move debe ser una acción concreta en 1–2 pasos.
-`;
+REGLAS:
+- activation_id: genera un id tipo UUID o similar (texto).
+- mode: usa "${URUS_CORE_MODE}"
+- core_version: usa "${URUS_CORE_VERSION}"
+- ethical_alignment: números 0.0 a 1.0
+- confidence_score: 0.0 a 1.0
+- Si el input es vago, igual devuelve el JSON completo, pero en recommended_move pide una sola precisión concreta.
+`.trim();
 
-// ---------- Helpers ----------
-function signToken(user) {
-  return jwt.sign(
-    { id: user.id, email: user.email, plan: user.plan },
-    JWT_SECRET,
-    { expiresIn: "30d" }
-  );
-}
-
-function authRequired(req, res, next) {
-  const auth = req.headers.authorization || "";
-  const [type, token] = auth.split(" ");
-  if (type !== "Bearer" || !token) {
-    return res.status(401).json({ error: "Missing Bearer token" });
-  }
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    req.user = payload;
-    return next();
-  } catch (e) {
-    return res.status(401).json({ error: "Invalid token" });
-  }
-}
-
-// JSON parse robusto (por si el modelo mete espacios, etc.)
-function safeParseJson(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    // intenta extraer primer bloque {...}
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      const slice = text.slice(start, end + 1);
-      return JSON.parse(slice);
-    }
-    throw new Error("Model output is not valid JSON");
-  }
-}
-
-// ---------- Routes ----------
+// ----------------- Health
 app.get("/health", async (req, res) => {
   try {
     const r = await pool.query("SELECT 1 as ok");
     res.json({
       ok: true,
       service: "urus-backend",
-      core_mode: URUS_CORE_MODE,
       core_version: URUS_CORE_VERSION,
-      default_model: URUS_DEFAULT_MODEL,
-      db_ok: r.rows?.[0]?.ok === 1,
+      mode: URUS_CORE_MODE,
+      db_ok: r.rows?.[0]?.ok === 1
     });
   } catch (e) {
-    res.status(500).json({ ok: false, error: "db_not_ok" });
+    res.status(500).json({ ok: false, error: "db_error" });
   }
 });
 
+// ----------------- Auth: signup
 app.post("/v1/auth/signup", async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: "Missing email/password" });
-
   try {
-    const existing = await pool.query("SELECT id FROM users WHERE email=$1", [email]);
-    if (existing.rowCount > 0) return res.status(409).json({ error: "email already exists" });
+    const { email, password } = req.body || {};
+    if (!isEmail(email)) return res.status(400).json({ error: "Invalid email" });
+    if (typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ error: "Password too short" });
+    }
 
     const password_hash = await bcrypt.hash(password, 10);
 
-    const ins = await pool.query(
-      `INSERT INTO users (email, password_hash)
-       VALUES ($1, $2)
-       RETURNING id, email, plan, monthly_usage, monthly_limit, usage_reset_at`,
-      [email, password_hash]
-    );
+    const q = `
+      INSERT INTO users (email, password_hash)
+      VALUES ($1, $2)
+      RETURNING id, email, created_at
+    `;
+    const r = await pool.query(q, [email.toLowerCase(), password_hash]);
 
-    const user = ins.rows[0];
-    const token = signToken(user);
+    const user = r.rows[0];
+    const token = jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
 
-    res.json({
-      user_id: user.id,
-      email: user.email,
-      token,
-      plan: user.plan,
-      monthly_usage: user.monthly_usage,
-      monthly_limit: user.monthly_limit,
-      resets_at: user.usage_reset_at,
-    });
+    res.json({ token, user: { id: user.id, email: user.email, created_at: user.created_at } });
   } catch (e) {
+    // unique violation
+    if (String(e).includes("duplicate") || String(e).includes("unique")) {
+      return res.status(409).json({ error: "Email already exists" });
+    }
     res.status(500).json({ error: "signup_failed" });
   }
 });
 
+// ----------------- Auth: login
 app.post("/v1/auth/login", async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: "Missing email/password" });
-
   try {
-    const r = await pool.query(
-      `SELECT id, email, password_hash, plan, monthly_usage, monthly_limit, usage_reset_at
-       FROM users WHERE email=$1`,
-      [email]
-    );
+    const { email, password } = req.body || {};
+    if (!isEmail(email)) return res.status(400).json({ error: "Invalid email" });
+    if (typeof password !== "string") return res.status(400).json({ error: "Invalid password" });
 
-    if (r.rowCount === 0) return res.status(401).json({ error: "invalid credentials" });
+    const r = await pool.query(`SELECT id, email, password_hash FROM users WHERE email = $1`, [
+      email.toLowerCase()
+    ]);
+    if (!r.rows.length) return res.status(401).json({ error: "Invalid credentials" });
 
     const user = r.rows[0];
     const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) return res.status(401).json({ error: "invalid credentials" });
+    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    const token = signToken(user);
-
-    res.json({
-      user_id: user.id,
-      email: user.email,
-      token,
-      plan: user.plan,
-      monthly_usage: user.monthly_usage,
-      monthly_limit: user.monthly_limit,
-      resets_at: user.usage_reset_at,
-    });
+    const token = jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
+    res.json({ token, user: { id: user.id, email: user.email } });
   } catch (e) {
     res.status(500).json({ error: "login_failed" });
   }
 });
 
-// Historial mínimo (memoria real)
-app.get("/v1/urus/sessions", authRequired, async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit || "20", 10), 100);
-
-  try {
-    const r = await pool.query(
-      `SELECT id, mode, input, meta, model_used, response, created_at
-       FROM sessions
-       WHERE user_id = $1
-       ORDER BY created_at DESC
-       LIMIT $2`,
-      [req.user.id, limit]
-    );
-    res.json({ items: r.rows });
-  } catch (e) {
-    res.status(500).json({ error: "sessions_fetch_failed" });
-  }
-});
-
-// Ingest + LLM + guardar sesión
+// ----------------- URUS ingest_session (memoria real)
 app.post("/v1/urus/ingest_session", authRequired, async (req, res) => {
   const input = (req.body && req.body.input) || "";
-  const mode = (req.body && req.body.mode) || "URUS_CORE";
   const meta = (req.body && req.body.meta) || {};
+  const mode = (req.body && req.body.mode) || "URUS_CORE";
 
-  if (!input.trim()) return res.status(400).json({ error: "Missing input" });
-  if (!OPENAI_API_KEY) return res.status(500).json({ error: "OPENAI_API_KEY missing" });
-  if (!DATABASE_URL) return res.status(500).json({ error: "DATABASE_URL missing" });
+  if (typeof input !== "string" || input.trim().length === 0) {
+    return res.status(400).json({ error: "Missing input" });
+  }
 
-  const client = await pool.connect();
+  const selectedModel = URUS_DEFAULT_MODEL;
+
   try {
-    await client.query("BEGIN");
-
-    // 1) Chequeo y reset de usage si toca
-    const u0 = await client.query(
-      `SELECT plan, monthly_usage, monthly_limit, usage_reset_at
-       FROM users WHERE id=$1 FOR UPDATE`,
-      [req.user.id]
-    );
-    if (u0.rowCount === 0) {
-      await client.query("ROLLBACK");
-      return res.status(401).json({ error: "user_not_found" });
-    }
-
-    let { plan, monthly_usage, monthly_limit, usage_reset_at } = u0.rows[0];
-
-    const now = new Date();
-    const resetAt = new Date(usage_reset_at);
-    if (now >= resetAt) {
-      monthly_usage = 0;
-      const newReset = new Date(now);
-      newReset.setMonth(newReset.getMonth() + 1);
-
-      const uReset = await client.query(
-        `UPDATE users SET monthly_usage=0, usage_reset_at=$2
-         WHERE id=$1
-         RETURNING plan, monthly_usage, monthly_limit, usage_reset_at`,
-        [req.user.id, newReset.toISOString()]
-      );
-      ({ plan, monthly_usage, monthly_limit, usage_reset_at } = uReset.rows[0]);
-    }
-
-    if (monthly_usage >= monthly_limit) {
-      await client.query("ROLLBACK");
-      return res.status(402).json({
-        error: "monthly_limit_reached",
-        plan,
-        monthly_usage,
-        monthly_limit,
-        resets_at: usage_reset_at,
-      });
-    }
-
-    // 2) Llamada al modelo
-    const selectedModel = URUS_DEFAULT_MODEL;
-
-    const activationId = req.user.id; // (puedes cambiarlo por uuid por request si quieres)
-    const userMessage = `INPUT:\n${input}\n\nMETADATA:\n${JSON.stringify(meta)}\n\nMODE:\n${mode}\n\nCONTEXT:\nactivation_id=${activationId}\ncore_version=${URUS_CORE_VERSION}\nmode=${URUS_CORE_MODE}`;
-
     const completion = await openai.chat.completions.create({
       model: selectedModel,
-      temperature: 0.35,
+      temperature: 0.4,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userMessage },
-      ],
+        { role: "system", content: URUS_SYSTEM_PROMPT },
+        { role: "user", content: input }
+      ]
     });
 
-    const text = completion.choices?.[0]?.message?.content || "";
-    const parsed = safeParseJson(text);
+    const text = completion?.choices?.[0]?.message?.content || "";
+    const parsed = safeJsonParse(text);
 
-    // 3) Normaliza campos mínimos por si el modelo deja alguno vacío
-    parsed.activation_id = String(parsed.activation_id || activationId);
-    parsed.core_version = String(parsed.core_version || URUS_CORE_VERSION);
-    parsed.mode = String(parsed.mode || URUS_CORE_MODE);
+    // Si el modelo no devolvió JSON perfecto, guardamos fallback para no perder sesión
+    const responseJson = parsed.ok
+      ? parsed.value
+      : {
+          activation_id: "parse_error",
+          core_version: URUS_CORE_VERSION,
+          mode: URUS_CORE_MODE,
+          final_output: {
+            diagnosis: "No se pudo parsear JSON del modelo.",
+            blind_spot: "",
+            primary_risk: "Formato inválido",
+            recommended_move: "Reintenta: devuelve SOLO JSON válido (sin texto extra)."
+          },
+          cognitive_map: {
+            intent_explicit: "",
+            intent_implicit: "",
+            internal_friction: "",
+            incoherence_vector: "",
+            dominant_pattern: "",
+            bias_detected: "",
+            narrative_constraint: "",
+            ethical_alignment: { truth: 0, consistency: 0, sustainability: 0, systemic_impact: 0 },
+            strategic_stage: "",
+            confidence_score: 0
+          },
+          raw: text
+        };
 
-    // 4) Guarda sesión
-    await client.query(
-      `INSERT INTO sessions (user_id, input, mode, meta, model_used, response)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [req.user.id, input, mode, meta, selectedModel, parsed]
-    );
+    // Guardar en DB (memoria real)
+    const insertQ = `
+      INSERT INTO sessions (user_id, input, mode, meta, model_used, response)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, created_at
+    `;
+    const ins = await pool.query(insertQ, [
+      req.user.id,
+      input,
+      mode,
+      meta,
+      selectedModel,
+      responseJson
+    ]);
 
-    // 5) Incrementa usage
-    const u1 = await client.query(
-      `UPDATE users SET monthly_usage = monthly_usage + 1
-       WHERE id=$1
-       RETURNING plan, monthly_usage, monthly_limit, usage_reset_at`,
-      [req.user.id]
-    );
-
-    await client.query("COMMIT");
-
-    const usage = u1.rows[0];
-
-    // Respuesta final: devolvemos lo que guardamos (parsed) + usage
     res.json({
-      ...parsed,
+      session_id: ins.rows[0].id,
+      created_at: ins.rows[0].created_at,
       model_used: selectedModel,
-      usage: {
-        plan: usage.plan,
-        monthly_usage_before: usage.monthly_usage - 1,
-        monthly_usage: usage.monthly_usage,
-        monthly_limit: usage.monthly_limit,
-        resets_at: usage.usage_reset_at,
-      },
-      created_at: new Date().toISOString(),
+      core_version: URUS_CORE_VERSION,
+      mode: URUS_CORE_MODE,
+      response: responseJson
     });
   } catch (e) {
-    await client.query("ROLLBACK");
-    res.status(500).json({ error: "ingest_failed", detail: String(e.message || e) });
-  } finally {
-    client.release();
+    res.status(500).json({ error: "ingest_failed", details: String(e) });
   }
 });
 
-// ---------- Boot ----------
-(async () => {
+// ----------------- Historial
+app.get("/v1/urus/sessions", authRequired, async (req, res) => {
   try {
-    await ensureSchema();
-    console.log("[BOOT] Schema OK");
+    const limit = Math.min(parseInt(req.query.limit || "20", 10), 100);
+
+    const q = `
+      SELECT id, input, mode, meta, model_used, response, created_at
+      FROM sessions
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `;
+    const r = await pool.query(q, [req.user.id, limit]);
+    res.json({ items: r.rows });
   } catch (e) {
-    console.error("[BOOT] Schema ensure failed:", e);
+    res.status(500).json({ error: "history_failed" });
   }
+});
 
-  app.listen(PORT, () => {
-    console.log(`[BOOT] URUS backend listening on :${PORT} | mode=${URUS_CORE_MODE} | version=${URUS_CORE_VERSION} | model=${URUS_DEFAULT_MODEL}`);
-  });
-})();
-
-
+// ----------------- Start
+app.listen(PORT, () => {
+  console.log(`[READY] listening on :${PORT}`);
+});
 
 
