@@ -505,3 +505,4 @@ app.post("/v1/billing/checkout", requireAuth, (req, res) => {
     process.exit(1);
   }
 })();
+
