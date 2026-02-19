@@ -1,12 +1,13 @@
 /**
- * URUS Backend — A33 (Closed SaaS base)
+ * URUS Backend — A33 (Closed SaaS base) + Plan Limits (MVP)
  *
  * Endpoints:
  * - GET  /health
  * - POST /v1/auth/signup
  * - POST /v1/auth/login
  * - GET  /v1/auth/me
- * - POST /v1/urus/ingest_session   (auth) -> llama modelo + guarda en DB
+ * - GET  /v1/billing/status        (auth) -> plan/uso/restante/reset
+ * - POST /v1/urus/ingest_session   (auth) -> respeta límites + llama modelo + guarda en DB
  * - GET  /v1/urus/sessions         (auth) -> historial
  *
  * ENV requeridas:
@@ -34,6 +35,9 @@ const crypto = require("crypto");
 const OpenAI = require("openai").default;
 
 const app = express();
+
+// ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
+app.set("trust proxy", 1);
 
 // ---------- Config ----------
 const PORT = process.env.PORT || 3000;
@@ -141,6 +145,91 @@ function makeActivationId() {
   return "act_" + crypto.randomBytes(9).toString("hex");
 }
 
+// ---------- Plan limits (MVP) ----------
+function nextResetAtISO() {
+  // MVP: 30 días desde ahora
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toISOString();
+}
+
+async function getBillingInfo(userId) {
+  // Lee columnas del usuario (deben existir por SQL migration)
+  const r = await pool.query(
+    `SELECT plan, monthly_usage, monthly_limit, usage_reset_at
+     FROM users
+     WHERE id = $1`,
+    [userId]
+  );
+  const u = r.rows[0];
+  if (!u) return null;
+
+  const now = new Date();
+  const resetAt = u.usage_reset_at ? new Date(u.usage_reset_at) : null;
+
+  // Reset automático si venció
+  if (!resetAt || resetAt <= now) {
+    const newReset = nextResetAtISO();
+    await pool.query(
+      `UPDATE users
+       SET monthly_usage = 0, usage_reset_at = $2
+       WHERE id = $1`,
+      [userId, newReset]
+    );
+    u.monthly_usage = 0;
+    u.usage_reset_at = newReset;
+  }
+
+  // Si existe tabla plans, la usamos como fuente de verdad del límite
+  try {
+    const p = await pool.query(`SELECT monthly_limit FROM plans WHERE id = $1`, [u.plan || "basic"]);
+    if (p.rows?.[0]?.monthly_limit != null) {
+      u.monthly_limit = p.rows[0].monthly_limit;
+      // mantenemos users.monthly_limit sincronizado (sin romper)
+      await pool.query(`UPDATE users SET monthly_limit = $2 WHERE id = $1`, [userId, u.monthly_limit]);
+    }
+  } catch (_) {
+    // si no existe la tabla plans, seguimos usando users.monthly_limit
+  }
+
+  const monthlyUsage = Number.isFinite(u.monthly_usage) ? u.monthly_usage : 0;
+  const monthlyLimit = Number.isFinite(u.monthly_limit) ? u.monthly_limit : 50;
+
+  return {
+    plan: u.plan || "basic",
+    monthly_usage: monthlyUsage,
+    monthly_limit: monthlyLimit,
+    usage_reset_at: u.usage_reset_at,
+    remaining: Math.max(0, monthlyLimit - monthlyUsage),
+  };
+}
+
+async function incrementMonthlyUsage(userId) {
+  await pool.query(`UPDATE users SET monthly_usage = monthly_usage + 1 WHERE id = $1`, [userId]);
+}
+
+async function enforceMonthlyLimit(req, res, next) {
+  try {
+    const info = await getBillingInfo(req.user.id);
+    if (!info) return res.status(401).json({ error: "user_not_found" });
+
+    if (info.monthly_usage >= info.monthly_limit) {
+      return res.status(402).json({
+        error: "limit_reached",
+        plan: info.plan,
+        monthly_limit: info.monthly_limit,
+        monthly_usage: info.monthly_usage,
+        usage_reset_at: info.usage_reset_at,
+      });
+    }
+
+    req.billing = info;
+    return next();
+  } catch (e) {
+    return res.status(500).json({ error: "limit_check_failed", message: e.message });
+  }
+}
+
 // ---------- Auth ----------
 function signToken(user) {
   return jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
@@ -196,6 +285,30 @@ async function ensureSchema() {
       password_hash TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+  `);
+
+  // ✅ Plan columns (MVP) - no rompe usuarios existentes
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'basic';`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_usage INT NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_limit INT NOT NULL DEFAULT 50;`);
+  await pool.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS usage_reset_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '30 days');`
+  );
+
+  // ✅ Tabla plans (recomendada, pero no obligatoria)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS plans (
+      id TEXT PRIMARY KEY,
+      monthly_limit INT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  // Seed de planes
+  await pool.query(`
+    INSERT INTO plans (id, monthly_limit)
+    VALUES ('basic', 50), ('elite', 300), ('pro', 2000)
+    ON CONFLICT (id) DO NOTHING;
   `);
 
   await pool.query(`
@@ -358,6 +471,17 @@ app.get("/v1/auth/me", authRequired, async (req, res) => {
   return res.json({ ok: true, user: req.user });
 });
 
+// ✅ Para Base44/frontend: ver plan, uso y restante
+app.get("/v1/billing/status", authRequired, async (req, res) => {
+  try {
+    const info = await getBillingInfo(req.user.id);
+    if (!info) return res.status(401).json({ error: "user_not_found" });
+    return res.json({ ok: true, ...info });
+  } catch (e) {
+    return res.status(500).json({ error: "billing_status_failed", message: e.message });
+  }
+});
+
 app.get("/v1/urus/sessions", authRequired, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || "20", 10), 100);
@@ -377,7 +501,8 @@ app.get("/v1/urus/sessions", authRequired, async (req, res) => {
   }
 });
 
-app.post("/v1/urus/ingest_session", authRequired, ingestLimiter, async (req, res) => {
+// ✅ Enforce plan limit justo antes del gasto (OpenAI)
+app.post("/v1/urus/ingest_session", authRequired, ingestLimiter, enforceMonthlyLimit, async (req, res) => {
   const activationId = makeActivationId();
   const input = String(req.body?.input || "").trim();
   const mode = String(req.body?.mode || "URUS_CORE").trim();
@@ -397,6 +522,9 @@ app.post("/v1/urus/ingest_session", authRequired, ingestLimiter, async (req, res
       core_version: URUS_CORE_VERSION,
       mode,
       activationId,
+      plan: req.billing?.plan,
+      monthly_usage: req.billing?.monthly_usage,
+      monthly_limit: req.billing?.monthly_limit,
     });
 
     const messages = [
@@ -466,6 +594,18 @@ app.post("/v1/urus/ingest_session", authRequired, ingestLimiter, async (req, res
       [req.user.id, input, mode, meta, URUS_DEFAULT_MODEL, parsed]
     );
 
+    // ✅ Consume 1 uso
+    await incrementMonthlyUsage(req.user.id);
+
+    // ✅ Headers útiles para el frontend (sin romper el JSON Johnson)
+    const nextUsage = (req.billing?.monthly_usage ?? 0) + 1;
+    const limit = req.billing?.monthly_limit ?? 50;
+    res.setHeader("X-URUS-PLAN", String(req.billing?.plan ?? "basic"));
+    res.setHeader("X-URUS-LIMIT", String(limit));
+    res.setHeader("X-URUS-USAGE", String(nextUsage));
+    res.setHeader("X-URUS-REMAINING", String(Math.max(0, limit - nextUsage)));
+    res.setHeader("X-URUS-RESET-AT", String(req.billing?.usage_reset_at ?? ""));
+
     return res.json(parsed);
   } catch (e) {
     console.error("INGEST_ERROR", e);
@@ -489,4 +629,3 @@ app.post("/v1/urus/ingest_session", authRequired, ingestLimiter, async (req, res
     process.exit(1);
   }
 })();
-
