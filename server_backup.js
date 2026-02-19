@@ -1,0 +1,491 @@
+/**
+ * URUS Backend — A33 (Closed SaaS base)
+ *
+ * Endpoints:
+ * - GET  /health
+ * - POST /v1/auth/signup
+ * - POST /v1/auth/login
+ * - GET  /v1/auth/me
+ * - POST /v1/urus/ingest_session   (auth) -> llama modelo + guarda en DB
+ * - GET  /v1/urus/sessions         (auth) -> historial
+ *
+ * ENV requeridas:
+ * - OPENAI_API_KEY
+ * - DATABASE_URL
+ * - JWT_SECRET
+ *
+ * ENV opcionales:
+ * - URUS_CORE_MODE        (default: "production")
+ * - URUS_CORE_VERSION     (default: "A33")
+ * - URUS_DEFAULT_MODEL    (default: "gpt-4o-mini")
+ * - CORS_ORIGIN           (default: "")  // lista separada por comas, ej: https://tusitio.com,https://app.tusitio.com
+ */
+
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { Pool } = require("pg");
+const crypto = require("crypto");
+
+// OpenAI SDK (robusto)
+const OpenAI = require("openai").default;
+
+const app = express();
+
+// ---------- Config ----------
+const PORT = process.env.PORT || 3000;
+
+const URUS_CORE_MODE = process.env.URUS_CORE_MODE || "production";
+const URUS_CORE_VERSION = process.env.URUS_CORE_VERSION || "A33";
+const URUS_DEFAULT_MODEL = process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini";
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const DATABASE_URL = process.env.DATABASE_URL;
+const JWT_SECRET = process.env.JWT_SECRET;
+
+const CORS_ORIGIN_RAW = (process.env.CORS_ORIGIN || "").trim();
+const ALLOWED_ORIGINS = CORS_ORIGIN_RAW
+  ? CORS_ORIGIN_RAW.split(",").map((s) => s.trim()).filter(Boolean)
+  : [];
+
+// Hard-fail si falta algo esencial
+if (!OPENAI_API_KEY || !DATABASE_URL || !JWT_SECRET) {
+  console.error("Missing required env", {
+    OPENAI_API_KEY: !!OPENAI_API_KEY,
+    DATABASE_URL: !!DATABASE_URL,
+    JWT_SECRET: !!JWT_SECRET,
+  });
+  process.exit(1);
+}
+
+// Logs seguros (sin exponer key completa)
+console.log("URUS_BOOT", {
+  mode: URUS_CORE_MODE,
+  core_version: URUS_CORE_VERSION,
+  default_model: URUS_DEFAULT_MODEL,
+  openai_key_present: !!OPENAI_API_KEY,
+  openai_key_len: OPENAI_API_KEY ? OPENAI_API_KEY.length : 0,
+  openai_key_prefix: OPENAI_API_KEY ? OPENAI_API_KEY.slice(0, 7) : null,
+  cors_allowed_origins: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : "(any - non-browser tools ok)",
+});
+
+// ---------- OpenAI client ----------
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+// ---------- DB ----------
+function needsSsl(databaseUrl) {
+  // Railway Postgres suele requerir ssl en runtime; esto evita fallos por self-signed
+  if (!databaseUrl) return false;
+  if (databaseUrl.includes("sslmode=disable")) return false;
+  return true;
+}
+
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: needsSsl(DATABASE_URL) ? { rejectUnauthorized: false } : false,
+});
+
+// ---------- Security / Middleware ----------
+app.use(helmet());
+app.use(express.json({ limit: "1mb" }));
+
+// Rate limit global (IP)
+app.use(
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 120, // 120 req/min por IP
+    standardHeaders: true,
+    legacyHeaders: false,
+  })
+);
+
+// Rate limit más fuerte para auth
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limit más fuerte para ingest (costoso)
+const ingestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// CORS cerrado: si no defines CORS_ORIGIN, permite tools (Hoppscotch/Postman) pero bloquea browsers por seguridad.
+// Si defines CORS_ORIGIN, solo permite esos.
+app.use(
+  cors({
+    origin: function (origin, cb) {
+      // no origin => herramientas server-to-server / postman/hoppscotch
+      if (!origin) return cb(null, true);
+      if (ALLOWED_ORIGINS.length === 0) return cb(new Error("CORS blocked (set CORS_ORIGIN)"), false);
+      if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      return cb(new Error("CORS blocked"), false);
+    },
+    credentials: true,
+  })
+);
+
+function nowISO() {
+  return new Date().toISOString();
+}
+
+function makeActivationId() {
+  return "act_" + crypto.randomBytes(9).toString("hex");
+}
+
+// ---------- Auth ----------
+function signToken(user) {
+  return jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
+}
+
+function authRequired(req, res, next) {
+  const hdr = req.headers.authorization || "";
+  const [type, token] = hdr.split(" ");
+  if (type !== "Bearer" || !token) {
+    return res.status(401).json({ error: "Missing Bearer token" });
+  }
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = { id: payload.sub, email: payload.email };
+    return next();
+  } catch (e) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+// Extrae el primer objeto JSON válido de un string (por si el modelo mete texto extra)
+function extractJsonObject(text) {
+  if (!text || typeof text !== "string") return null;
+  const firstBrace = text.indexOf("{");
+  if (firstBrace === -1) return null;
+
+  let depth = 0;
+  for (let i = firstBrace; i < text.length; i++) {
+    const c = text[i];
+    if (c === "{") depth++;
+    if (c === "}") depth--;
+    if (depth === 0) {
+      const candidate = text.slice(firstBrace, i + 1);
+      try {
+        return JSON.parse(candidate);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+// ---------- Schema (users + sessions) ----------
+async function ensureSchema() {
+  // Necesario para gen_random_uuid()
+  await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      input TEXT NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'URUS_CORE',
+      meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+      model_used TEXT,
+      response JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_sessions_user_id_created_at
+    ON sessions(user_id, created_at DESC);
+  `);
+
+  console.log("DB schema ensured");
+}
+
+// ---------- System Prompt Johnson (JSON exacto) ----------
+function buildSystemPromptJohnson() {
+  return `
+Eres URUS Cognitive OS v1.
+
+Eres un sistema de procesamiento cognitivo estructurado diseñado para aumentar claridad estratégica, detectar incoherencias invisibles y mejorar calidad decisional.
+
+Tu trabajo: tomar el input del usuario y producir UNA salida JSON válida siguiendo el esquema exacto de abajo.
+
+INSTRUCCIONES:
+- Responde en español neutro (a menos que el usuario pida otro idioma).
+- Sé directo y preciso. Sin motivación. Sin terapia. Sin misticismo.
+- No inventes hechos. Si falta contexto, asume lo mínimo y refleja baja confianza.
+- Devuelve SIEMPRE JSON válido.
+- NO incluyas texto fuera del JSON.
+
+FORMATO JSON EXACTO (Johnson):
+{
+  "activation_id": "string",
+  "core_version": "string",
+  "mode": "string",
+  "final_output": {
+    "diagnosis": "string",
+    "blind_spot": "string",
+    "primary_risk": "string",
+    "recommended_move": "string"
+  },
+  "cognitive_map": {
+    "intent_explicit": "string",
+    "intent_implicit": "string",
+    "internal_friction": "string",
+    "incoherence_vector": "string",
+    "dominant_pattern": "string",
+    "bias_detected": "string",
+    "narrative_constraint": "string",
+    "ethical_alignment": {
+      "truth": 0.0,
+      "consistency": 0.0,
+      "sustainability": 0.0,
+      "systemic_impact": 0.0
+    },
+    "strategic_stage": "string",
+    "confidence_score": 0.0
+  }
+}
+
+REGLAS DE CONSISTENCIA:
+- activation_id: úsalo tal cual (te lo doy yo).
+- core_version: usa el valor recibido.
+- mode: usa el valor recibido.
+- confidence_score: 0.0 a 1.0.
+- Todos los campos deben existir siempre (aunque sea string vacío).
+`.trim();
+}
+
+// ---------- Routes ----------
+app.get("/health", async (req, res) => {
+  try {
+    const r = await pool.query("select 1 as ok");
+    return res.json({
+      ok: true,
+      time: nowISO(),
+      db_ok: r.rows?.[0]?.ok === 1,
+      mode: URUS_CORE_MODE,
+      core_version: URUS_CORE_VERSION,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      ok: false,
+      time: nowISO(),
+      error: "db_error",
+      message: e.message,
+    });
+  }
+});
+
+app.post("/v1/auth/signup", authLimiter, async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+
+    if (!email || !password || password.length < 6) {
+      return res.status(400).json({ error: "Invalid email/password" });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const r = await pool.query(
+      `INSERT INTO users (email, password_hash)
+       VALUES ($1, $2)
+       RETURNING id, email, created_at`,
+      [email, hash]
+    );
+
+    const user = r.rows[0];
+    const token = signToken(user);
+
+    return res.json({ token, user });
+  } catch (e) {
+    if (String(e.message || "").includes("duplicate key")) {
+      return res.status(409).json({ error: "Email already exists" });
+    }
+    return res.status(500).json({ error: "signup_failed", message: e.message });
+  }
+});
+
+app.post("/v1/auth/login", authLimiter, async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+
+    const r = await pool.query(
+      `SELECT id, email, password_hash, created_at
+       FROM users
+       WHERE email = $1`,
+      [email]
+    );
+
+    const user = r.rows[0];
+    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+
+    const token = signToken(user);
+
+    return res.json({
+      token,
+      user: { id: user.id, email: user.email, created_at: user.created_at },
+    });
+  } catch (e) {
+    return res.status(500).json({ error: "login_failed", message: e.message });
+  }
+});
+
+app.get("/v1/auth/me", authRequired, async (req, res) => {
+  return res.json({ ok: true, user: req.user });
+});
+
+app.get("/v1/urus/sessions", authRequired, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit || "20", 10), 100);
+    const r = await pool.query(
+      `
+      SELECT id, input, mode, meta, model_used, response, created_at
+      FROM sessions
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+      `,
+      [req.user.id, limit]
+    );
+    return res.json({ items: r.rows });
+  } catch (e) {
+    return res.status(500).json({ error: "sessions_failed", message: e.message });
+  }
+});
+
+app.post("/v1/urus/ingest_session", authRequired, ingestLimiter, async (req, res) => {
+  const activationId = makeActivationId();
+  const input = String(req.body?.input || "").trim();
+  const mode = String(req.body?.mode || "URUS_CORE").trim();
+  const meta = req.body?.meta && typeof req.body.meta === "object" ? req.body.meta : {};
+
+  if (!input) {
+    return res.status(400).json({ error: "Missing input" });
+  }
+
+  const systemPrompt = buildSystemPromptJohnson();
+
+  try {
+    console.log("URUS_CALL", {
+      route: "/v1/urus/ingest_session",
+      user: req.user.id,
+      selectedModel: URUS_DEFAULT_MODEL,
+      core_version: URUS_CORE_VERSION,
+      mode,
+      activationId,
+    });
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content:
+          `activation_id: ${activationId}\n` +
+          `core_version: ${URUS_CORE_VERSION}\n` +
+          `mode: ${mode}\n\n` +
+          `INPUT:\n${input}`,
+      },
+    ];
+
+    const completion = await openai.chat.completions.create({
+      model: URUS_DEFAULT_MODEL,
+      messages,
+      temperature: 0.35,
+    });
+
+    const raw = completion?.choices?.[0]?.message?.content || "";
+    let parsed = null;
+
+    try {
+      parsed = JSON.parse(raw);
+    } catch (_) {
+      parsed = extractJsonObject(raw);
+    }
+
+    if (!parsed) {
+      parsed = {
+        activation_id: activationId,
+        core_version: URUS_CORE_VERSION,
+        mode,
+        final_output: {
+          diagnosis: "No se pudo parsear JSON del modelo.",
+          blind_spot: "",
+          primary_risk: "Output inválido",
+          recommended_move: "Reintentar con input más específico.",
+        },
+        cognitive_map: {
+          intent_explicit: "",
+          intent_implicit: "",
+          internal_friction: "",
+          incoherence_vector: "",
+          dominant_pattern: "",
+          bias_detected: "",
+          narrative_constraint: "",
+          ethical_alignment: {
+            truth: 0.0,
+            consistency: 0.0,
+            sustainability: 0.0,
+            systemic_impact: 0.0,
+          },
+          strategic_stage: "Initiation",
+          confidence_score: 0.2,
+        },
+      };
+    }
+
+    // Guardar en DB
+    await pool.query(
+      `
+      INSERT INTO sessions (user_id, input, mode, meta, model_used, response)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      `,
+      [req.user.id, input, mode, meta, URUS_DEFAULT_MODEL, parsed]
+    );
+
+    return res.json(parsed);
+  } catch (e) {
+    console.error("INGEST_ERROR", e);
+    return res.status(500).json({
+      error: "ingest_failed",
+      message: e.message,
+      activation_id: activationId,
+    });
+  }
+});
+
+// ---------- Boot ----------
+(async () => {
+  try {
+    await ensureSchema();
+    app.listen(PORT, () => {
+      console.log(`URUS backend listening on ${PORT}`);
+    });
+  } catch (e) {
+    console.error("BOOT_ERROR", e);
+    process.exit(1);
+  }
+})();
