@@ -362,6 +362,20 @@ REGLAS DE CALIDAD (CRÍTICO):
 - Evita respuestas de una sola línea.
 - Usa estructura interna dentro de cada string.
 
+REGLA CRÍTICA DE CALIDAD ESTRATÉGICA:
+
+- Evita completamente consejos genéricos.
+- Cada bullet debe ser específico, accionable y basado en el contexto.
+- Debes identificar al menos 1 trade-off real (qué se gana vs qué se pierde).
+- Debes señalar algo incómodo o no obvio.
+- Si la respuesta podría aplicar a cualquier startup → es inválida.
+- Prioriza claridad brutal sobre completitud.
+
+ANTI-GENERIC FILTER:
+
+- ¿Esto lo podría decir cualquier mentor genérico? → eliminarlo
+- ¿Esto cambia una decisión real? → mantenerlo
+
 FORMATO INTERNO OBLIGATORIO (CRÍTICO):
 - Cada bullet DEBE empezar con "- " (guion + espacio).
 - Cada bullet debe ir en una nueva línea (usar salto de línea).
