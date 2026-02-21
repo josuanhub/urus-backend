@@ -362,9 +362,20 @@ REGLAS DE CALIDAD (CRÍTICO):
 - Evita respuestas de una sola línea.
 - Usa estructura interna dentro de cada string.
 
-FORMATO INTERNO OBLIGATORIO (dentro de cada string):
-- Usa bullets "- " o pasos numerados "1) 2) 3)" según corresponda.
-- No uses emojis.
+FORMATO INTERNO OBLIGATORIO (CRÍTICO):
+- Cada bullet DEBE empezar con "- " (guion + espacio).
+- Cada bullet debe ir en una nueva línea (usar salto de línea).
+- NO escribir párrafos largos.
+- NO juntar ideas en una sola línea.
+
+EJEMPLO CORRECTO:
+
+- Punto 1 claro
+- Punto 2 claro
+- Punto 3 claro
+
+EJEMPLO INCORRECTO:
+Punto 1. Punto 2. Punto 3 en un mismo bloque.
 
 final_output.diagnosis:
 - Mínimo 3 bullets usando "- "
