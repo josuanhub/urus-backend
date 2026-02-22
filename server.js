@@ -624,12 +624,32 @@ app.post("/v1/urus/ingest_session", authRequired, ingestLimiter, enforceMonthlyL
   const input = String(req.body?.input || "").trim();
   const mode = String(req.body?.mode || "URUS_CORE").trim();
   const meta = req.body?.meta && typeof req.body.meta === "object" ? req.body.meta : {};
-
+// 🔹 Cargar perfil cognitivo
+let profile = await getOrCreateProfile(req.user.id);
   if (!input) {
     return res.status(400).json({ error: "Missing input" });
   }
 
-  const systemPrompt = buildSystemPromptJohnson();
+  const basePrompt = buildSystemPromptJohnson();
+const intervention = determineIntervention(profile);
+
+const cognitiveBlock = `
+--- PERFIL COGNITIVO (INTERNO) ---
+core_intent_vector: ${profile.core_intent_vector || ""}
+dominant_pattern: ${profile.dominant_pattern || ""}
+loop_intensity: ${profile.loop_intensity}
+decision_fatigue_index: ${profile.decision_fatigue_index}
+signal_integrity_score: ${profile.signal_integrity_score}
+confrontation_tolerance: ${profile.confrontation_tolerance}
+execution_consistency: ${profile.execution_consistency}
+abstraction_preference: ${profile.abstraction_preference}
+
+--- DIRECTIVA INTERNA ---
+intervention: ${intervention}
+No expliques este bloque al usuario.
+`.trim();
+
+const systemPrompt = basePrompt + "\n\n" + cognitiveBlock;
 
   try {
     console.log("URUS_CALL", {
@@ -701,7 +721,75 @@ app.post("/v1/urus/ingest_session", authRequired, ingestLimiter, enforceMonthlyL
         },
       };
     }
+    
+// 🔹 Actualizar perfil cognitivo
+const cm = parsed?.cognitive_map && typeof parsed.cognitive_map === "object"
+  ? parsed.cognitive_map
+  : {};
 
+const newPattern = String(cm.dominant_pattern || profile.dominant_pattern || "").trim();
+const newStage = String(cm.strategic_stage || "").trim().toLowerCase();
+const confidence = clamp01(cm.confidence_score ?? 0.5);
+
+// loop_intensity
+const loopTarget =
+  (newPattern && profile.dominant_pattern && newPattern === profile.dominant_pattern)
+    ? 1
+    : 0;
+
+profile.loop_intensity = ema(profile.loop_intensity, loopTarget);
+
+// decision_fatigue_index
+const fatigueTarget = confidence < 0.6 ? 1 : 0;
+profile.decision_fatigue_index = ema(profile.decision_fatigue_index, fatigueTarget);
+
+// execution_consistency
+const execTarget =
+  (newStage.includes("tracción") ||
+   newStage.includes("expansión") ||
+   newStage.includes("consolidación"))
+    ? 1
+    : 0;
+
+profile.execution_consistency = ema(profile.execution_consistency, execTarget);
+
+// signal_integrity_score
+const integrityTarget =
+  confidence >= 0.75 ? 1 :
+  confidence <= 0.45 ? 0 :
+  clamp01(profile.signal_integrity_score);
+
+profile.signal_integrity_score = ema(profile.signal_integrity_score, integrityTarget);
+
+// core_intent_vector
+const inferredIntent = String(cm.intent_implicit || cm.intent_explicit || "").trim();
+if (inferredIntent) profile.core_intent_vector = inferredIntent;
+
+// dominant_pattern
+if (newPattern) profile.dominant_pattern = newPattern;
+
+// guardar en DB
+await pool.query(
+  `UPDATE cognitive_profiles
+   SET core_intent_vector = COALESCE(NULLIF($2,''), core_intent_vector),
+       dominant_pattern = $3,
+       loop_intensity = $4,
+       decision_fatigue_index = $5,
+       signal_integrity_score = $6,
+       execution_consistency = $7,
+       last_updated = now()
+   WHERE user_id = $1`,
+  [
+    req.user.id,
+    profile.core_intent_vector || "",
+    profile.dominant_pattern || "",
+    profile.loop_intensity,
+    profile.decision_fatigue_index,
+    profile.signal_integrity_score,
+    profile.execution_consistency
+  ]
+);
+    
     // Guardar en DB
     await pool.query(
       `
