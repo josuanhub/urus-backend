@@ -126,13 +126,7 @@ const ingestLimiter = rateLimit({
 // Si defines CORS_ORIGIN, solo permite esos.
 app.use(
   cors({
-    origin: function (origin, cb) {
-      // no origin => herramientas server-to-server / postman/hoppscotch
-      if (!origin) return cb(null, true);
-      if (ALLOWED_ORIGINS.length === 0) return cb(new Error("CORS blocked (set CORS_ORIGIN)"), false);
-      if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-      return cb(new Error("CORS blocked"), false);
-    },
+    origin: true,
     credentials: true,
   })
 );
