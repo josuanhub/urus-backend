@@ -139,6 +139,50 @@ function makeActivationId() {
   return "act_" + crypto.randomBytes(9).toString("hex");
 }
 
+// ---------- Cognitive Profile Layer (Opción A: sin nuevas columnas) ----------
+
+async function getOrCreateProfile(userId) {
+  const r = await pool.query(
+    `SELECT * FROM cognitive_profiles WHERE user_id = $1`,
+    [userId]
+  );
+  if (r.rows.length > 0) return r.rows[0];
+
+  const ins = await pool.query(
+    `INSERT INTO cognitive_profiles (user_id)
+     VALUES ($1)
+     RETURNING *`,
+    [userId]
+  );
+  return ins.rows[0];
+}
+
+function clamp01(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+// EMA suave: 70% pasado + 30% nuevo
+function ema(current, target) {
+  const c = clamp01(current);
+  const t = clamp01(target);
+  return clamp01(c * 0.7 + t * 0.3);
+}
+
+function determineIntervention(profile) {
+  const loop = clamp01(profile.loop_intensity);
+  const exec = clamp01(profile.execution_consistency);
+  const fatigue = clamp01(profile.decision_fatigue_index);
+  const integrity = clamp01(profile.signal_integrity_score);
+
+  if (loop > 0.7 && exec < 0.4) return "ruptura_estructural";
+  if (fatigue > 0.6) return "sintesis_forzada";
+  if (integrity < 0.5) return "anclaje_nucleo";
+  if (exec > 0.7 && loop < 0.3) return "expansion_calibrada";
+  return "neutral";
+}
+
 // ---------- Plan limits (MVP) ----------
 function nextResetAtISO() {
   // MVP: 30 días desde ahora
