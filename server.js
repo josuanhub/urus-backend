@@ -322,7 +322,27 @@ async function ensureSchema() {
     CREATE INDEX IF NOT EXISTS idx_sessions_user_id_created_at
     ON sessions(user_id, created_at DESC);
   `);
+  
+// ✅ Tabla cognitive_profiles (memoria simbiótica)
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS cognitive_profiles (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
 
+    core_intent_vector TEXT,
+    dominant_pattern TEXT,
+
+    loop_intensity FLOAT NOT NULL DEFAULT 0,
+    decision_fatigue_index FLOAT NOT NULL DEFAULT 0,
+    signal_integrity_score FLOAT NOT NULL DEFAULT 1,
+    confrontation_tolerance FLOAT NOT NULL DEFAULT 0.5,
+    execution_consistency FLOAT NOT NULL DEFAULT 0.5,
+
+    abstraction_preference TEXT NOT NULL DEFAULT 'media',
+
+    last_updated TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+`);
+  
   console.log("DB schema ensured");
 }
 
