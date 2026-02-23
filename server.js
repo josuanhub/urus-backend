@@ -722,6 +722,18 @@ const systemPrompt = basePrompt + "\n\n" + cognitiveBlock;
       };
     }
     
+    // 🛡️ Asegurar estructura completa de final_output
+if (!parsed.final_output) {
+  parsed.final_output = {};
+}
+
+parsed.final_output = {
+  diagnosis: parsed.final_output.diagnosis || "",
+  blind_spot: parsed.final_output.blind_spot || "",
+  primary_risk: parsed.final_output.primary_risk || "",
+  recommended_move: parsed.final_output.recommended_move || "",
+};
+    
 // 🔹 Actualizar perfil cognitivo
 const cm = parsed?.cognitive_map && typeof parsed.cognitive_map === "object"
   ? parsed.cognitive_map
