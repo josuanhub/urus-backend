@@ -94,6 +94,9 @@ const pool = new Pool({
   ssl: needsSsl(DATABASE_URL) ? { rejectUnauthorized: false } : false,
 });
 
+// 🔧 FIX: alias para que db.query funcione
+const db = pool;
+
 // ---------- Security / Middleware ----------
 app.use(helmet());
 
