@@ -1,4 +1,4 @@
-{{
+{
   "name": "urus-backend",
   "version": "1.0.1",
   "main": "server.js",
