@@ -731,12 +731,67 @@ if (!parsed.final_output) {
   parsed.final_output = {};
 }
 
-parsed.final_output = {
-  diagnosis: parsed.final_output.diagnosis || "",
-  blind_spot: parsed.final_output.blind_spot || "",
-  primary_risk: parsed.final_output.primary_risk || "",
-  recommended_move: parsed.final_output.recommended_move || "",
-};
+function ensureBullets(s, minBullets, fallbackBullets) {
+  const t = String(s || "").trim();
+  const lines = t.split("\n").map(x => x.trim()).filter(Boolean);
+  const bulletLines = lines.filter(x => x.startsWith("- "));
+  if (bulletLines.length >= minBullets) return bulletLines.join("\n");
+  return fallbackBullets.map(x => `- ${x}`).join("\n");
+}
+
+function ensureSteps(s, fallback) {
+  const t = String(s || "").trim();
+  const hasSteps = /1\)\s.+2\)\s.+3\)\s.+/s.test(t);
+  if (hasSteps) return t;
+  return fallback;
+}
+
+// asegurar objeto
+if (!parsed.final_output || typeof parsed.final_output !== "object") {
+  parsed.final_output = {};
+}
+
+// aplicar protección anti-vacío
+parsed.final_output.diagnosis = ensureBullets(
+  parsed.final_output.diagnosis,
+  3,
+  [
+    "Falta información crítica del mercado y cliente.",
+    "No hay criterio claro para decidir si ejecutar o no.",
+    "Estás en análisis sin validación real."
+  ]
+);
+
+parsed.final_output.blind_spot = ensureBullets(
+  parsed.final_output.blind_spot,
+  2,
+  [
+    "No has definido una prueba mínima para validar la idea.",
+    "Confundes pensar con validar en el mercado real."
+  ]
+);
+
+parsed.final_output.primary_risk = ensureBullets(
+  parsed.final_output.primary_risk,
+  2,
+  [
+    "Si ejecutas sin validar → pierdes tiempo construyendo algo que no se vende.",
+    "Si no ejecutas → te quedas en duda sin datos reales."
+  ]
+);
+
+parsed.final_output.recommended_move = ensureSteps(
+  parsed.final_output.recommended_move,
+  [
+    "1) Define una oferta simple hoy (doc o nota) + métrica: claridad en 1 frase.",
+    "2) Escríbela a 10 personas (DM/email) + métrica: 3 respuestas reales.",
+    "3) Valida interés real (llamada o pago) + métrica: 1 lead serio.",
+    "Decisión recomendada: ejecutar",
+    "Horizonte temporal: corto",
+    "Costo de inacción: seguir sin claridad ni validación.",
+    "Nivel de riesgo: medio (riesgo controlado con acción rápida)."
+  ].join("\n")
+);
     
 // 🔹 Actualizar perfil cognitivo
 const cm = parsed?.cognitive_map && typeof parsed.cognitive_map === "object"
