@@ -878,11 +878,21 @@ function ensureBullets(s, minBullets, fallbackBullets) {
   return fallbackBullets.map(x => `- ${x}`).join("\n");
 }
 
-function ensureSteps(s, fallback) {
+function ensureSteps(s, fallbackArr) {
   const t = String(s || "").trim();
-  const hasSteps = /1\)\s.+2\)\s.+3\)\s.+/s.test(t);
-  if (hasSteps) return t;
-  return fallback;
+
+  // SOLO usar fallback si está vacío
+  if (!t) return fallbackArr.join("\n");
+
+  // Si ya tiene pasos o bullets → respetar
+  const hasStructure =
+    /^\s*\d+[\)\.]/m.test(t) ||   // 1) 2) 3)
+    /^\s*-\s+/m.test(t);          // bullets
+
+  if (hasStructure) return t;
+
+  // Si tiene contenido pero no formato exacto → NO reemplazar
+  return t;
 }
 
 // asegurar objeto
