@@ -810,7 +810,12 @@ await pool.query(
     res.setHeader("X-URUS-REMAINING", String(Math.max(0, limit - nextUsage)));
     res.setHeader("X-URUS-RESET-AT", String(req.billing?.usage_reset_at ?? ""));
 
-    return res.json(parsed);
+    return res.json({
+  ...parsed,
+  final_output: parsed.final_output,
+  cognitive_map: parsed.cognitive_map,
+});
+    
   } catch (e) {
     console.error("INGEST_ERROR", e);
     return res.status(500).json({
