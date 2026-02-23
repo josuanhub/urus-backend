@@ -822,8 +822,9 @@ const systemPrompt = basePrompt + "\n\n" + cognitiveBlock;
     const completion = await openai.chat.completions.create({
       model: URUS_DEFAULT_MODEL,
       messages,
-      temperature: 0.35,
-    });
+      temperature: 0.75,
+  top_p: 1,
+});
 
     const raw = completion?.choices?.[0]?.message?.content || "";
     let parsed = null;
