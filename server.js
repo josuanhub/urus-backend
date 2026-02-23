@@ -710,9 +710,32 @@ app.get("/v1/urus/sessions", authRequired, async (req, res) => {
     return res.status(500).json({ error: "sessions_failed", message: e.message });
   }
 });
+async function requireActiveMembership(req, res, next) {
+  const userId = req.user.id;
 
+  const r = await db.query(
+    `SELECT membership FROM users WHERE id = $1`,
+    [userId]
+  );
+
+  if (!r.rows.length) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  if (r.rows[0].membership !== "active") {
+    return res.status(403).json({ error: "Membership required" });
+  }
+
+  next();
+}
 // ✅ Enforce plan limit justo antes del gasto (OpenAI)
-app.post("/v1/urus/ingest_session", authRequired, ingestLimiter, enforceMonthlyLimit, async (req, res) => {
+app.post(
+  "/v1/urus/ingest_session",
+  authRequired,
+  requireActiveMembership,
+  ingestLimiter,
+  enforceMonthlyLimit,
+  async (req, res) => {
   const activationId = makeActivationId();
   const input = String(req.body?.input || "").trim();
   const mode = String(req.body?.mode || "URUS_CORE").trim();
