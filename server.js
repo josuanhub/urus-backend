@@ -30,6 +30,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const crypto = require("crypto");
+const Stripe = require("stripe");
 
 // OpenAI SDK (robusto)
 const OpenAI = require("openai").default;
@@ -94,8 +95,60 @@ const pool = new Pool({
 
 // ---------- Security / Middleware ----------
 app.use(helmet());
-app.use(express.json({ limit: "1mb" }));
 
+// ---------------- STRIPE WEBHOOK (DEBE IR ANTES de express.json) ----------------
+app.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    try {
+      // OJO: asegúrate de tener arriba: const Stripe = require("stripe");
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const sig = req.headers["stripe-signature"];
+
+      const event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+
+      console.log("✅ Stripe event:", event.type);
+
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object;
+
+        // Email robusto (Stripe a veces no setea customer_email)
+        const email = session.customer_details?.email || session.customer_email;
+
+        if (!email) {
+          console.log("⚠️ checkout.session.completed pero sin email. session.id:", session.id);
+          return res.json({ received: true });
+        }
+
+        console.log("💰 Pago completado por:", email);
+
+        await pool.query(
+          `UPDATE users
+           SET membership = 'active',
+               plan = 'urus_a33',
+               updated_at = NOW()
+           WHERE email = $1`,
+          [email]
+        );
+
+        console.log("✅ Membresía activada");
+      }
+
+      return res.json({ received: true });
+    } catch (err) {
+      console.error("❌ Stripe webhook error:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  }
+);
+// -------------------------------------------------------------------------------
+
+app.use(express.json({ limit: "1mb" }));
 // Rate limit global (IP)
 app.use(
   rateLimit({
