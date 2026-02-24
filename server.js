@@ -1033,7 +1033,7 @@ parsed.final_output.recommended_move = ensureSteps(
     "Horizonte temporal: corto",
     "Costo de inacción: seguir sin claridad ni validación.",
     "Nivel de riesgo: medio (riesgo controlado con acción rápida)."
-  ].join("\n")
+  ]
 );
     
 // 🔹 Actualizar perfil cognitivo
