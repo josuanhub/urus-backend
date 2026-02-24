@@ -704,6 +704,61 @@ app.post("/v1/auth/login", authLimiter, async (req, res) => {
   }
 });
 
+// ==============================
+// BILLING (Stripe) — URUS
+// ==============================
+
+// Crear Checkout Session
+app.post("/v1/billing/create-checkout-session", authRequired, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const email = req.user.email;
+
+    const r = await pool.query(
+      "SELECT stripe_customer_id FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (r.rowCount === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    let stripeCustomerId = r.rows[0].stripe_customer_id;
+
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email,
+        metadata: { userId: String(userId) },
+      });
+
+      stripeCustomerId = customer.id;
+
+      await pool.query(
+        "UPDATE users SET stripe_customer_id = $1 WHERE id = $2",
+        [stripeCustomerId, userId]
+      );
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: stripeCustomerId,
+      line_items: [
+        { price: process.env.STRIPE_PRICE_ID, quantity: 1 }
+      ],
+      success_url: `${process.env.FRONTEND_URL}/?success=1`,
+      cancel_url: `${process.env.FRONTEND_URL}/?canceled=1`,
+      client_reference_id: String(userId),
+      metadata: { userId: String(userId) },
+    });
+
+    return res.json({ url: session.url });
+
+  } catch (err) {
+    console.error("create-checkout-session error:", err);
+    return res.status(500).json({ error: "Billing error" });
+  }
+});
+
 app.get("/v1/auth/me", authRequired, async (req, res) => {
   return res.json({ ok: true, user: req.user });
 });
