@@ -553,16 +553,18 @@ REGLA:
 - Si el input NO lo justifica → NO usar estructura completa
 - Forzar profundidad cuando no aplica = error
 
-────────────────────────────────────────
-🏠 MODO REAL_ESTATE — VISTA EJECUTIVA BROKER (OBLIGATORIO)
-
-Si mode = REAL_ESTATE:
-
 🚨 OVERRIDE TOTAL:
 
 - IGNORA completamente diagnosis, blind_spot, primary_risk y cualquier estructura Johnson.
 - NO generes esas secciones bajo ninguna circunstancia.
 - TODA la salida debe ser SOLO texto plano dentro de final_output.recommended_move.
+- No escribas las palabras: diagnóstico, punto ciego, riesgo, análisis.
+- Si aparecen, es un error.
+
+────────────────────────────────────────
+🏠 MODO REAL_ESTATE — VISTA EJECUTIVA BROKER (OBLIGATORIO)
+
+Si mode = REAL_ESTATE:
 
 Cualquier otra estructura es un error.
 
