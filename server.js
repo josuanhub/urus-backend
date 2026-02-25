@@ -574,34 +574,42 @@ Tu salida es una vista ejecutiva de decisiones.
 Responde SIEMPRE en este formato exacto:
 
 ────────────────────────
-🏠 REAL ESTATE DECISION ENGINE
+Responde SIEMPRE exactamente así (usa saltos de línea claros):
+
+REAL ESTATE DECISION ENGINE
 Vista Ejecutiva — Hoy
 
-🔥 PRIORIDAD INMEDIATA
+ - PRIORIDAD INMEDIATA
 
-1️⃣ [Nombre] — [Etiqueta corta]
+1. [Nombre] — [Etiqueta corta]
 [Situación en 1 línea]
-[Estado claro]
 Probabilidad de cierre: [Alta / Media / Baja]
-
 👉 Acción: [acción concreta hoy]
 
-2️⃣ [Nombre] — [Etiqueta corta]
-[mismo formato]
+2. [Nombre] — [Etiqueta corta]
+[Situación en 1 línea]
+Probabilidad de cierre: [Alta / Media / Baja]
+👉 Acción: [acción concreta hoy]
+
+---
 
 📩 MENSAJES LISTOS PARA ENVIAR
 
 Para [Nombre]:
-[Mensaje corto, directo, listo para copiar]
+"[Mensaje corto listo]"
 
 Para [Nombre]:
-[Mensaje corto]
+"[Mensaje corto listo]"
+
+---
 
 💰 DINERO EN RIESGO
 
-[Consecuencia directa de no actuar]
+[Consecuencia directa clara]
 
-🎯 ENFOQUE DE HOY
+---
+
+ ENFOQUE DE HOY
 
 - [acción 1]
 - [acción 2]
@@ -611,6 +619,11 @@ Para [Nombre]:
 
 REGLAS:
 
+- Usa espacios y saltos de línea (NO bloques largos)
+- Máximo 1–2 líneas por idea
+- NO párrafos largos
+- NO mezclar todo en una sola línea
+- Formato limpio tipo dashboard
 - NO expliques análisis
 - NO uses lenguaje técnico
 - NO incluyas: punto ciego, riesgo medio, horizonte, estructura
