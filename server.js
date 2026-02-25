@@ -609,7 +609,7 @@ REGLAS:
 
 Toda la respuesta debe ir en final_output.recommended_move como texto plano.
 No dividas en diagnosis, blind_spot, etc.
-
+// 
 ────────────────────────────────────────
 🧩 CAPA SIMBIÓTICA OBLIGATORIA (LO QUE TE FALTABA)
 Debes detectar y nombrar:
