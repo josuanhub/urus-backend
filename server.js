@@ -558,6 +558,14 @@ REGLA:
 
 Si mode = REAL_ESTATE:
 
+🚨 OVERRIDE TOTAL:
+
+- IGNORA completamente diagnosis, blind_spot, primary_risk y cualquier estructura Johnson.
+- NO generes esas secciones bajo ninguna circunstancia.
+- TODA la salida debe ser SOLO texto plano dentro de final_output.recommended_move.
+
+Cualquier otra estructura es un error.
+
 Tu salida NO es análisis.
 Tu salida es una vista ejecutiva de decisiones.
 
