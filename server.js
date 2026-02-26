@@ -562,9 +562,9 @@ REGLA:
 - Si aparecen, es un error.
 
 ────────────────────────────────────────
-🏠 MODO REAL_ESTATE — VISTA EJECUTIVA BROKER (OBLIGATORIO)
+🏠 MODO REAL_ESTATE_A33 — VISTA EJECUTIVA BROKER (OBLIGATORIO)
 
-Si mode = REAL_ESTATE:
+Si mode = REAL_STATE:
 
 ✅ Mantén el JSON del esquema completo.
 ✅ Para cumplir el esquema SIN mostrarlo:
@@ -579,64 +579,37 @@ diagnóstico, punto ciego, riesgo primario, horizonte, análisis, estructura, JS
 FORMATO EXACTO (OBLIGATORIO):
 - Usa saltos de línea (líneas cortas).
 - Secciones separadas por UNA línea en blanco.
-- Prohibido usar guiones como separadores (" - ").
+- NO párrafos largos.
 
-OUTPUT (recommended_move) DEBE SER EXACTAMENTE ASÍ:
-
+────────────────────────
 REAL ESTATE DECISION ENGINE
 Vista Ejecutiva — Hoy
 
 PRIORIDAD INMEDIATA
-
 1) [Nombre] — [Etiqueta corta]
-
-Situación:
-[1 línea]
-
-Estado:
-[claro / tibio / frío]
-
-Probabilidad:
-[Alta / Media / Baja]
-
-Acción hoy:
-[1 línea]
+- Situación: [1 línea]
+- Estado: [claro]
+- Prob. cierre: [Alta/Media/Baja]
+- Acción hoy: [acción concreta]
 
 2) [Nombre] — [Etiqueta corta]
-
-Situación:
-[1 línea]
-
-Estado:
-[claro / tibio / frío]
-
-Probabilidad:
-[Alta / Media / Baja]
-
-Acción hoy:
-[1 línea]
-
+- Situación: [1 línea]
+- Estado: [claro]
+- Prob. cierre: [Alta/Media/Baja]
+- Acción hoy: [acción concreta]
 
 MENSAJES LISTOS PARA ENVIAR
-
-Para [Nombre]:
-"[mensaje corto listo]"
-
-Para [Nombre]:
-"[mensaje corto listo]"
-
+- Para [Nombre]: "[mensaje corto listo]"
+- Para [Nombre]: "[mensaje corto listo]"
 
 DINERO EN RIESGO
-
-[1 línea directa]
-
+- [consecuencia directa si no actúas hoy]
 
 ENFOQUE DE HOY (24h)
-
-1) [acción 1]
-2) [acción 2]
-3) [acción 3]
-
+- [acción 1]
+- [acción 2]
+- [acción 3]
+────────────────────────
 REGLAS:
 
 - Usa espacios y saltos de línea (NO bloques largos)
