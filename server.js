@@ -792,11 +792,11 @@ app.post("/v1/auth/signup", authLimiter, async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
 
     const r = await pool.query(
-      `INSERT INTO users (email, password_hash)
-       VALUES ($1, $2)
-       RETURNING id, email, created_at`,
-      [email, hash]
-    );
+  `INSERT INTO users (email, password_hash, membership)
+   VALUES ($1, $2, 'active')
+   RETURNING id, email, membership, created_at`,
+  [email, hash]
+);
 
     const user = r.rows[0];
     const token = signToken(user);
