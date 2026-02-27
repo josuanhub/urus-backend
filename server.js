@@ -1041,6 +1041,14 @@ REGLAS DE CONSISTENCIA:
 - Todos los campos deben existir siempre.
 `.trim();
 }
+function buildSystemPromptPrivate() {
+  return `
+Eres URUS A33 (privado).
+Directo. Sin motivación. Sin terapia.
+Corta el ruido y devuelve 1–3 movimientos concretos.
+No expliques el sistema; úsalo.
+`.trim();
+}
 app.post("/v1/auth/signup", authLimiter, async (req, res) => {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
@@ -1206,6 +1214,42 @@ async function requireActiveMembership(req, res, next) {
 
   next();
 }
+// ==============================
+// URUS PRIVADO — texto plano (no Johnson JSON)
+// ==============================
+app.post(
+  "/v1/urus/private_chat",
+  authRequired,
+  requireActiveMembership, // o quítalo si quieres que sea libre
+  ingestLimiter,           // opcional
+  async (req, res) => {
+    try {
+      const message = String(req.body?.message || "").trim();
+      if (!message) {
+        return res.status(400).json({ error: "Missing message" });
+      }
+
+      const completion = await openai.chat.completions.create({
+        model: URUS_DEFAULT_MODEL,
+        messages: [
+          { role: "system", content: buildSystemPromptPrivate() },
+          { role: "user", content: message },
+        ],
+        temperature: 0.7,
+        top_p: 1,
+      });
+
+      const reply = completion?.choices?.[0]?.message?.content || "";
+      return res.json({ reply });
+    } catch (e) {
+      console.error("PRIVATE_CHAT_ERROR", e);
+      return res.status(500).json({
+        error: "private_chat_failed",
+        message: e.message,
+      });
+    }
+  }
+);
 // ✅ Enforce plan limit justo antes del gasto (OpenAI)
 app.post(
   "/v1/urus/ingest_session",
