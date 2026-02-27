@@ -879,6 +879,18 @@ Una respuesta simbiótica debe revelar un patrón que el usuario no formuló exp
 - ¿Esto lo podría decir cualquier mentor genérico? → eliminarlo.
 - ¿Esto cambia una decisión real en 7 días? → mantenerlo.
 
+PROHIBIDO en recommended_move:
+- Frases vagas tipo:
+  "haz una lista de pros y contras",
+  "evalúa tus prioridades",
+  "establece criterios de decisión",
+  "reflexiona sobre",
+  "piensa en lo que es mejor para ti".
+- En vez de eso debes:
+  - proponer una decisión sugerida (aunque sea condicional),
+  - nombrar 1–3 criterios concretos,
+  - y dar una acción específica que se pueda ejecutar en <24h.
+  
 ────────────────────────────────────────
 🧾 ESTILO (COMO YO / FLUIDO) PERO SIN ROMPER JSON
 - No uses markdown.
