@@ -153,6 +153,118 @@ app.post(
 // -------------------------------------------------------------------------------
 
 app.use(express.json({ limit: "1mb" }));
+
+// ==============================
+// DEMO PÚBLICO (HTML + endpoint)
+// Pegar entre L64 y L65 (después de express.json y antes del rate-limit global)
+// ==============================
+
+const DEMO_PROMPT = `
+Eres URUS DEMO para negocios locales.
+
+Objetivo: convertir mensajes en citas.
+Estilo: claro, premium, directo.
+
+Reglas:
+- Responde en 2 a 4 líneas máximo.
+- Haz 1 o 2 preguntas para calificar.
+- Cierra con una CTA concreta a cita/llamada.
+- Sin JSON. Sin emojis. Sin texto largo.
+`.trim();
+
+// 1) Motor demo: recibe texto + datos del negocio y devuelve una respuesta corta
+app.post("/v1/demo/reply", async (req, res) => {
+  try {
+    const input = String(req.body?.input || "").trim();
+    if (!input) return res.status(400).json({ error: "Missing input" });
+
+    const business = req.body?.business && typeof req.body.business === "object" ? req.body.business : {};
+
+    const bizContext = `
+NEGOCIO: ${business.name || "Negocio"}
+SERVICIOS: ${business.services || "Servicio principal"}
+HORARIO: ${business.hours || "Horario"}
+META: ${business.goal || "Agendar cita"}
+`.trim();
+
+    const completion = await openai.chat.completions.create({
+      model: URUS_DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: DEMO_PROMPT + "\n\n" + bizContext },
+        { role: "user", content: input }
+      ],
+      temperature: 0.7,
+      top_p: 1
+    });
+
+    const reply = completion?.choices?.[0]?.message?.content || "Recibido.";
+    return res.json({ ok: true, reply });
+  } catch (e) {
+    console.error("DEMO_REPLY_ERROR", e);
+    return res.status(500).json({ error: "demo_failed", message: e.message });
+  }
+});
+
+// 2) Página demo: HTML simple para que el dueño lo pruebe en vivo
+app.get("/demo", (req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  return res.send(`<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>URUS Demo</title>
+  <style>
+    body{font-family:system-ui;margin:24px;max-width:860px}
+    input,textarea,button{width:100%;padding:12px;margin:8px 0;font-size:16px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    pre{background:#111;color:#0f0;padding:12px;border-radius:8px;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <h2>URUS Demo (Live)</h2>
+
+  <div class="row">
+    <input id="name" placeholder="Negocio (ej: AutoPark)" />
+    <input id="services" placeholder="Servicios (ej: lavado, detailing...)" />
+  </div>
+  <div class="row">
+    <input id="hours" placeholder="Horario (ej: Lun-Sab 8-6)" />
+    <input id="goal" placeholder="Meta (ej: agendar citas)" />
+  </div>
+
+  <textarea id="input" rows="4" placeholder="Escribe como cliente: 'Precio y disponibilidad'"></textarea>
+  <button id="btn">Probar</button>
+
+  <h3>Respuesta</h3>
+  <pre id="out">---</pre>
+
+  <script>
+    const $ = (id)=>document.getElementById(id);
+    $("btn").onclick = async () => {
+      $("out").textContent = "Pensando...";
+      const payload = {
+        input: $("input").value,
+        business: {
+          name: $("name").value,
+          services: $("services").value,
+          hours: $("hours").value,
+          goal: $("goal").value
+        }
+      };
+      const r = await fetch("/v1/demo/reply", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      $("out").textContent = j.reply || JSON.stringify(j, null, 2);
+    };
+  </script>
+</body>
+</html>`);
+});
+
 // Rate limit global (IP)
 app.use(
   rateLimit({
