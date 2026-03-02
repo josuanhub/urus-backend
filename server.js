@@ -251,11 +251,17 @@ app.get("/demo", (req, res) => {
   </div>
 
   <script>
+  (function () {
     const $ = (id) => document.getElementById(id);
 
-    $("btn").onclick = async function () {
+    function setOut(txt) {
+      const out = $("out");
+      if (out) out.textContent = txt;
+    }
+
+    async function runDemo() {
       try {
-        $("out").textContent = "Pensando...";
+        setOut("Pensando...");
 
         const payload = {
           input: $("input").value,
@@ -276,19 +282,29 @@ app.get("/demo", (req, res) => {
         const text = await r.text();
 
         if (!r.ok) {
-          $("out").textContent = "HTTP " + r.status + "\\n" + text;
+          setOut("HTTP " + r.status + "\n" + text);
           return;
         }
 
-        let j = null;
+        let j;
         try { j = JSON.parse(text); } catch (e) { j = { raw: text }; }
 
-        $("out").textContent = (j && j.reply) ? j.reply : JSON.stringify(j, null, 2);
+        setOut(j && j.reply ? j.reply : JSON.stringify(j, null, 2));
       } catch (e) {
-        $("out").textContent = "ERROR: " + (e && e.message ? e.message : String(e));
+        setOut("ERROR: " + (e && e.message ? e.message : String(e)));
       }
-    };
-  </script>
+    }
+
+    window.addEventListener("load", function () {
+      const btn = $("btn");
+      if (!btn) { setOut("ERROR: No encuentro #btn"); return; }
+
+      // anti-rareza: asegura que el click siempre se conecte
+      btn.type = "button";
+      btn.addEventListener("click", runDemo);
+    });
+  })();
+</script>
 </body>
 </html>`);
 });
