@@ -239,10 +239,13 @@ app.get("/demo", (req, res) => {
   <h3>Respuesta</h3>
   <pre id="out">---</pre>
 
-  <script>
-    const $ = (id)=>document.getElementById(id);
-    $("btn").onclick = async () => {
+ <script>
+  const $ = (id)=>document.getElementById(id);
+
+  $("btn").onclick = async () => {
+    try {
       $("out").textContent = "Pensando...";
+
       const payload = {
         input: $("input").value,
         business: {
@@ -252,15 +255,27 @@ app.get("/demo", (req, res) => {
           goal: $("goal").value
         }
       };
+
       const r = await fetch("/v1/demo/reply", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const j = await r.json();
+
+      const text = await r.text();
+      if (!r.ok) {
+        $("out").textContent = `HTTP ${r.status}\n${text}`;
+        return;
+      }
+
+      const j = JSON.parse(text);
       $("out").textContent = j.reply || JSON.stringify(j, null, 2);
-    };
-  </script>
+
+    } catch (e) {
+      $("out").textContent = "ERROR: " + (e?.message || String(e));
+    }
+  };
+</script>
 </body>
 </html>`);
 });
