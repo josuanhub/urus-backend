@@ -156,7 +156,7 @@ app.use(express.json({ limit: "1mb" }));
 
 // ==============================
 // DEMO PÚBLICO (HTML + endpoint)
-// Pegar entre L64 y L65 (después de express.json y antes del rate-limit global)
+// Pegar después de: app.use(express.json({ limit: "1mb" }));
 // ==============================
 
 const DEMO_PROMPT = `
@@ -169,113 +169,126 @@ Reglas:
 - Responde en 2 a 4 líneas máximo.
 - Haz 1 o 2 preguntas para calificar.
 - Cierra con una CTA concreta a cita/llamada.
-- Sin JSON. Sin emojis. Sin texto largo.
+- Sin emojis. Sin texto largo.
 `.trim();
 
-// 1) Motor demo: recibe texto + datos del negocio y devuelve una respuesta corta
 app.post("/v1/demo/reply", async (req, res) => {
   try {
     const input = String(req.body?.input || "").trim();
-    if (!input) return res.status(400).json({ error: "Missing input" });
+    if (!input) return res.status(400).json({ ok: false, error: "missing_input" });
 
-    const business = req.body?.business && typeof req.body.business === "object" ? req.body.business : {};
+    const business =
+      req.body?.business && typeof req.body.business === "object" ? req.body.business : {};
 
-    const bizContext = `
-NEGOCIO: ${business.name || "Negocio"}
-SERVICIOS: ${business.services || "Servicio principal"}
-HORARIO: ${business.hours || "Horario"}
-META: ${business.goal || "Agendar cita"}
-`.trim();
+    const bizName = String(business.name || "Negocio").trim();
+    const services = String(business.services || "servicios").trim();
+    const hours = String(business.hours || "").trim();
+    const goal = String(business.goal || "agendar").trim();
+
+    const userMsg =
+      "NEGOCIO: " + bizName + "\n" +
+      "SERVICIOS: " + services + "\n" +
+      "HORARIOS: " + hours + "\n" +
+      "OBJETIVO: " + goal + "\n\n" +
+      "CLIENTE DICE: " + input;
 
     const completion = await openai.chat.completions.create({
       model: URUS_DEFAULT_MODEL,
       messages: [
-        { role: "system", content: DEMO_PROMPT + "\n\n" + bizContext },
-        { role: "user", content: input }
+        { role: "system", content: DEMO_PROMPT },
+        { role: "user", content: userMsg },
       ],
-      temperature: 0.7,
-      top_p: 1
+      temperature: 0.6,
+      top_p: 1,
     });
 
-    const reply = completion?.choices?.[0]?.message?.content || "Recibido.";
+    const reply = completion?.choices?.[0]?.message?.content || "";
     return res.json({ ok: true, reply });
   } catch (e) {
     console.error("DEMO_REPLY_ERROR", e);
-    return res.status(500).json({ error: "demo_failed", message: e.message });
+    return res.status(500).json({ ok: false, error: "demo_failed", message: e.message });
   }
 });
 
-// 2) Página demo: HTML simple para que el dueño lo pruebe en vivo
 app.get("/demo", (req, res) => {
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  return res.send(`<!doctype html>
+  res.type("html").send(`<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>URUS Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>URUS Demo (Live)</title>
   <style>
-    body{font-family:system-ui;margin:24px;max-width:860px}
-    input,textarea,button{width:100%;padding:12px;margin:8px 0;font-size:16px}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    pre{background:#111;color:#0f0;padding:12px;border-radius:8px;white-space:pre-wrap}
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; }
+    .row { display:flex; gap:12px; margin-bottom:12px; }
+    input, textarea { width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; }
+    textarea { min-height:90px; }
+    button { padding:12px 16px; border:0; border-radius:10px; cursor:pointer; width:100%; }
+    pre { background:#0b0b0b; color:#8cff8c; padding:14px; border-radius:10px; overflow:auto; }
+    .wrap { max-width: 900px; }
   </style>
 </head>
 <body>
-  <h2>URUS Demo (Live)</h2>
+  <div class="wrap">
+    <h2>URUS Demo (Live)</h2>
 
-  <div class="row">
-    <input id="name" placeholder="Negocio (ej: AutoPark)" />
-    <input id="services" placeholder="Servicios (ej: lavado, detailing...)" />
+    <div class="row">
+      <input id="name" placeholder="Nombre del negocio" value="urus" />
+      <input id="services" placeholder="Servicios" value="automatizaciones" />
+    </div>
+
+    <div class="row">
+      <input id="hours" placeholder="Horarios" value="lunes a sabado" />
+      <input id="goal" placeholder="Objetivo" value="agendar" />
+    </div>
+
+    <textarea id="input" placeholder="Escribe como cliente: 'Precio y disponibilidad'"></textarea>
+    <div style="margin:12px 0;">
+      <button id="btn">Probar</button>
+    </div>
+
+    <h3>Respuesta</h3>
+    <pre id="out">---</pre>
   </div>
-  <div class="row">
-    <input id="hours" placeholder="Horario (ej: Lun-Sab 8-6)" />
-    <input id="goal" placeholder="Meta (ej: agendar citas)" />
-  </div>
 
-  <textarea id="input" rows="4" placeholder="Escribe como cliente: 'Precio y disponibilidad'"></textarea>
-  <button id="btn">Probar</button>
+  <script>
+    const $ = (id) => document.getElementById(id);
 
-  <h3>Respuesta</h3>
-  <pre id="out">---</pre>
+    $("btn").onclick = async function () {
+      try {
+        $("out").textContent = "Pensando...";
 
- <script>
-  const $ = (id)=>document.getElementById(id);
+        const payload = {
+          input: $("input").value,
+          business: {
+            name: $("name").value,
+            services: $("services").value,
+            hours: $("hours").value,
+            goal: $("goal").value
+          }
+        };
 
-  $("btn").onclick = async () => {
-    try {
-      $("out").textContent = "Pensando...";
+        const r = await fetch("/v1/demo/reply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
 
-      const payload = {
-        input: $("input").value,
-        business: {
-          name: $("name").value,
-          services: $("services").value,
-          hours: $("hours").value,
-          goal: $("goal").value
+        const text = await r.text();
+
+        if (!r.ok) {
+          $("out").textContent = "HTTP " + r.status + "\\n" + text;
+          return;
         }
-      };
 
-      const r = await fetch("/v1/demo/reply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+        let j = null;
+        try { j = JSON.parse(text); } catch (e) { j = { raw: text }; }
 
-      const text = await r.text();
-      if (!r.ok) {
-        $("out").textContent = `HTTP ${r.status}\n${text}`;
-        return;
+        $("out").textContent = (j && j.reply) ? j.reply : JSON.stringify(j, null, 2);
+      } catch (e) {
+        $("out").textContent = "ERROR: " + (e && e.message ? e.message : String(e));
       }
-
-      const j = JSON.parse(text);
-      $("out").textContent = j.reply || JSON.stringify(j, null, 2);
-
-    } catch (e) {
-      $("out").textContent = "ERROR: " + (e?.message || String(e));
-    }
-  };
-</script>
+    };
+  </script>
 </body>
 </html>`);
 });
