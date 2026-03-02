@@ -250,60 +250,58 @@ app.get("/demo", (req, res) => {
     <pre id="out">---</pre>
   </div>
 
-  <script>
-  (function () {
-    const $ = (id) => document.getElementById(id);
+ <script>
+  function $(id){ return document.getElementById(id); }
 
-    function setOut(txt) {
-      const out = $("out");
-      if (out) out.textContent = txt;
-    }
+  function setOut(txt){
+    const out = $("out");
+    if(out) out.textContent = txt;
+  }
 
-    async function runDemo() {
-      try {
-        setOut("Pensando...");
+  // Señal visible de que el JS sí cargó
+  setOut("JS LOADED ✅ (listo para probar)");
 
-        const payload = {
-          input: $("input").value,
-          business: {
-            name: $("name").value,
-            services: $("services").value,
-            hours: $("hours").value,
-            goal: $("goal").value
-          }
-        };
+  async function runDemo(){
+    try{
+      setOut("Pensando...");
 
-        const r = await fetch("/v1/demo/reply", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        const text = await r.text();
-
-        if (!r.ok) {
-          setOut("HTTP " + r.status + "\n" + text);
-          return;
+      const payload = {
+        input: $("input")?.value || "",
+        business: {
+          name: $("name")?.value || "",
+          services: $("services")?.value || "",
+          hours: $("hours")?.value || "",
+          goal: $("goal")?.value || ""
         }
+      };
 
-        let j;
-        try { j = JSON.parse(text); } catch (e) { j = { raw: text }; }
+      const r = await fetch("/v1/demo/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
 
-        setOut(j && j.reply ? j.reply : JSON.stringify(j, null, 2));
-      } catch (e) {
-        setOut("ERROR: " + (e && e.message ? e.message : String(e)));
+      const text = await r.text();
+
+      if(!r.ok){
+        setOut("HTTP " + r.status + "\n" + text);
+        return;
       }
+
+      let j;
+      try { j = JSON.parse(text); } catch(e){ j = { raw: text }; }
+
+      setOut(j.reply ? j.reply : JSON.stringify(j, null, 2));
+    } catch(e){
+      setOut("ERROR: " + (e?.message || String(e)));
     }
+  }
 
-    window.addEventListener("load", function () {
-      const btn = $("btn");
-      if (!btn) { setOut("ERROR: No encuentro #btn"); return; }
-
-      // anti-rareza: asegura que el click siempre se conecte
-      btn.type = "button";
-      btn.addEventListener("click", runDemo);
-    });
-  })();
+  // Fallback adicional (por si el onclick no dispara por alguna razón rara)
+  window.addEventListener("load", () => {
+    const btn = $("btn");
+    if(btn) btn.addEventListener("click", runDemo);
+  });
 </script>
 </body>
 </html>`);
