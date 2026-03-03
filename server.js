@@ -330,34 +330,37 @@ app.get("/v1/wa/webhook", (req, res) => {
 });
 
 app.post("/v1/wa/webhook", async (req, res) => {
-  try {
-    res.sendStatus(200); // ACK rápido
+  res.sendStatus(200); // ACK rápido (Meta exige respuesta rápida)
 
+  try {
     const raw = req.body || {};
     const entry = raw.entry?.[0];
-    const changes = entry?.changes?.[0]?.value;
-    const msg = changes?.messages?.[0];
+    const change = entry?.changes?.[0];
+    const msg = change?.value?.messages?.[0];
 
-    const phone = msg?.from || "unknown";
+    const phone = msg?.from;
     const text = msg?.text?.body || "";
 
+    if (!phone) {
+      console.log("WA_WEBHOOK_NO_PHONE", JSON.stringify(raw).slice(0, 500));
+      return;
+    }
+
     await pool.query(
-      `
-      INSERT INTO wa_leads (phone, last_message_at)
-      VALUES ($1, now())
-      ON CONFLICT (phone) DO UPDATE SET
-        last_message_at = now(),
-        updated_at = now()
-      `,
+      `INSERT INTO wa_leads (phone, last_message_at)
+       VALUES ($1, now())
+       ON CONFLICT (phone) DO UPDATE
+       SET last_message_at = now(), updated_at = now()`,
       [phone]
     );
 
     await pool.query(
-      `INSERT INTO wa_messages (phone, direction, body, raw) VALUES ($1,'inbound',$2,$3)`,
+      `INSERT INTO wa_messages (phone, direction, body, raw)
+       VALUES ($1, 'inbound', $2, $3)`,
       [phone, text, raw]
     );
 
-    console.log("WA inbound logged:", { phone, text: text?.slice(0, 120) });
+    console.log("WA inbound logged:", { phone, text: text.slice(0, 120) });
   } catch (e) {
     console.error("WA_WEBHOOK_LOG_ERROR", e);
   }
