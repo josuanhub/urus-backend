@@ -362,14 +362,11 @@ app.post("/v1/wa/webhook", async (req, res) => {
     console.error("WA_WEBHOOK_LOG_ERROR", e);
   }
 });
-    // ACK rápido
-    res.sendStatus(200);
-
+  
     // Por ahora: guardamos TODO el body como raw (sin parse complejo)
     const raw = req.body || {};
 
     // Intentar extraer phone + text si viene estilo Meta (si no, lo guardamos igual)
-    const entry = raw.entry?.[0];
     const changes = entry?.changes?.[0]?.value;
     const msg = changes?.messages?.[0];
 
