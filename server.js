@@ -307,6 +307,52 @@ app.get("/demo", (req, res) => {
 </html>`);
 });
 
+// ✅ WhatsApp webhook (MVP) - logs only (no reply yet)
+app.get("/v1/wa/webhook", (req, res) => {
+  // por ahora: solo confirma que el endpoint existe
+  res.status(200).send("OK");
+});
+
+app.post("/v1/wa/webhook", async (req, res) => {
+  try {
+    // ACK rápido
+    res.sendStatus(200);
+
+    // Por ahora: guardamos TODO el body como raw (sin parse complejo)
+    const raw = req.body || {};
+
+    // Intentar extraer phone + text si viene estilo Meta (si no, lo guardamos igual)
+    const entry = raw.entry?.[0];
+    const changes = entry?.changes?.[0]?.value;
+    const msg = changes?.messages?.[0];
+
+    const phone = msg?.from || "unknown";
+    const text = msg?.text?.body || "";
+
+    // Upsert lead
+    await pool.query(
+      `
+      INSERT INTO wa_leads (phone, last_message_at)
+      VALUES ($1, now())
+      ON CONFLICT (phone) DO UPDATE SET
+        last_message_at = now(),
+        updated_at = now()
+      `,
+      [phone]
+    );
+
+    // Log message
+    await pool.query(
+      `INSERT INTO wa_messages (phone, direction, body, raw) VALUES ($1,'inbound',$2,$3)`,
+      [phone, text, raw]
+    );
+
+    console.log("WA inbound logged:", { phone, text: text?.slice(0, 120) });
+  } catch (e) {
+    console.error("WA_WEBHOOK_LOG_ERROR", e);
+  }
+});
+
 // Rate limit global (IP)
 app.use(
   rateLimit({
@@ -597,6 +643,37 @@ await pool.query(`
     last_updated TIMESTAMPTZ NOT NULL DEFAULT now()
   );
 `);
+  
+  // ✅ WhatsApp tables (MVP) - safe to add
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_leads (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      phone TEXT NOT NULL UNIQUE,
+      name TEXT,
+      source TEXT NOT NULL DEFAULT 'whatsapp',
+      stage TEXT NOT NULL DEFAULT 'new',   -- new|waiting_info|info_received|ready_to_call|follow_up|stopped
+      score INT NOT NULL DEFAULT 0,
+      last_message_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      phone TEXT NOT NULL,
+      direction TEXT NOT NULL, -- inbound|outbound
+      body TEXT,
+      raw JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created_at
+    ON wa_messages(phone, created_at DESC);
+  `);
   
   console.log("DB schema ensured");
 }
