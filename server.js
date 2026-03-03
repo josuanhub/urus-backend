@@ -210,6 +210,10 @@ app.post("/v1/demo/reply", async (req, res) => {
   }
 });
 
+app.get("/health", (req, res) => {
+  res.json({ ok: true, ts: new Date().toISOString() });
+});
+
 app.get("/demo", (req, res) => {
   res.type("html").send(`<!doctype html>
 <html lang="es">
@@ -309,12 +313,49 @@ app.get("/demo", (req, res) => {
 
 // ✅ WhatsApp webhook (MVP) - logs only (no reply yet)
 app.get("/v1/wa/webhook", (req, res) => {
-  // por ahora: solo confirma que el endpoint existe
-  res.status(200).send("OK");
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode === "subscribe" && token === process.env.WA_VERIFY_TOKEN) {
+    return res.status(200).send(challenge);
+  }
+  return res.sendStatus(403);
 });
 
 app.post("/v1/wa/webhook", async (req, res) => {
   try {
+    res.sendStatus(200); // ACK rápido
+
+    const raw = req.body || {};
+    const entry = raw.entry?.[0];
+    const changes = entry?.changes?.[0]?.value;
+    const msg = changes?.messages?.[0];
+
+    const phone = msg?.from || "unknown";
+    const text = msg?.text?.body || "";
+
+    await pool.query(
+      `
+      INSERT INTO wa_leads (phone, last_message_at)
+      VALUES ($1, now())
+      ON CONFLICT (phone) DO UPDATE SET
+        last_message_at = now(),
+        updated_at = now()
+      `,
+      [phone]
+    );
+
+    await pool.query(
+      `INSERT INTO wa_messages (phone, direction, body, raw) VALUES ($1,'inbound',$2,$3)`,
+      [phone, text, raw]
+    );
+
+    console.log("WA inbound logged:", { phone, text: text?.slice(0, 120) });
+  } catch (e) {
+    console.error("WA_WEBHOOK_LOG_ERROR", e);
+  }
+});
     // ACK rápido
     res.sendStatus(200);
 
@@ -673,6 +714,35 @@ await pool.query(`
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created_at
     ON wa_messages(phone, created_at DESC);
+  `);
+
+    // ✅ WhatsApp tables (MVP)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_contacts (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      wa_id TEXT UNIQUE,
+      phone_e164 TEXT,
+      name TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      contact_wa_id TEXT,
+      direction TEXT NOT NULL DEFAULT 'in', -- in | out
+      msg_type TEXT,
+      text_body TEXT,
+      wa_message_id TEXT UNIQUE,
+      raw JSONB NOT NULL DEFAULT '{}'::jsonb,
+      received_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_messages_contact_received_at
+    ON wa_messages(contact_wa_id, received_at DESC);
   `);
   
   console.log("DB schema ensured");
