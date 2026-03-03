@@ -317,10 +317,16 @@ app.get("/v1/wa/webhook", (req, res) => {
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  if (mode === "subscribe" && token === process.env.WA_VERIFY_TOKEN) {
-    return res.status(200).send(challenge);
+  // Verificación de Meta
+  if (mode === "subscribe") {
+    if (token === process.env.WA_VERIFY_TOKEN) {
+      return res.status(200).send(challenge);
+    }
+    return res.sendStatus(403);
   }
-  return res.sendStatus(403);
+
+  // Si lo abres tú sin params
+  return res.status(200).send("OK");
 });
 
 app.post("/v1/wa/webhook", async (req, res) => {
