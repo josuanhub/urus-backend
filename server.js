@@ -719,35 +719,7 @@ await pool.query(`
     ON wa_messages(phone, created_at DESC);
   `);
 
-    // ✅ WhatsApp tables (MVP)
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS wa_contacts (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      wa_id TEXT UNIQUE,
-      phone_e164 TEXT,
-      name TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-  `);
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS wa_messages (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      contact_wa_id TEXT,
-      direction TEXT NOT NULL DEFAULT 'in', -- in | out
-      msg_type TEXT,
-      text_body TEXT,
-      wa_message_id TEXT UNIQUE,
-      raw JSONB NOT NULL DEFAULT '{}'::jsonb,
-      received_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-  `);
-
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_wa_messages_contact_received_at
-    ON wa_messages(contact_wa_id, received_at DESC);
-  `);
-  
   console.log("DB schema ensured");
 }
 
