@@ -608,6 +608,84 @@ await pool.query(`
     last_updated TIMESTAMPTZ NOT NULL DEFAULT now()
   );
 `);
+
+    // ==============================
+  // WHATSAPP LEAD ENGINE — TABLAS V1
+  // ==============================
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_leads (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      phone TEXT NOT NULL UNIQUE
+    );
+  `);
+
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS name TEXT;`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'ads_whatsapp';`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'NEW';`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS score INT NOT NULL DEFAULT 0;`);
+
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS business_name TEXT;`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS business_type TEXT;`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS has_logo BOOLEAN NOT NULL DEFAULT false;`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS main_service TEXT;`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS city TEXT;`);
+
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS wants_call BOOLEAN NOT NULL DEFAULT false;`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS objection TEXT;`);
+
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS last_message TEXT;`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS follow_up_step INT NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS next_follow_up_at TIMESTAMPTZ;`);
+
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS assigned_to TEXT;`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS notes TEXT;`);
+
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();`);
+  await pool.query(`ALTER TABLE wa_leads ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();`);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_leads_status
+    ON wa_leads(status);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_leads_next_follow_up
+    ON wa_leads(next_follow_up_at);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_lead_messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      lead_id UUID NOT NULL REFERENCES wa_leads(id) ON DELETE CASCADE,
+      direction TEXT NOT NULL,
+      channel TEXT NOT NULL DEFAULT 'whatsapp',
+      message_type TEXT NOT NULL DEFAULT 'text',
+      body TEXT,
+      media_url TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_lead_messages_lead_id_created_at
+    ON wa_lead_messages(lead_id, created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_lead_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      lead_id UUID NOT NULL REFERENCES wa_leads(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL,
+      event_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_lead_events_lead_id_created_at
+    ON wa_lead_events(lead_id, created_at DESC);
+  `);
   
   console.log("DB schema ensured");
 }
