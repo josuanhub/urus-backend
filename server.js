@@ -479,6 +479,107 @@ async function enforceMonthlyLimit(req, res, next) {
   }
 }
 
+function extractLeadSignals({ body = "", message_type = "text" }) {
+  const text = String(body || "").toLowerCase();
+
+  const hasLogo =
+    message_type === "image" ||
+    text.includes("logo") ||
+    text.includes("te envío el logo") ||
+    text.includes("aquí está el logo");
+
+  const wantsCall =
+    text.includes("llámame") ||
+    text.includes("llamame") ||
+    text.includes("puedes llamarme") ||
+    text.includes("me puedes llamar") ||
+    text.includes("quiero llamada") ||
+    text.includes("podemos hablar");
+
+  let objection = null;
+  if (text.includes("esposa")) objection = "spouse";
+  else if (text.includes("partner")) objection = "partner";
+  else if (text.includes("socio")) objection = "partner";
+
+  const wantsDemo = text.includes("demo");
+  const wantsPause = text.includes("pausa");
+
+  const mentionsBusinessIntent =
+    text.includes("página") ||
+    text.includes("pagina") ||
+    text.includes("web") ||
+    text.includes("landing") ||
+    text.includes("funnel") ||
+    text.includes("sitio");
+
+  return {
+    hasLogo,
+    wantsCall,
+    objection,
+    wantsDemo,
+    wantsPause,
+    mentionsBusinessIntent,
+  };
+}
+
+function computeLeadScore(lead) {
+  let score = 0;
+
+  if (lead.has_logo) score += 3;
+  if (lead.business_name) score += 2;
+  if (lead.main_service) score += 2;
+  if (lead.wants_call) score += 4;
+  if (lead.objection) score += 1;
+
+  return score;
+}
+
+function computeLeadStatus(lead) {
+  if (lead.status === "WON" || lead.status === "LOST" || lead.status === "PAUSED") {
+    return lead.status;
+  }
+
+  if (lead.wants_pause) return "PAUSED";
+
+  if (lead.score >= 7 || lead.wants_call) {
+    return "READY_TO_CALL";
+  }
+
+  if (lead.has_logo || lead.business_name || lead.main_service) {
+    return "INFO_RECEIVED";
+  }
+
+  return "WAITING_INFO";
+}
+
+function computeNextFollowUp(lead) {
+  const terminalStatuses = ["READY_TO_CALL", "WON", "LOST", "PAUSED", "CALLED"];
+  if (terminalStatuses.includes(lead.status)) {
+    return null;
+  }
+
+  const step = Number(lead.follow_up_step || 0);
+  const now = new Date();
+
+  if (step === 0) {
+    return new Date(now.getTime() + 30 * 60 * 1000).toISOString(); // +30 min
+  }
+
+  if (step === 1) {
+    return new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(); // +2h
+  }
+
+  if (step === 2) {
+    return new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(); // +24h
+  }
+
+  if (step === 3) {
+    return new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(); // +3d
+  }
+
+  return null;
+}
+
 // ---------- Auth ----------
 function signToken(user) {
   return jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
