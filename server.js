@@ -598,6 +598,95 @@ await pool.query(`
   );
 `);
   
+    // ✅ Compatibilidad con lógica ya existente (sin romper usuarios actuales)
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS membership TEXT NOT NULL DEFAULT 'active';`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();`);
+
+  // ✅ Plan que ya usa el webhook de Stripe
+  await pool.query(`
+    INSERT INTO plans (id, monthly_limit)
+    VALUES ('urus_a33', 2000)
+    ON CONFLICT (id) DO NOTHING;
+  `);
+
+  // ==============================
+  // WHATSAPP LEAD ENGINE — TABLAS V1
+  // ==============================
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_leads (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      phone TEXT NOT NULL UNIQUE,
+      name TEXT,
+      source TEXT NOT NULL DEFAULT 'ads_whatsapp',
+      status TEXT NOT NULL DEFAULT 'NEW',
+      score INT NOT NULL DEFAULT 0,
+
+      business_name TEXT,
+      business_type TEXT,
+      has_logo BOOLEAN NOT NULL DEFAULT false,
+      main_service TEXT,
+      city TEXT,
+
+      wants_call BOOLEAN NOT NULL DEFAULT false,
+      objection TEXT,
+
+      last_message TEXT,
+      follow_up_step INT NOT NULL DEFAULT 0,
+      next_follow_up_at TIMESTAMPTZ,
+
+      assigned_to TEXT,
+      notes TEXT,
+
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_leads_status
+    ON wa_leads(status);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_leads_next_follow_up
+    ON wa_leads(next_follow_up_at);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_lead_messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      lead_id UUID NOT NULL REFERENCES wa_leads(id) ON DELETE CASCADE,
+      direction TEXT NOT NULL,         -- inbound | outbound
+      channel TEXT NOT NULL DEFAULT 'whatsapp',
+      message_type TEXT NOT NULL DEFAULT 'text', -- text | image | document | audio
+      body TEXT,
+      media_url TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_lead_messages_lead_id_created_at
+    ON wa_lead_messages(lead_id, created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_lead_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      lead_id UUID NOT NULL REFERENCES wa_leads(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL,
+      event_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_lead_events_lead_id_created_at
+    ON wa_lead_events(lead_id, created_at DESC);
+  `);
+  
   console.log("DB schema ensured");
 }
 
