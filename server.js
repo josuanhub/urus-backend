@@ -544,6 +544,11 @@ async function ensureSchema() {
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS usage_reset_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '30 days');`
   );
 
+    // ✅ Compatibilidad con rutas actuales
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS membership TEXT NOT NULL DEFAULT 'active';`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();`);
+  
   // ✅ Tabla plans (recomendada, pero no obligatoria)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS plans (
@@ -559,7 +564,13 @@ async function ensureSchema() {
     VALUES ('basic', 50), ('elite', 300), ('pro', 2000)
     ON CONFLICT (id) DO NOTHING;
   `);
-
+  
+  await pool.query(`
+    INSERT INTO plans (id, monthly_limit)
+    VALUES ('urus_a33', 2000)
+    ON CONFLICT (id) DO NOTHING;
+  `);
+  
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
