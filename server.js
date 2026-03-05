@@ -2153,28 +2153,6 @@ app.post("/v1/wa-leads/:id/message", authRequired, async (req, res) => {
         }),
       ]
     );
-
-    let reply_to_send = null;
-
-if (direction === "inbound") {
-  const reply = buildLeadReply({ lead: finalLead, signals });
-
-  await pool.query(
-    `
-      INSERT INTO wa_lead_messages (
-        lead_id,
-        direction,
-        channel,
-        message_type,
-        body
-      )
-      VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
-    `,
-    [finalLead.id, reply]
-  );
-
-  reply_to_send = reply;
-}
     
     return res.json({
   ok: true,
