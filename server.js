@@ -2275,6 +2275,76 @@ app.post("/v1/wa-jobs/process-followups", authRequired, async (req, res) => {
   }
 });
 
+app.get("/v1/wa-leads", authRequired, async (req, res) => {
+  try {
+    const status = req.query.status ? String(req.query.status).trim() : null;
+    const assigned_to = req.query.assigned_to ? String(req.query.assigned_to).trim() : null;
+    const q = req.query.q ? String(req.query.q).trim() : null;
+
+    const limit = Math.min(parseInt(req.query.limit || "50", 10), 200);
+    const offset = Math.max(parseInt(req.query.offset || "0", 10), 0);
+
+    const where = [];
+    const params = [];
+
+    if (status) {
+      params.push(status);
+      where.push(`status = $${params.length}`);
+    }
+
+    if (assigned_to) {
+      params.push(assigned_to);
+      where.push(`assigned_to = $${params.length}`);
+    }
+
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(phone ILIKE $${params.length} OR name ILIKE $${params.length} OR last_message ILIKE $${params.length})`);
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+    params.push(limit);
+    params.push(offset);
+
+    const r = await pool.query(
+      `
+      SELECT *
+      FROM wa_leads
+      ${whereSql}
+      ORDER BY updated_at DESC
+      LIMIT $${params.length - 1}
+      OFFSET $${params.length}
+      `,
+      params
+    );
+
+    return res.json({ ok: true, items: r.rows, limit, offset });
+  } catch (e) {
+    console.error("WA_LEADS_LIST_ERROR", e);
+    return res.status(500).json({ error: "wa_leads_list_failed", message: e.message });
+  }
+});
+
+app.get("/v1/wa-leads/metrics", authRequired, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT status, COUNT(*)::int AS count
+      FROM wa_leads
+      GROUP BY status
+      ORDER BY count DESC
+    `);
+
+    // total
+    const total = r.rows.reduce((acc, x) => acc + (x.count || 0), 0);
+
+    return res.json({ ok: true, total, by_status: r.rows });
+  } catch (e) {
+    console.error("WA_LEADS_METRICS_ERROR", e);
+    return res.status(500).json({ error: "wa_leads_metrics_failed", message: e.message });
+  }
+});
+
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
