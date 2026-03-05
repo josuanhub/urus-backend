@@ -1781,6 +1781,183 @@ app.get("/v1/urus/sessions", authRequired, async (req, res) => {
     return res.status(500).json({ error: "sessions_failed", message: e.message });
   }
 });
+
+app.post("/v1/wa-leads/intake", authRequired, async (req, res) => {
+  try {
+    const {
+      phone,
+      name = null,
+      message = "",
+      message_type = "text",
+      source = "ads_whatsapp",
+      assigned_to = null,
+    } = req.body || {};
+
+    if (!phone || String(phone).trim().length < 5) {
+      return res.status(400).json({ error: "Valid phone is required" });
+    }
+
+    const cleanPhone = String(phone).trim();
+    const cleanMessage = String(message || "").trim();
+
+    // 1) Buscar lead existente
+    let leadResult = await pool.query(
+      `SELECT * FROM wa_leads WHERE phone = $1 LIMIT 1`,
+      [cleanPhone]
+    );
+
+    let lead = leadResult.rows[0];
+
+    // 2) Si no existe, crearlo
+    if (!lead) {
+      const insertResult = await pool.query(
+        `
+          INSERT INTO wa_leads (
+            phone,
+            name,
+            source,
+            status,
+            assigned_to,
+            last_message
+          )
+          VALUES ($1, $2, $3, 'NEW', $4, $5)
+          RETURNING *
+        `,
+        [cleanPhone, name, source, assigned_to, cleanMessage || null]
+      );
+
+      lead = insertResult.rows[0];
+    } else {
+      // Si ya existe, refrescar algunos datos básicos
+      const updateExisting = await pool.query(
+        `
+          UPDATE wa_leads
+          SET
+            name = COALESCE($2, name),
+            source = COALESCE($3, source),
+            assigned_to = COALESCE($4, assigned_to),
+            last_message = $5,
+            updated_at = now()
+          WHERE id = $1
+          RETURNING *
+        `,
+        [lead.id, name, source, assigned_to, cleanMessage || lead.last_message]
+      );
+
+      lead = updateExisting.rows[0];
+    }
+
+    // 3) Guardar mensaje inbound inicial (si vino)
+    if (cleanMessage) {
+      await pool.query(
+        `
+          INSERT INTO wa_lead_messages (
+            lead_id,
+            direction,
+            channel,
+            message_type,
+            body
+          )
+          VALUES ($1, 'inbound', 'whatsapp', $2, $3)
+        `,
+        [lead.id, message_type, cleanMessage]
+      );
+    }
+
+    // 4) Extraer señales del mensaje
+    const signals = extractLeadSignals({
+      body: cleanMessage,
+      message_type,
+    });
+
+    // 5) Mezclar señales con lead actual
+    const mergedLead = {
+      ...lead,
+      has_logo: lead.has_logo || signals.hasLogo,
+      wants_call: lead.wants_call || signals.wantsCall,
+      objection: lead.objection || signals.objection,
+      wants_pause: signals.wantsPause,
+      business_name: lead.business_name,
+      main_service: lead.main_service || (signals.mentionsBusinessIntent ? "pending_definition" : null),
+      follow_up_step: lead.follow_up_step || 0,
+      status: lead.status,
+    };
+
+    // 6) Calcular score y estado
+    const nextScore = computeLeadScore(mergedLead);
+
+    const nextStatus = computeLeadStatus({
+      ...mergedLead,
+      score: nextScore,
+    });
+
+    const nextFollowUpAt = computeNextFollowUp({
+      ...mergedLead,
+      score: nextScore,
+      status: nextStatus,
+    });
+
+    // 7) Persistir cambios
+    const finalUpdate = await pool.query(
+      `
+        UPDATE wa_leads
+        SET
+          has_logo = $2,
+          wants_call = $3,
+          objection = COALESCE($4, objection),
+          main_service = COALESCE($5, main_service),
+          score = $6,
+          status = $7,
+          next_follow_up_at = $8,
+          updated_at = now()
+        WHERE id = $1
+        RETURNING *
+      `,
+      [
+        lead.id,
+        mergedLead.has_logo,
+        mergedLead.wants_call,
+        mergedLead.objection,
+        mergedLead.main_service,
+        nextScore,
+        nextStatus,
+        nextFollowUpAt,
+      ]
+    );
+
+    const finalLead = finalUpdate.rows[0];
+
+    // 8) Guardar evento simple
+    await pool.query(
+      `
+        INSERT INTO wa_lead_events (
+          lead_id,
+          event_type,
+          event_data
+        )
+        VALUES ($1, $2, $3::jsonb)
+      `,
+      [
+        finalLead.id,
+        "INTAKE_PROCESSED",
+        JSON.stringify({
+          score: finalLead.score,
+          status: finalLead.status,
+          next_follow_up_at: finalLead.next_follow_up_at,
+        }),
+      ]
+    );
+
+    return res.json({
+      ok: true,
+      lead: finalLead,
+    });
+  } catch (e) {
+    console.error("WA_INTAKE_ERROR", e);
+    return res.status(500).json({ error: "Failed to process intake" });
+  }
+});
+
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
