@@ -2121,28 +2121,32 @@ app.post("/v1/wa-leads/intake", authRequired, async (req, res) => {
     const finalUpdate = await pool.query(
       `
         UPDATE wa_leads
-        SET
-          has_logo = $2,
-          wants_call = $3,
-          objection = COALESCE($4, objection),
-          main_service = COALESCE($5, main_service),
-          score = $6,
-          status = $7,
-          next_follow_up_at = $8,
-          updated_at = now()
-        WHERE id = $1
-        RETURNING *
+SET
+  last_message = $2,
+  has_logo = $3,
+  wants_call = $4,
+  objection = COALESCE($5, objection),
+  main_service = COALESCE($6, main_service),
+  score = $7,
+  status = $8,
+  next_follow_up_at = $9,
+  follow_up_step = $10,
+  updated_at = now()
+WHERE id = $1
+RETURNING *
       `,
       [
-        lead.id,
-        mergedLead.has_logo,
-        mergedLead.wants_call,
-        mergedLead.objection,
-        mergedLead.main_service,
-        nextScore,
-        nextStatus,
-        nextFollowUpAt,
-      ]
+  lead.id,
+  mergedLead.last_message,
+  mergedLead.has_logo,
+  mergedLead.wants_call,
+  mergedLead.objection,
+  mergedLead.main_service,
+  nextScore,
+  nextStatus,
+  nextFollowUpAt,
+  nextStep
+]
     );
 
     const finalLead = finalUpdate.rows[0];
