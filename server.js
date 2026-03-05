@@ -1958,6 +1958,148 @@ app.post("/v1/wa-leads/intake", authRequired, async (req, res) => {
   }
 });
 
+app.post("/v1/wa-leads/:id/message", authRequired, async (req, res) => {
+  try {
+    const leadId = String(req.params.id || "").trim();
+    const {
+      message = "",
+      message_type = "text",
+      direction = "inbound",
+      media_url = null,
+    } = req.body || {};
+
+    if (!leadId) {
+      return res.status(400).json({ error: "Lead id is required" });
+    }
+
+    const cleanMessage = String(message || "").trim();
+
+    const leadResult = await pool.query(
+      `SELECT * FROM wa_leads WHERE id = $1 LIMIT 1`,
+      [leadId]
+    );
+
+    if (!leadResult.rows.length) {
+      return res.status(404).json({ error: "Lead not found" });
+    }
+
+    const lead = leadResult.rows[0];
+
+    // 1) Guardar mensaje
+    await pool.query(
+      `
+        INSERT INTO wa_lead_messages (
+          lead_id,
+          direction,
+          channel,
+          message_type,
+          body,
+          media_url
+        )
+        VALUES ($1, $2, 'whatsapp', $3, $4, $5)
+      `,
+      [lead.id, direction, message_type, cleanMessage || null, media_url]
+    );
+
+    // 2) Extraer señales
+    const signals = extractLeadSignals({
+      body: cleanMessage,
+      message_type,
+    });
+
+    // 3) Mezclar estado actual + señales nuevas
+    const mergedLead = {
+      ...lead,
+      last_message: cleanMessage || lead.last_message,
+      has_logo: lead.has_logo || signals.hasLogo,
+      wants_call: lead.wants_call || signals.wantsCall,
+      objection: lead.objection || signals.objection,
+      wants_pause: signals.wantsPause,
+      main_service:
+        lead.main_service ||
+        (signals.mentionsBusinessIntent ? "pending_definition" : null),
+      follow_up_step: lead.follow_up_step || 0,
+      status: lead.status,
+    };
+
+    // 4) Recalcular score / estado / follow-up
+    const nextScore = computeLeadScore(mergedLead);
+
+    const nextStatus = computeLeadStatus({
+      ...mergedLead,
+      score: nextScore,
+    });
+
+    const nextFollowUpAt = computeNextFollowUp({
+      ...mergedLead,
+      score: nextScore,
+      status: nextStatus,
+    });
+
+    // 5) Persistir lead
+    const updated = await pool.query(
+      `
+        UPDATE wa_leads
+        SET
+          last_message = $2,
+          has_logo = $3,
+          wants_call = $4,
+          objection = COALESCE($5, objection),
+          main_service = COALESCE($6, main_service),
+          score = $7,
+          status = $8,
+          next_follow_up_at = $9,
+          updated_at = now()
+        WHERE id = $1
+        RETURNING *
+      `,
+      [
+        lead.id,
+        mergedLead.last_message,
+        mergedLead.has_logo,
+        mergedLead.wants_call,
+        mergedLead.objection,
+        mergedLead.main_service,
+        nextScore,
+        nextStatus,
+        nextFollowUpAt,
+      ]
+    );
+
+    const finalLead = updated.rows[0];
+
+    // 6) Evento
+    await pool.query(
+      `
+        INSERT INTO wa_lead_events (
+          lead_id,
+          event_type,
+          event_data
+        )
+        VALUES ($1, $2, $3::jsonb)
+      `,
+      [
+        finalLead.id,
+        "MESSAGE_PROCESSED",
+        JSON.stringify({
+          direction,
+          score: finalLead.score,
+          status: finalLead.status,
+          next_follow_up_at: finalLead.next_follow_up_at,
+        }),
+      ]
+    );
+
+    return res.json({
+      ok: true,
+      lead: finalLead,
+    });
+  } catch (e) {
+    console.error("WA_MESSAGE_ERROR", e);
+    return res.status(500).json({ error: "Failed to process lead message" });
+  }
+});
+
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
