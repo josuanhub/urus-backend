@@ -2159,7 +2159,12 @@ app.post("/v1/wa-leads/:id/message", authRequired, async (req, res) => {
   lead: finalLead,
   reply_to_send,
 });
-
+    
+  } catch (e) {
+    console.error("WA_MESSAGE_ERROR", e);
+    return res.status(500).json({ error: "Failed to process lead message" });
+  }
+});
     
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
