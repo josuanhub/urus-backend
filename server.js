@@ -2165,7 +2165,116 @@ app.post("/v1/wa-leads/:id/message", authRequired, async (req, res) => {
     return res.status(500).json({ error: "Failed to process lead message" });
   }
 });
-    
+
+app.post("/v1/wa-jobs/process-followups", authRequired, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.body?.limit || "25", 10), 200);
+
+    // Buscar leads vencidos (que toca follow-up ya)
+    const r = await pool.query(
+      `
+      SELECT *
+      FROM wa_leads
+      WHERE
+        next_follow_up_at IS NOT NULL
+        AND next_follow_up_at <= now()
+        AND status NOT IN ('READY_TO_CALL','WON','LOST','PAUSED','CALLED')
+      ORDER BY next_follow_up_at ASC
+      LIMIT $1
+      `,
+      [limit]
+    );
+
+    const leads = r.rows || [];
+    const results = [];
+
+    for (const lead of leads) {
+      // Señales vacías (follow-up no depende del mensaje inbound)
+      const signals = { wantsPause: false };
+
+      // Generar texto humano según step/status
+      const reply = buildLeadReply({ lead, signals });
+
+      // Guardar outbound en historial
+      await pool.query(
+        `
+        INSERT INTO wa_lead_messages (
+          lead_id,
+          direction,
+          channel,
+          message_type,
+          body
+        )
+        VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
+        `,
+        [lead.id, reply]
+      );
+
+      // Avanzar follow_up_step + programar siguiente
+      const nextStep = Number(lead.follow_up_step || 0) + 1;
+
+      // Recalcular next_follow_up_at usando tu función
+      const nextFollowUpAt = computeNextFollowUp({
+        ...lead,
+        follow_up_step: nextStep, // importante: ya avanzado
+        status: lead.status,
+        score: lead.score,
+      });
+
+      const updated = await pool.query(
+        `
+        UPDATE wa_leads
+        SET
+          follow_up_step = $2,
+          next_follow_up_at = $3,
+          updated_at = now()
+        WHERE id = $1
+        RETURNING *
+        `,
+        [lead.id, nextStep, nextFollowUpAt]
+      );
+
+      const finalLead = updated.rows[0];
+
+      await pool.query(
+        `
+        INSERT INTO wa_lead_events (
+          lead_id,
+          event_type,
+          event_data
+        )
+        VALUES ($1, $2, $3::jsonb)
+        `,
+        [
+          lead.id,
+          "FOLLOWUP_SENT",
+          JSON.stringify({
+            follow_up_step: nextStep,
+            next_follow_up_at: finalLead?.next_follow_up_at || null,
+          }),
+        ]
+      );
+
+      results.push({
+        lead_id: lead.id,
+        phone: lead.phone,
+        follow_up_step: nextStep,
+        reply_to_send: reply,
+        next_follow_up_at: finalLead?.next_follow_up_at || null,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      processed: results.length,
+      results,
+    });
+  } catch (e) {
+    console.error("WA_FOLLOWUP_JOB_ERROR", e);
+    return res.status(500).json({ error: "followup_job_failed", message: e.message });
+  }
+});
+
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
