@@ -580,6 +580,47 @@ function computeNextFollowUp(lead) {
   return null;
 }
 
+function buildLeadReply({ lead, signals }) {
+  const status = String(lead.status || "").toUpperCase();
+  const step = Number(lead.follow_up_step || 0);
+
+  // Si pidió PAUSA, corta.
+  if (signals?.wantsPause || status === "PAUSED") {
+    return "Perfecto. Te pongo en pausa. Cuando quieras retomar, escribe DEMO y lo retomamos.";
+  }
+
+  // Si está listo para llamada, cierre humano.
+  if (status === "READY_TO_CALL") {
+    return "Perfecto. Para prepararte la demo hoy:\n1) ¿Qué quieres que haga la página?\n2) ¿Tienes algún ejemplo de estilo?\nCuando lo tengas, te llamo.";
+  }
+
+  // Si está esperando info (frío/tibio)
+  if (status === "WAITING_INFO") {
+    if (step === 0) {
+      return "¡Gracias por escribir! Para ayudarte rápido: ¿tu negocio es servicios o productos?\nEnvíame el nombre del negocio + logo (si lo tienes) y te preparo una demo.";
+    }
+    if (step === 1) {
+      return "¿Lo vas a trabajar ahora o lo dejamos para después?\nCon el nombre del negocio + logo lo monto y te lo enseño.";
+    }
+    if (step === 2) {
+      return "Te lo dejo fácil: envíame\n(1) nombre del negocio\n(2) servicio principal\n(3) ciudad\nSi tienes logo, mejor. Con eso arranco.";
+    }
+    return "No quiero spamearte. Si todavía te interesa, responde DEMO y te la preparo.\nSi no, dime PAUSA y te saco del seguimiento.";
+  }
+
+  // Info recibida (pero faltan detalles)
+  if (status === "INFO_RECEIVED") {
+    // Si menciona objeción
+    if (lead.objection) {
+      return "Perfecto. ¿Con quién lo revisas (esposa/partner) y cuándo me confirmas?\nDame una hora tentativa y lo dejo listo.";
+    }
+    return "Perfecto. Dame 2 detalles y te la preparo hoy:\n1) ¿Qué quieres que haga la página?\n2) ¿Tienes algún ejemplo de estilo?";
+  }
+
+  // Fallback
+  return "Perfecto. Para avanzar rápido: ¿tu negocio es servicios o productos? Envíame nombre + logo si lo tienes.";
+}
+
 // ---------- Auth ----------
 function signToken(user) {
   return jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
@@ -2067,7 +2108,30 @@ app.post("/v1/wa-leads/:id/message", authRequired, async (req, res) => {
     );
 
     const finalLead = updated.rows[0];
+    // 7) ✅ Generar respuesta humana (solo si inbound)
+    let reply_to_send = null;
 
+    if (direction === "inbound") {
+      const reply = buildLeadReply({ lead: finalLead, signals });
+
+      // Guardamos outbound (aún NO enviamos WhatsApp real)
+      await pool.query(
+        `
+          INSERT INTO wa_lead_messages (
+            lead_id,
+            direction,
+            channel,
+            message_type,
+            body
+          )
+          VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
+        `,
+        [finalLead.id, reply]
+      );
+
+      reply_to_send = reply;
+    }
+    
     // 6) Evento
     await pool.query(
       `
@@ -2090,16 +2154,35 @@ app.post("/v1/wa-leads/:id/message", authRequired, async (req, res) => {
       ]
     );
 
+    let reply_to_send = null;
+
+if (direction === "inbound") {
+  const reply = buildLeadReply({ lead: finalLead, signals });
+
+  await pool.query(
+    `
+      INSERT INTO wa_lead_messages (
+        lead_id,
+        direction,
+        channel,
+        message_type,
+        body
+      )
+      VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
+    `,
+    [finalLead.id, reply]
+  );
+
+  reply_to_send = reply;
+}
+    
     return res.json({
-      ok: true,
-      lead: finalLead,
-    });
-  } catch (e) {
-    console.error("WA_MESSAGE_ERROR", e);
-    return res.status(500).json({ error: "Failed to process lead message" });
-  }
+  ok: true,
+  lead: finalLead,
+  reply_to_send,
 });
 
+    
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
