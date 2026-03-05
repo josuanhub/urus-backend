@@ -153,6 +153,185 @@ app.post(
 // -------------------------------------------------------------------------------
 
 app.use(express.json({ limit: "1mb" }));
+// ==============================
+// WHATSAPP CLOUD API — WEBHOOK + SEND (V1)
+// ==============================
+const WA_VERIFY_TOKEN = process.env.WA_VERIFY_TOKEN || "";
+const WA_TOKEN = process.env.WA_TOKEN || "";
+const WA_PHONE_NUMBER_ID = process.env.WA_PHONE_NUMBER_ID || "";
+
+function digitsOnly(s) {
+  return String(s || "").replace(/\D/g, "");
+}
+
+async function sendWhatsAppText({ to, text }) {
+  if (!WA_TOKEN || !WA_PHONE_NUMBER_ID) {
+    console.error("WA_SEND_MISSING_ENV", { hasToken: !!WA_TOKEN, hasPhoneId: !!WA_PHONE_NUMBER_ID });
+    return { ok: false, error: "missing_whatsapp_env" };
+  }
+
+  const url = `https://graph.facebook.com/v22.0/${WA_PHONE_NUMBER_ID}/messages`;
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: digitsOnly(to),
+    type: "text",
+    text: { body: String(text || "").slice(0, 4000) },
+  };
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${WA_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    console.error("WA_SEND_ERROR", r.status, data);
+    return { ok: false, status: r.status, data };
+  }
+  return { ok: true, data };
+}
+
+// 1) VERIFY (Meta hace GET para validar)
+app.get("/v1/wa/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode === "subscribe" && token && token === WA_VERIFY_TOKEN) {
+    return res.status(200).send(challenge);
+  }
+  return res.sendStatus(403);
+});
+
+// 2) INBOUND (Meta manda POST con mensajes)
+app.post("/v1/wa/webhook", async (req, res) => {
+  try {
+    // Responder rápido a Meta
+    res.sendStatus(200);
+
+    const entry = req.body?.entry?.[0];
+    const change = entry?.changes?.[0];
+    const value = change?.value;
+
+    const msg = value?.messages?.[0];
+    if (!msg) return;
+
+    const from = msg.from; // número del cliente (sin + normalmente)
+    const text = msg?.text?.body || "";
+    const name = value?.contacts?.[0]?.profile?.name || null;
+
+    // SOLO texto por ahora
+    const message_type = msg.type || "text";
+    if (message_type !== "text") {
+      // puedes extender luego (image/document/audio)
+      console.log("WA_INBOUND_NON_TEXT", { type: message_type });
+    }
+
+    // A) Crear/actualizar lead (reusa tu intake logic en DB)
+    const phone = from ? (from.startsWith("+") ? from : `+${from}`) : "";
+    if (!phone) return;
+
+    // upsert lead por phone
+    const leadUpsert = await pool.query(
+      `
+      INSERT INTO wa_leads (phone, name, source, status, score, last_message, updated_at)
+      VALUES ($1, $2, 'whatsapp_cloud', 'NEW', 0, $3, now())
+      ON CONFLICT (phone)
+      DO UPDATE SET
+        name = COALESCE(wa_leads.name, EXCLUDED.name),
+        last_message = EXCLUDED.last_message,
+        updated_at = now()
+      RETURNING *
+      `,
+      [phone, name, String(text || "").trim()]
+    );
+
+    const lead = leadUpsert.rows[0];
+
+    // B) Procesar como tu endpoint /:id/message (guardamos inbound + calculamos + generamos reply_to_send)
+    // Guardar mensaje inbound
+    await pool.query(
+      `
+      INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
+      VALUES ($1, 'inbound', 'whatsapp', $2, $3)
+      `,
+      [lead.id, message_type, String(text || "").trim() || null]
+    );
+
+    const signals = extractLeadSignals({ body: text, message_type });
+
+    const mergedLead = {
+      ...lead,
+      last_message: String(text || "").trim() || lead.last_message,
+      has_logo: lead.has_logo || signals.hasLogo,
+      wants_call: lead.wants_call || signals.wantsCall,
+      objection: lead.objection || signals.objection,
+      wants_pause: signals.wantsPause,
+      main_service: lead.main_service || (signals.mentionsBusinessIntent ? "pending_definition" : null),
+      follow_up_step: lead.follow_up_step || 0,
+      status: lead.status,
+    };
+
+    const nextScore = computeLeadScore(mergedLead);
+    const nextStatus = computeLeadStatus({ ...mergedLead, score: nextScore });
+    const nextFollowUpAt = computeNextFollowUp({ ...mergedLead, score: nextScore, status: nextStatus });
+
+    const updated = await pool.query(
+      `
+      UPDATE wa_leads
+      SET
+        last_message = $2,
+        has_logo = $3,
+        wants_call = $4,
+        objection = COALESCE($5, objection),
+        main_service = COALESCE($6, main_service),
+        score = $7,
+        status = $8,
+        next_follow_up_at = $9,
+        updated_at = now()
+      WHERE id = $1
+      RETURNING *
+      `,
+      [
+        lead.id,
+        mergedLead.last_message,
+        mergedLead.has_logo,
+        mergedLead.wants_call,
+        mergedLead.objection,
+        mergedLead.main_service,
+        nextScore,
+        nextStatus,
+        nextFollowUpAt,
+      ]
+    );
+
+    const finalLead = updated.rows[0];
+
+    // C) generar reply humano y guardarlo
+    const reply = buildLeadReply({ lead: finalLead, signals });
+
+    await pool.query(
+      `
+      INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
+      VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
+      `,
+      [finalLead.id, reply]
+    );
+
+    // D) enviar reply a WhatsApp REAL (Cloud API)
+    const sent = await sendWhatsAppText({ to: from, text: reply });
+    console.log("WA_REPLY_SENT", { ok: sent.ok, to: from, lead_id: finalLead.id });
+
+  } catch (e) {
+    console.error("WA_WEBHOOK_ERROR", e);
+    // ya respondimos 200 arriba; aquí solo log
+  }
+});
 
 // ==============================
 // DEMO PÚBLICO (HTML + endpoint)
