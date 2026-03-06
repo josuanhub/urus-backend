@@ -196,6 +196,48 @@ async function sendWhatsAppText({ to, text }) {
   return { ok: true, data };
 }
 
+async function buildLeadReplyAI({ lead, signals, lastInbound = "", lastOutbound = "" }) {
+  const prompt = `
+Eres un closer humano por WhatsApp para negocios locales.
+
+Objetivo:
+- responder breve
+- sonar natural
+- no repetir la última respuesta
+- mover la conversación al siguiente paso
+
+Contexto:
+- status: ${lead.status || ""}
+- score: ${lead.score || 0}
+- follow_up_step: ${lead.follow_up_step || 0}
+- wants_call: ${lead.wants_call ? "si" : "no"}
+- objection: ${lead.objection || "ninguna"}
+- ultimo mensaje del lead: ${String(lastInbound || "").trim()}
+- ultima respuesta enviada: ${String(lastOutbound || "").trim()}
+
+Reglas:
+- responde en español
+- máximo 3 líneas
+- no uses emojis
+- no repitas frases exactas de la última respuesta enviada
+- si ya pidió llamada, intenta cuadrar hora
+- si falta información, pide solo 1 dato clave
+- si el lead responde con algo corto como "ok", "ah", "lo mismo", cambia el enfoque y no repitas el mismo copy
+- devuelve solo el mensaje final
+  `.trim();
+
+  const completion = await openai.chat.completions.create({
+    model: URUS_DEFAULT_MODEL,
+    messages: [
+      { role: "system", content: prompt }
+    ],
+    temperature: 0.7,
+    top_p: 1,
+  });
+
+  return String(completion?.choices?.[0]?.message?.content || "").trim();
+}
+
 // 1) VERIFY (Meta hace GET para validar)
 app.get("/v1/wa/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
