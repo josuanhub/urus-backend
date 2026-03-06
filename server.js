@@ -283,6 +283,8 @@ app.post("/v1/wa/webhook", async (req, res) => {
 
     const updated = await pool.query(
       `
+         const updated = await pool.query(
+      `
       UPDATE wa_leads
       SET
         last_message = $2,
@@ -293,20 +295,22 @@ app.post("/v1/wa/webhook", async (req, res) => {
         score = $7,
         status = $8,
         next_follow_up_at = $9,
+        follow_up_step = $10,
         updated_at = now()
       WHERE id = $1
       RETURNING *
       `,
       [
-        lead.id,
-        mergedLead.last_message,
-        mergedLead.has_logo,
-        mergedLead.wants_call,
-        mergedLead.objection,
-        mergedLead.main_service,
-        nextScore,
-        nextStatus,
-        nextFollowUpAt,
+        lead.id,                   // $1
+        mergedLead.last_message,   // $2
+        mergedLead.has_logo,       // $3
+        mergedLead.wants_call,     // $4
+        mergedLead.objection,      // $5
+        mergedLead.main_service,   // $6
+        nextScore,                 // $7
+        nextStatus,                // $8
+        nextFollowUpAt,            // $9
+        mergedLead.follow_up_step, // $10 👈
       ]
     );
 
