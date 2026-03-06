@@ -263,13 +263,7 @@ app.post("/v1/wa/webhook", async (req, res) => {
       [lead.id, message_type, String(text || "").trim() || null]
     );
 
-        const signals = extractLeadSignals({ body: text, message_type });
-
-    // Step actual y próximo step para este lead
-    const currentStep = Number(lead.follow_up_step || 0);
-    const nextStep = ["WAITING_INFO", "READY_TO_CALL"].includes(lead.status)
-      ? currentStep + 1
-      : currentStep;
+    const signals = extractLeadSignals({ body: text, message_type });
 
     const mergedLead = {
       ...lead,
@@ -279,7 +273,7 @@ app.post("/v1/wa/webhook", async (req, res) => {
       objection: lead.objection || signals.objection,
       wants_pause: signals.wantsPause,
       main_service: lead.main_service || (signals.mentionsBusinessIntent ? "pending_definition" : null),
-      follow_up_step: nextStep, // 👈 ahora guardamos el siguiente paso
+      follow_up_step: lead.follow_up_step || 0,
       status: lead.status,
     };
 
@@ -289,43 +283,33 @@ app.post("/v1/wa/webhook", async (req, res) => {
 
     const updated = await pool.query(
       `
-         const updated = await pool.query(
-      `
-     const updated = await pool.query(
-  `
-  const prevStep = Number(lead.follow_up_step || 0);
-const nextStep = Math.min(prevStep + 1, 3);
+      UPDATE wa_leads
+      SET
+        last_message = $2,
+        has_logo = $3,
+        wants_call = $4,
+        objection = COALESCE($5, objection),
+        main_service = COALESCE($6, main_service),
+        score = $7,
+        status = $8,
+        next_follow_up_at = $9,
+        updated_at = now()
+      WHERE id = $1
+      RETURNING *
+      `,
+      [
+        lead.id,
+        mergedLead.last_message,
+        mergedLead.has_logo,
+        mergedLead.wants_call,
+        mergedLead.objection,
+        mergedLead.main_service,
+        nextScore,
+        nextStatus,
+        nextFollowUpAt,
+      ]
+    );
 
-const updated = await pool.query(
-  `
-  UPDATE wa_leads
-  SET
-    last_message = $2,
-    has_logo = $3,
-    wants_call = $4,
-    objection = COALESCE($5, objection),
-    main_service = COALESCE($6, main_service),
-    score = $7,
-    status = $8,
-    next_follow_up_at = $9,
-    follow_up_step = $10,
-    updated_at = now()
-  WHERE id = $1
-  RETURNING *
-  `,
-  [
-    lead.id,
-    mergedLead.last_message,
-    mergedLead.has_logo,
-    mergedLead.wants_call,
-    mergedLead.objection,
-    mergedLead.main_service,
-    nextScore,
-    nextStatus,
-    nextFollowUpAt,
-    nextStep
-  ]
-);
     const finalLead = updated.rows[0];
 
     // C) generar reply humano y guardarlo
@@ -784,19 +768,9 @@ function buildLeadReply({ lead, signals }) {
     return "Perfecto. Te pongo en pausa. Cuando quieras retomar, escribe DEMO y lo retomamos.";
   }
 
-   // Si está listo para llamada, cierre humano (varios pasos).
+  // Si está listo para llamada, cierre humano.
   if (status === "READY_TO_CALL") {
-    if (step === 0) {
-      return "Perfecto. Para prepararte la demo hoy:\n1) ¿Qué quieres que haga la página?\n2) ¿Tienes algún ejemplo de estilo?\nCuando lo tengas, te llamo.";
-    }
-
-    if (step === 1) {
-      return "Buenísimo. Cuando tengas claro qué quieres que haga la página y algún ejemplo de estilo, me lo envías por aquí y coordinamos la llamada. Así aprovecho y te preparo algo alineado a lo que buscas.";
-    }
-
-    // Paso 2 o más: ya no repetimos el mismo mensaje
-    return "Tranquilo, no hay prisa. Cuando estés listo, envíame:\n1) qué quieres que haga la página\n2) un ejemplo de estilo\nY coordinamos la llamada. Si prefieres hablar primero, dime y cuadramos hora.";
-  }
+    return "Perfecto. Para prepararte la demo hoy:\n1) ¿Qué quieres que haga la página?\n2) ¿Tienes algún ejemplo de estilo?\nCuando lo tengas, te llamo.";
   }
 
   // Si está esperando info (frío/tibio)
