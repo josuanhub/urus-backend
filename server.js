@@ -281,34 +281,42 @@ app.post("/v1/wa/webhook", async (req, res) => {
     const nextStatus = computeLeadStatus({ ...mergedLead, score: nextScore });
     const nextFollowUpAt = computeNextFollowUp({ ...mergedLead, score: nextScore, status: nextStatus });
 
-    const updated = await pool.query(
-      `
-      UPDATE wa_leads
-      SET
-        last_message = $2,
-        has_logo = $3,
-        wants_call = $4,
-        objection = COALESCE($5, objection),
-        main_service = COALESCE($6, main_service),
-        score = $7,
-        status = $8,
-        next_follow_up_at = $9,
-        updated_at = now()
-      WHERE id = $1
-      RETURNING *
-      `,
-      [
-        lead.id,
-        mergedLead.last_message,
-        mergedLead.has_logo,
-        mergedLead.wants_call,
-        mergedLead.objection,
-        mergedLead.main_service,
-        nextScore,
-        nextStatus,
-        nextFollowUpAt,
-      ]
-    );
+    const prevStep = Number(lead.follow_up_step || 0);
+const nextStep =
+  nextStatus === "READY_TO_CALL" || nextStatus === "INFO_RECEIVED"
+    ? Math.min(prevStep + 1, 2)
+    : prevStep;
+
+const updated = await pool.query(
+  `
+  UPDATE wa_leads
+  SET
+    last_message = $2,
+    has_logo = $3,
+    wants_call = $4,
+    objection = COALESCE($5, objection),
+    main_service = COALESCE($6, main_service),
+    score = $7,
+    status = $8,
+    next_follow_up_at = $9,
+    follow_up_step = $10,
+    updated_at = now()
+  WHERE id = $1
+  RETURNING *
+  `,
+  [
+    lead.id,
+    mergedLead.last_message,
+    mergedLead.has_logo,
+    mergedLead.wants_call,
+    mergedLead.objection,
+    mergedLead.main_service,
+    nextScore,
+    nextStatus,
+    nextFollowUpAt,
+    nextStep,
+  ]
+);
 
     const finalLead = updated.rows[0];
 
@@ -770,8 +778,16 @@ function buildLeadReply({ lead, signals }) {
 
   // Si está listo para llamada, cierre humano.
   if (status === "READY_TO_CALL") {
+  if (step === 0) {
     return "Perfecto. Para prepararte la demo hoy:\n1) ¿Qué quieres que haga la página?\n2) ¿Tienes algún ejemplo de estilo?\nCuando lo tengas, te llamo.";
   }
+
+  if (step === 1) {
+    return "Buenísimo. Cuando tengas claro qué quieres que haga la página y algún ejemplo de estilo, me lo envías por aquí y coordinamos la llamada. Así aprovecho y te preparo algo alineado a lo que buscas.";
+  }
+
+  return "Tranquilo, no hay prisa. Cuando estés listo, envíame:\n1) qué quieres que haga la página\n2) un ejemplo de estilo\nY coordinamos la llamada. Si prefieres hablar primero, dime y cuadramos hora.";
+}
 
   // Si está esperando info (frío/tibio)
   if (status === "WAITING_INFO") {
