@@ -843,7 +843,7 @@ function buildLeadReply({ lead, signals }) {
   // Si está listo para llamada, cierre humano.
   if (status === "READY_TO_CALL") {
   if (step === 0) {
-    return "Perfecto. Para prepararte la demo hoy:\n1) ¿Qué quieres que haga la página?\n2) ¿Tienes algún ejemplo de estilo?\nCuando lo tengas, te llamo.";
+    return return "¡Hola! Gracias por escribir.\n\nPara ayudarte rápido, cuéntame:\n1) ¿Qué negocio tienes?\n2) ¿Qué te gustaría que haga la página?\n\nCon eso te preparo una demo.";
   }
 
   if (step === 1) {
@@ -864,8 +864,7 @@ function buildLeadReply({ lead, signals }) {
     if (step === 2) {
       return "Te lo dejo fácil: envíame\n(1) nombre del negocio\n(2) servicio principal\n(3) ciudad\nSi tienes logo, mejor. Con eso arranco.";
     }
-    return "No quiero spamearte. Si todavía te interesa, responde DEMO y te la preparo.\nSi no, dime PAUSA y te saco del seguimiento.";
-  }
+    return return "Te escribo rápido para ver si todavía te interesa la página.\n\nSi quieres, puedo prepararte una demo rápida para tu negocio. ¿Lo estás trabajando ahora o lo dejamos para después?";
 
   // Info recibida (pero faltan detalles)
   if (status === "INFO_RECEIVED") {
