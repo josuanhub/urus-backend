@@ -263,7 +263,13 @@ app.post("/v1/wa/webhook", async (req, res) => {
       [lead.id, message_type, String(text || "").trim() || null]
     );
 
-    const signals = extractLeadSignals({ body: text, message_type });
+        const signals = extractLeadSignals({ body: text, message_type });
+
+    // Step actual y próximo step para este lead
+    const currentStep = Number(lead.follow_up_step || 0);
+    const nextStep = ["WAITING_INFO", "READY_TO_CALL"].includes(lead.status)
+      ? currentStep + 1
+      : currentStep;
 
     const mergedLead = {
       ...lead,
@@ -273,7 +279,7 @@ app.post("/v1/wa/webhook", async (req, res) => {
       objection: lead.objection || signals.objection,
       wants_pause: signals.wantsPause,
       main_service: lead.main_service || (signals.mentionsBusinessIntent ? "pending_definition" : null),
-      follow_up_step: lead.follow_up_step || 0,
+      follow_up_step: nextStep, // 👈 ahora guardamos el siguiente paso
       status: lead.status,
     };
 
@@ -772,9 +778,19 @@ function buildLeadReply({ lead, signals }) {
     return "Perfecto. Te pongo en pausa. Cuando quieras retomar, escribe DEMO y lo retomamos.";
   }
 
-  // Si está listo para llamada, cierre humano.
+   // Si está listo para llamada, cierre humano (varios pasos).
   if (status === "READY_TO_CALL") {
-    return "Perfecto. Para prepararte la demo hoy:\n1) ¿Qué quieres que haga la página?\n2) ¿Tienes algún ejemplo de estilo?\nCuando lo tengas, te llamo.";
+    if (step === 0) {
+      return "Perfecto. Para prepararte la demo hoy:\n1) ¿Qué quieres que haga la página?\n2) ¿Tienes algún ejemplo de estilo?\nCuando lo tengas, te llamo.";
+    }
+
+    if (step === 1) {
+      return "Buenísimo. Cuando tengas claro qué quieres que haga la página y algún ejemplo de estilo, me lo envías por aquí y coordinamos la llamada. Así aprovecho y te preparo algo alineado a lo que buscas.";
+    }
+
+    // Paso 2 o más: ya no repetimos el mismo mensaje
+    return "Tranquilo, no hay prisa. Cuando estés listo, envíame:\n1) qué quieres que haga la página\n2) un ejemplo de estilo\nY coordinamos la llamada. Si prefieres hablar primero, dime y cuadramos hora.";
+  }
   }
 
   // Si está esperando info (frío/tibio)
