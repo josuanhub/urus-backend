@@ -293,6 +293,11 @@ app.post("/v1/wa/webhook", async (req, res) => {
       `
      const updated = await pool.query(
   `
+  const prevStep = Number(lead.follow_up_step || 0);
+const nextStep = Math.min(prevStep + 1, 3);
+
+const updated = await pool.query(
+  `
   UPDATE wa_leads
   SET
     last_message = $2,
@@ -321,7 +326,6 @@ app.post("/v1/wa/webhook", async (req, res) => {
     nextStep
   ]
 );
-
     const finalLead = updated.rows[0];
 
     // C) generar reply humano y guardarlo
