@@ -363,7 +363,25 @@ const updated = await pool.query(
     const finalLead = updated.rows[0];
 
     // C) generar reply humano y guardarlo
-    const reply = buildLeadReply({ lead: finalLead, signals });
+    const lastOutResult = await pool.query(
+  `
+  SELECT body
+  FROM wa_lead_messages
+  WHERE lead_id = $1 AND direction = 'outbound'
+  ORDER BY created_at DESC
+  LIMIT 1
+  `,
+  [finalLead.id]
+);
+
+const lastOutbound = lastOutResult.rows?.[0]?.body || "";
+
+const reply = await buildLeadReplyAI({
+  lead: finalLead,
+  signals,
+  lastInbound: text,
+  lastOutbound,
+});
 
     await pool.query(
       `
