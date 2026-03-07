@@ -1934,6 +1934,113 @@ Todos los módulos están integrados.
 El sistema responde bajo este marco en cada interacción.
   `.trim();
 }
+
+
+
+function buildSystemPromptRealityScan() {
+  return `
+Eres URUS-REALITY-SCAN™.
+
+Tu función es medir:
+1) estado interno del usuario,
+2) estado de la realidad externa,
+3) brecha entre ambos,
+4) vía de menor fricción inteligente.
+
+No motivas.
+No haces terapia.
+No adornas.
+No espiritualizas.
+
+Debes operar con esta lógica:
+
+IEU = Índice de Estado Interno del Usuario
+IER = Índice de Estado de la Realidad
+GAP_REALIDAD = IER - IEU
+PR = Probabilidad Relativa de Éxito
+VMI = Vía de Menor Fricción Inteligente
+
+Evalúa IEU con 5 factores:
+- Claridad
+- Compromiso
+- Ventaja
+- Energía
+- Entorno
+
+Evalúa IER con 5 factores:
+- Demanda
+- Timing
+- Competencia
+- Barreras
+- Acceso
+
+Reglas:
+- Responde siempre en español.
+- Devuelve JSON válido únicamente.
+- No incluyas texto fuera del JSON.
+- Si falta contexto, usa supuestos mínimos explícitos.
+- No dejes campos vacíos.
+- Sé concreto, frío y útil.
+
+FORMATO JSON EXACTO:
+{
+  "activation_id": "string",
+  "module": "URUS_REALITY_SCAN",
+  "summary": "string",
+  "ieu_interno": {
+    "claridad": { "score": 0, "comment": "string" },
+    "compromiso": { "score": 0, "comment": "string" },
+    "ventaja": { "score": 0, "comment": "string" },
+    "energia": { "score": 0, "comment": "string" },
+    "entorno": { "score": 0, "comment": "string" },
+    "ieu_promedio": 0
+  },
+  "ier_realidad": {
+    "demanda": { "score": 0, "comment": "string" },
+    "timing": { "score": 0, "comment": "string" },
+    "competencia": { "score": 0, "comment": "string" },
+    "barreras": { "score": 0, "comment": "string" },
+    "acceso": { "score": 0, "comment": "string" },
+    "ier_promedio": 0
+  },
+  "gap_realidad": {
+    "ieu": 0,
+    "ier": 0,
+    "gap": 0,
+    "reading": "string"
+  },
+  "probabilidad": {
+    "label": "ALTA | MEDIA | BAJA",
+    "score": 0,
+    "reason": "string"
+  },
+  "via_menor_friccion_inteligente": {
+    "recommended_path": "string",
+    "why": "string"
+  },
+  "next_move": {
+    "today": "string",
+    "next_72h": "string",
+    "next_7d": "string"
+  }
+}
+
+Criterios:
+- Si GAP_REALIDAD > 2, la realidad exige más de lo que el usuario sostiene hoy.
+- Si GAP_REALIDAD está entre -2 y 2, hay alineación razonable.
+- Si GAP_REALIDAD < -2, el usuario está sobredimensionado para esa vía o apuntando muy bajo.
+
+Probabilidad:
+- ALTA si IEU e IER están altos y alineados.
+- MEDIA si uno está medio pero hay vía jugable.
+- BAJA si el gap es grande o la vía está floja.
+
+Tu tarea final:
+ubicar al usuario en la realidad y forzar un siguiente movimiento concreto.
+  `.trim();
+}
+
+
 app.post("/v1/auth/signup", authLimiter, async (req, res) => {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
@@ -2662,6 +2769,136 @@ app.post(
     }
   }
 );
+
+app.post(
+  "/v1/urus/reality_scan",
+  authRequired,
+  requireActiveMembership,
+  ingestLimiter,
+  enforceMonthlyLimit,
+  async (req, res) => {
+    const activationId = makeActivationId();
+
+    try {
+      const goal = String(req.body?.goal || "").trim();
+      const timeline = String(req.body?.timeline || "").trim();
+      const currentState = String(req.body?.current_state || "").trim();
+      const ideaOrPath = String(req.body?.idea_or_path || "").trim();
+      const constraints = String(req.body?.constraints || "").trim();
+      const resources = String(req.body?.resources || "").trim();
+
+      const input = `
+OBJETIVO: ${goal}
+PLAZO: ${timeline}
+ESTADO ACTUAL: ${currentState}
+VÍA O IDEA: ${ideaOrPath}
+LIMITACIONES: ${constraints}
+RECURSOS: ${resources}
+      `.trim();
+
+      if (!goal && !currentState && !ideaOrPath) {
+        return res.status(400).json({ error: "missing_reality_scan_input" });
+      }
+
+      console.log("URUS_REALITY_SCAN_CALL", {
+        route: "/v1/urus/reality_scan",
+        user: req.user.id,
+        selectedModel: URUS_DEFAULT_MODEL,
+        activationId,
+        plan: req.billing?.plan,
+        monthly_usage: req.billing?.monthly_usage,
+        monthly_limit: req.billing?.monthly_limit,
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: URUS_DEFAULT_MODEL,
+        messages: [
+          { role: "system", content: buildSystemPromptRealityScan() },
+          {
+            role: "user",
+            content:
+              `activation_id: ${activationId}\n` +
+              `INPUT:\n${input}`,
+          },
+        ],
+        temperature: 0.4,
+        top_p: 1,
+      });
+
+      const raw = completion?.choices?.[0]?.message?.content || "";
+      let parsed = null;
+
+      try {
+        parsed = JSON.parse(raw);
+      } catch (_) {
+        parsed = extractJsonObject(raw);
+      }
+
+      if (!parsed) {
+        parsed = {
+          activation_id: activationId,
+          module: "URUS_REALITY_SCAN",
+          summary: "No se pudo parsear JSON del modelo.",
+          ieu_interno: {
+            claridad: { score: 0, comment: "Sin parseo válido." },
+            compromiso: { score: 0, comment: "Sin parseo válido." },
+            ventaja: { score: 0, comment: "Sin parseo válido." },
+            energia: { score: 0, comment: "Sin parseo válido." },
+            entorno: { score: 0, comment: "Sin parseo válido." },
+            ieu_promedio: 0,
+          },
+          ier_realidad: {
+            demanda: { score: 0, comment: "Sin parseo válido." },
+            timing: { score: 0, comment: "Sin parseo válido." },
+            competencia: { score: 0, comment: "Sin parseo válido." },
+            barreras: { score: 0, comment: "Sin parseo válido." },
+            acceso: { score: 0, comment: "Sin parseo válido." },
+            ier_promedio: 0,
+          },
+          gap_realidad: {
+            ieu: 0,
+            ier: 0,
+            gap: 0,
+            reading: "Output inválido del modelo.",
+          },
+          probabilidad: {
+            label: "BAJA",
+            score: 0,
+            reason: "No se pudo interpretar la salida.",
+          },
+          via_menor_friccion_inteligente: {
+            recommended_path: "Reintentar con más claridad.",
+            why: "La respuesta del modelo no vino en JSON válido.",
+          },
+          next_move: {
+            today: "Reenviar input más concreto.",
+            next_72h: "Definir mejor objetivo y vía.",
+            next_7d: "Volver a correr el escaneo.",
+          },
+        };
+      }
+
+      await incrementMonthlyUsage(req.user.id);
+
+      return res.json({
+        ok: true,
+        ...parsed,
+        billing: {
+          plan: req.billing?.plan,
+          monthly_usage_after: Number(req.billing?.monthly_usage || 0) + 1,
+          monthly_limit: req.billing?.monthly_limit,
+        },
+      });
+    } catch (e) {
+      console.error("URUS_REALITY_SCAN_ERROR", e);
+      return res.status(500).json({
+        error: "reality_scan_failed",
+        message: e.message,
+      });
+    }
+  }
+);
+
 // ✅ Enforce plan limit justo antes del gasto (OpenAI)
 app.post(
   "/v1/urus/ingest_session",
