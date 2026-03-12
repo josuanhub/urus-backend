@@ -3010,6 +3010,80 @@ app.post("/v1/intake-leads", async (req, res) => {
   }
 });
 
+app.post("/v1/intake-leads/:id/analyze", async (req, res) => {
+  try {
+    const intakeId = Number(req.params.id);
+
+    if (!intakeId) {
+      return res.status(400).json({ ok: false, error: "invalid_intake_id" });
+    }
+
+    const intakeR = await pool.query(
+      `SELECT * FROM lead_intake_queue WHERE id = $1 LIMIT 1`,
+      [intakeId]
+    );
+
+    if (!intakeR.rows.length) {
+      return res.status(404).json({ ok: false, error: "intake_not_found" });
+    }
+
+    const lead = intakeR.rows[0];
+    const detectedNiche = detectNicheFromLead(lead);
+    const qualificationScore = scoreLeadIntake(lead);
+    const priority = priorityFromScore(qualificationScore);
+    const recommendedTemplate = templateForNiche(detectedNiche);
+
+    const upsertQ = `
+      INSERT INTO lead_intake_analysis
+      (intake_id, qualification_score, priority, detected_niche, recommended_template, notes, tags, analysis_json)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      ON CONFLICT (intake_id)
+      DO UPDATE SET
+        qualification_score = EXCLUDED.qualification_score,
+        priority = EXCLUDED.priority,
+        detected_niche = EXCLUDED.detected_niche,
+        recommended_template = EXCLUDED.recommended_template,
+        notes = EXCLUDED.notes,
+        tags = EXCLUDED.tags,
+        analysis_json = EXCLUDED.analysis_json,
+        updated_at = now()
+      RETURNING *;
+    `;
+
+    const analysisR = await pool.query(upsertQ, [
+      intakeId,
+      qualificationScore,
+      priority,
+      detectedNiche,
+      recommendedTemplate,
+      "Auto-analyzed",
+      JSON.stringify([]),
+      JSON.stringify({
+        qualificationScore,
+        priority,
+        detectedNiche,
+        recommendedTemplate
+      })
+    ]);
+
+    await pool.query(
+      `UPDATE lead_intake_queue
+       SET intake_status = 'ANALYZED', updated_at = now()
+       WHERE id = $1`,
+      [intakeId]
+    );
+
+    return res.json({
+      ok: true,
+      intake: lead,
+      analysis: analysisR.rows[0]
+    });
+  } catch (e) {
+    console.error("INTAKE_ANALYZE_ERROR", e);
+    return res.status(500).json({ ok: false, error: "intake_analyze_failed" });
+  }
+});
+
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
