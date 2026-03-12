@@ -3246,6 +3246,70 @@ app.post("/v1/outreach/process", async (req, res) => {
   }
 });
 
+app.get("/v1/intake-dashboard", authRequired, async (req, res) => {
+  try {
+    const leadsR = await pool.query(`
+      SELECT
+        liq.id,
+        liq.full_name,
+        liq.business_name,
+        liq.phone,
+        liq.email,
+        liq.niche,
+        liq.city,
+        liq.source,
+        liq.intake_status,
+        liq.created_at,
+        liq.updated_at,
+        lia.qualification_score,
+        lia.priority,
+        lia.detected_niche,
+        lia.recommended_template,
+        lia.notes,
+        lia.tags
+      FROM lead_intake_queue liq
+      LEFT JOIN lead_intake_analysis lia
+        ON lia.intake_id = liq.id
+      ORDER BY liq.updated_at DESC, liq.id DESC
+      LIMIT 200
+    `);
+
+    const queueR = await pool.query(`
+      SELECT
+        id,
+        intake_id,
+        channel,
+        message_type,
+        template_key,
+        message_text,
+        media_url,
+        media_filename,
+        scheduled_at,
+        sent_at,
+        send_status,
+        error_message,
+        created_at,
+        updated_at
+      FROM outreach_queue
+      ORDER BY created_at DESC, id DESC
+      LIMIT 200
+    `);
+
+    return res.json({
+      ok: true,
+      leads: leadsR.rows,
+      queue: queueR.rows
+    });
+  } catch (e) {
+    console.error("INTAKE_DASHBOARD_ERROR", e);
+    return res.status(500).json({
+      ok: false,
+      error: "intake_dashboard_failed",
+      message: e.message
+    });
+  }
+});
+
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
