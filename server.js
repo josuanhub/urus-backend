@@ -1056,6 +1056,83 @@ function buildLeadReply({ lead, signals }) {
   return "Perfecto. Para avanzar rápido: ¿tu negocio es servicios o productos? Envíame nombre + logo si lo tienes.";
 }
 
+function detectNicheFromLead(lead) {
+  const text = `${lead.business_name || ""} ${lead.niche || ""} ${lead.city || ""} ${lead.raw_input?.notes || ""}`.toLowerCase();
+
+  if (text.includes("real estate") || text.includes("broker") || text.includes("realtor")) {
+    return "real_estate";
+  }
+
+  if (text.includes("law") || text.includes("attorney") || text.includes("abogado")) {
+    return "legal";
+  }
+
+  if (text.includes("spa") || text.includes("esthetic") || text.includes("beauty") || text.includes("estética")) {
+    return "beauty";
+  }
+
+  if (text.includes("solar") || text.includes("roof") || text.includes("techo")) {
+    return "home_services";
+  }
+
+  return lead.niche || "general";
+}
+
+function scoreLeadIntake(lead) {
+  let score = 0;
+
+  if (lead.phone) score += 3;
+  if (lead.full_name) score += 1;
+  if (lead.business_name) score += 2;
+  if (lead.email) score += 1;
+  if (lead.city) score += 1;
+  if (lead.niche) score += 1;
+
+  return Math.min(score, 10);
+}
+
+function priorityFromScore(score) {
+  if (score >= 7) return "HIGH";
+  if (score >= 4) return "MEDIUM";
+  return "LOW";
+}
+
+function templateForNiche(niche) {
+  switch (niche) {
+    case "real_estate":
+      return "wa_real_estate_intro";
+    case "legal":
+      return "wa_legal_intro";
+    case "beauty":
+      return "wa_beauty_intro";
+    case "home_services":
+      return "wa_home_services_intro";
+    default:
+      return "wa_general_intro";
+  }
+}
+
+function buildOutboundTemplate({ niche, fullName, businessName }) {
+  const name = fullName || businessName || "equipo";
+
+  switch (niche) {
+    case "real_estate":
+      return `Hola ${name}, estoy ayudando a negocios a convertir WhatsApp en una máquina de seguimiento de leads y cierres. Vi tu perfil y creo que te puede servir bastante. Si quieres, te explico en 2 minutos.`;
+
+    case "legal":
+      return `Hola ${name}, estoy montando sistemas por WhatsApp para organizar consultas, seguimiento y clientes potenciales sin perder conversaciones. Si quieres, te muestro cómo funciona.`;
+
+    case "beauty":
+      return `Hola ${name}, estoy ayudando a negocios de estética a responder más rápido, dar seguimiento y organizar prospectos por WhatsApp. Si quieres, te enseño una demo simple.`;
+
+    case "home_services":
+      return `Hola ${name}, estoy montando sistemas de WhatsApp para negocios que reciben cotizaciones y leads, para responder, dar seguimiento y priorizar clientes automáticamente.`;
+
+    default:
+      return `Hola ${name}, estoy ayudando a negocios a organizar contactos, seguimiento y oportunidades por WhatsApp con un sistema simple y efectivo. Si quieres, te cuento cómo funciona.`;
+  }
+}
+
 // ---------- Auth ----------
 function signToken(user) {
   return jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
