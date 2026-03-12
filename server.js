@@ -196,6 +196,77 @@ async function sendWhatsAppText({ to, text }) {
   return { ok: true, data };
 }
 
+async function sendWhatsAppImage({ to, imageUrl, caption = "" }) {
+  if (!WA_TOKEN || !WA_PHONE_NUMBER_ID) {
+    console.error("WA_SEND_IMAGE_MISSING_ENV", { hasToken: !!WA_TOKEN, hasPhoneId: !!WA_PHONE_NUMBER_ID });
+    return { ok: false, error: "missing_whatsapp_env" };
+  }
+
+  const url = `https://graph.facebook.com/v22.0/${WA_PHONE_NUMBER_ID}/messages`;
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: digitsOnly(to),
+    type: "image",
+    image: {
+      link: imageUrl,
+      caption: String(caption || "").slice(0, 1024),
+    },
+  };
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${WA_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    console.error("WA_SEND_IMAGE_ERROR", r.status, data);
+    return { ok: false, status: r.status, data };
+  }
+  return { ok: true, data };
+}
+
+async function sendWhatsAppDocument({ to, documentUrl, filename = "document.pdf", caption = "" }) {
+  if (!WA_TOKEN || !WA_PHONE_NUMBER_ID) {
+    console.error("WA_SEND_DOCUMENT_MISSING_ENV", { hasToken: !!WA_TOKEN, hasPhoneId: !!WA_PHONE_NUMBER_ID });
+    return { ok: false, error: "missing_whatsapp_env" };
+  }
+
+  const url = `https://graph.facebook.com/v22.0/${WA_PHONE_NUMBER_ID}/messages`;
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: digitsOnly(to),
+    type: "document",
+    document: {
+      link: documentUrl,
+      filename,
+      caption: String(caption || "").slice(0, 1024),
+    },
+  };
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${WA_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    console.error("WA_SEND_DOCUMENT_ERROR", r.status, data);
+    return { ok: false, status: r.status, data };
+  }
+  return { ok: true, data };
+}
+
 function buildSystemPromptSalesDemo() {
   return `
 Eres el agente conversacional comercial de URUS.
