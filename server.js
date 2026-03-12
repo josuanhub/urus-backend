@@ -3157,6 +3157,95 @@ app.post("/v1/intake-leads/:id/queue-message", async (req, res) => {
   }
 });
 
+app.post("/v1/outreach/process", async (req, res) => {
+  try {
+    const pendingR = await pool.query(`
+      SELECT oq.*, liq.phone
+      FROM outreach_queue oq
+      JOIN lead_intake_queue liq ON liq.id = oq.intake_id
+      WHERE oq.send_status = 'PENDING'
+        AND (oq.scheduled_at IS NULL OR oq.scheduled_at <= now())
+      ORDER BY oq.created_at ASC
+      LIMIT 20
+    `);
+
+    const results = [];
+
+    for (const row of pendingR.rows) {
+      try {
+        if (!row.phone) {
+          throw new Error("missing_phone");
+        }
+
+        if (row.message_type === "image") {
+          await sendWhatsAppImage({
+            to: row.phone,
+            imageUrl: row.media_url,
+            caption: row.message_text || ""
+          });
+        } else if (row.message_type === "document") {
+          await sendWhatsAppDocument({
+            to: row.phone,
+            documentUrl: row.media_url,
+            filename: row.media_filename || "document.pdf",
+            caption: row.message_text || ""
+          });
+        } else {
+          await sendWhatsAppText({
+            to: row.phone,
+            text: row.message_text || ""
+          });
+        }
+
+        await pool.query(
+          `UPDATE outreach_queue
+             SET send_status = 'SENT', sent_at = now(), updated_at = now()
+           WHERE id = $1`,
+          [row.id]
+        );
+
+        await pool.query(
+          `UPDATE lead_intake_queue
+             SET intake_status = 'SENT', updated_at = now()
+           WHERE id = $1`,
+          [row.intake_id]
+        );
+
+        results.push({
+          outreach_id: row.id,
+          intake_id: row.intake_id,
+          phone: row.phone,
+          status: "SENT"
+        });
+      } catch (err) {
+        await pool.query(
+          `UPDATE outreach_queue
+             SET send_status = 'FAILED', error_message = $2, updated_at = now()
+           WHERE id = $1`,
+          [row.id, String(err.message || err)]
+        );
+
+        results.push({
+          outreach_id: row.id,
+          intake_id: row.intake_id,
+          phone: row.phone,
+          status: "FAILED",
+          error: String(err.message || err)
+        });
+      }
+    }
+
+    return res.json({
+      ok: true,
+      processed: results.length,
+      results
+    });
+  } catch (e) {
+    console.error("OUTREACH_PROCESS_ERROR", e);
+    return res.status(500).json({ ok: false, error: "outreach_process_failed" });
+  }
+});
+
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
