@@ -3010,6 +3010,83 @@ app.post("/v1/intake-leads", async (req, res) => {
   }
 });
 
+app.post("/v1/intake-leads/bulk", authRequired, async (req, res) => {
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+
+    if (!items.length) {
+      return res.status(400).json({ ok: false, error: "items_required" });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const row = items[i] || {};
+
+      const full_name = row.full_name || row.name || null;
+      const business_name = row.business_name || row.business || null;
+      const phone = String(row.phone || "").trim();
+      const email = row.email || null;
+      const niche = row.niche || null;
+      const city = row.city || null;
+      const source = row.source || "csv_import";
+      const raw_input = {
+        notes: row.notes || "",
+        original_row: row
+      };
+
+      if (!phone) {
+        errors.push({
+          index: i,
+          error: "phone_required",
+          row
+        });
+        continue;
+      }
+
+      try {
+        const q = `
+          INSERT INTO lead_intake_queue
+          (full_name, business_name, phone, email, niche, city, source, raw_input)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          RETURNING *;
+        `;
+
+        const r = await pool.query(q, [
+          full_name,
+          business_name,
+          phone,
+          email,
+          niche,
+          city,
+          source,
+          raw_input
+        ]);
+
+        results.push(r.rows[0]);
+      } catch (err) {
+        errors.push({
+          index: i,
+          error: err.message,
+          row
+        });
+      }
+    }
+
+    return res.json({
+      ok: true,
+      inserted: results.length,
+      failed: errors.length,
+      items: results,
+      errors
+    });
+  } catch (e) {
+    console.error("INTAKE_BULK_CREATE_ERROR", e);
+    return res.status(500).json({ ok: false, error: "intake_bulk_create_failed" });
+  }
+});
+
 app.post("/v1/intake-leads/:id/analyze", async (req, res) => {
   try {
     const intakeId = Number(req.params.id);
