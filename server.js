@@ -2968,6 +2968,48 @@ app.get("/v1/wa-leads/metrics", authRequired, async (req, res) => {
   }
 });
 
+app.post("/v1/intake-leads", async (req, res) => {
+  try {
+    const {
+      full_name = null,
+      business_name = null,
+      phone,
+      email = null,
+      niche = null,
+      city = null,
+      source = "manual",
+      raw_input = {}
+    } = req.body || {};
+
+    if (!phone) {
+      return res.status(400).json({ ok: false, error: "phone_required" });
+    }
+
+    const q = `
+      INSERT INTO lead_intake_queue
+      (full_name, business_name, phone, email, niche, city, source, raw_input)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      RETURNING *;
+    `;
+
+    const r = await pool.query(q, [
+      full_name,
+      business_name,
+      phone,
+      email,
+      niche,
+      city,
+      source,
+      raw_input
+    ]);
+
+    return res.json({ ok: true, intake: r.rows[0] });
+  } catch (e) {
+    console.error("INTAKE_CREATE_ERROR", e);
+    return res.status(500).json({ ok: false, error: "intake_create_failed" });
+  }
+});
+
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
