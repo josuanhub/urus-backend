@@ -3084,6 +3084,79 @@ app.post("/v1/intake-leads/:id/analyze", async (req, res) => {
   }
 });
 
+app.post("/v1/intake-leads/:id/queue-message", async (req, res) => {
+  try {
+    const intakeId = Number(req.params.id);
+
+    if (!intakeId) {
+      return res.status(400).json({ ok: false, error: "invalid_intake_id" });
+    }
+
+    const {
+      message_type = "text", // text, image, document
+      media_url = null,
+      media_filename = null,
+      scheduled_at = null
+    } = req.body || {};
+
+    const intakeR = await pool.query(
+      `SELECT * FROM lead_intake_queue WHERE id = $1 LIMIT 1`,
+      [intakeId]
+    );
+
+    if (!intakeR.rows.length) {
+      return res.status(404).json({ ok: false, error: "intake_not_found" });
+    }
+
+    const analysisR = await pool.query(
+      `SELECT * FROM lead_intake_analysis WHERE intake_id = $1 LIMIT 1`,
+      [intakeId]
+    );
+
+    if (!analysisR.rows.length) {
+      return res.status(400).json({ ok: false, error: "lead_not_analyzed" });
+    }
+
+    const lead = intakeR.rows[0];
+    const analysis = analysisR.rows[0];
+
+    const messageText = buildOutboundTemplate({
+      niche: analysis.detected_niche,
+      fullName: lead.full_name,
+      businessName: lead.business_name
+    });
+
+    const insertQ = `
+      INSERT INTO outreach_queue
+      (intake_id, channel, message_type, template_key, message_text, media_url, media_filename, scheduled_at)
+      VALUES ($1,'whatsapp',$2,$3,$4,$5,$6,$7)
+      RETURNING *;
+    `;
+
+    const qR = await pool.query(insertQ, [
+      intakeId,
+      message_type,
+      analysis.recommended_template,
+      messageText,
+      media_url,
+      media_filename,
+      scheduled_at
+    ]);
+
+    await pool.query(
+      `UPDATE lead_intake_queue
+       SET intake_status = 'APPROVED', updated_at = now()
+       WHERE id = $1`,
+      [intakeId]
+    );
+
+    return res.json({ ok: true, queued: qR.rows[0] });
+  } catch (e) {
+    console.error("QUEUE_MESSAGE_ERROR", e);
+    return res.status(500).json({ ok: false, error: "queue_message_failed" });
+  }
+});
+
 async function requireActiveMembership(req, res, next) {
   const userId = req.user.id;
 
