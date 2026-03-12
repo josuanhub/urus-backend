@@ -3087,6 +3087,162 @@ app.post("/v1/intake-leads/bulk", authRequired, async (req, res) => {
   }
 });
 
+app.post("/v1/intake-leads/extract", authRequired, async (req, res) => {
+  try {
+    const {
+      input_type,     // "text" | "image" | "pdf_text"
+      raw_text = "",
+      image_url = "",
+      notes = ""
+    } = req.body || {};
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ ok: false, error: "missing_openai_api_key" });
+    }
+
+    if (!input_type || !["text", "image", "pdf_text"].includes(input_type)) {
+      return res.status(400).json({ ok: false, error: "invalid_input_type" });
+    }
+
+    if ((input_type === "text" || input_type === "pdf_text") && !raw_text.trim()) {
+      return res.status(400).json({ ok: false, error: "raw_text_required" });
+    }
+
+    if (input_type === "image" && !image_url.trim()) {
+      return res.status(400).json({ ok: false, error: "image_url_required" });
+    }
+
+    const systemPrompt = `
+Eres un extractor de leads comerciales.
+
+Tu trabajo:
+- leer el contenido recibido
+- detectar posibles leads o negocios
+- devolver SOLO JSON válido
+- no inventar datos
+- si un dato no existe, usar null
+- si no hay leads, devolver {"items":[]}
+
+Formato exacto de salida:
+{
+  "items": [
+    {
+      "full_name": null,
+      "business_name": null,
+      "phone": null,
+      "email": null,
+      "niche": null,
+      "city": null,
+      "notes": null
+    }
+  ]
+}
+
+Reglas:
+- phone debe quedar solo con números si es posible
+- niche debe ser corto: real estate, legal, beauty, home services, general, etc.
+- notes puede resumir contexto útil
+- no escribas texto fuera del JSON
+`;
+
+    let input;
+
+    if (input_type === "image") {
+      input = [
+        {
+          role: "system",
+          content: [{ type: "input_text", text: systemPrompt }]
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Extrae leads comerciales de esta imagen. Contexto adicional: ${notes || "sin notas"}.`
+            },
+            {
+              type: "input_image",
+              image_url: image_url
+            }
+          ]
+        }
+      ];
+    } else {
+      input = [
+        {
+          role: "system",
+          content: [{ type: "input_text", text: systemPrompt }]
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Extrae leads comerciales del siguiente contenido.\n\nContexto: ${notes || "sin notas"}\n\nContenido:\n${raw_text}`
+            }
+          ]
+        }
+      ];
+    }
+
+    const r = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: process.env.URUS_DEFAULT_MODEL || "gpt-4.1-mini",
+        input
+      })
+    });
+
+    const data = await r.json().catch(() => ({}));
+
+    if (!r.ok) {
+      console.error("EXTRACT_LEADS_OPENAI_ERROR", data);
+      return res.status(500).json({
+        ok: false,
+        error: "extract_leads_model_failed",
+        details: data
+      });
+    }
+
+    const textOutput =
+      data.output_text ||
+      data.output?.map(x => x?.content?.map(c => c?.text || "").join(" ")).join(" ") ||
+      "";
+
+    let parsed;
+    try {
+      parsed = JSON.parse(textOutput);
+    } catch (e) {
+      console.error("EXTRACT_LEADS_PARSE_ERROR", textOutput);
+      return res.status(500).json({
+        ok: false,
+        error: "extract_leads_parse_failed",
+        raw_output: textOutput
+      });
+    }
+
+    const items = Array.isArray(parsed.items) ? parsed.items : [];
+
+    return res.json({
+      ok: true,
+      input_type,
+      count: items.length,
+      items
+    });
+  } catch (e) {
+    console.error("EXTRACT_LEADS_ERROR", e);
+    return res.status(500).json({
+      ok: false,
+      error: "extract_leads_failed",
+      message: e.message
+    });
+  }
+});
+
 app.post("/v1/intake-leads/:id/analyze", async (req, res) => {
   try {
     const intakeId = Number(req.params.id);
