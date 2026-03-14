@@ -153,6 +153,8 @@ app.post(
 // -------------------------------------------------------------------------------
 
 app.use(express.json({ limit: "1mb" }));
+app.use("/v1/moltbook", moltbookRoutes);
+
 // ==============================
 // WHATSAPP CLOUD API — WEBHOOK + SEND (V1)
 // ==============================
