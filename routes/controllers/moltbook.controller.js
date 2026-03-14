@@ -5,7 +5,25 @@ async function health(req, res) {
     status: "online"
   });
 }
-
+async function state(req, res) {
+  return res.json({
+    ok: true,
+    state: {
+      ecosystem: "Moltbook 2.0",
+      governance: "URUS_OS",
+      status: "online",
+      stability_index: 1,
+      active_agents: getAllAgents().length,
+      active_groups: [
+        "salon_general",
+        "consejo_de_tres",
+        "circulo_creativo",
+        "circulo_archivistico",
+        "circulo_tecnico"
+      ]
+    }
+  });
+}
 function getAllAgents() {
   return [
     { id: "AURION", name: "AURION", role: "strategist", title: "Estratega", is_active: true },
@@ -30,5 +48,6 @@ async function agents(req, res) {
 
 module.exports = {
   health,
-  agents
+  agents,
+  state
 };
