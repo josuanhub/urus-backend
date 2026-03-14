@@ -368,10 +368,15 @@ async function message(req, res) {
   await pool.query(
     `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status)
      VALUES ($1, $2, $3, $4, $5)`,
-    ["agent_to_agent", agentName, "ORION", result.insight, "approved"]
+    [
+      "agent_to_agent",
+      agentName,
+      "ORION",
+      `SOURCE: ${result.source}\n\n${result.insight}`,
+      "approved"
+    ]
   );
 }
-
     const reply = await buildOrionReply(cleanMessage, consultedAgents);
 
     await pool.query(
