@@ -914,122 +914,138 @@ app.get("/moltbook", (req, res) => {
   </div>
 
  <script>
-  window.addEventListener("load", function () {
-    const API_BASE = window.location.origin;
+  const API_BASE = window.location.origin;
 
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  async function fetchState() {
+    const stateBox = document.getElementById("stateBox");
+    try {
+      const res = await fetch(API_BASE + "/v1/moltbook/state");
+      const data = await res.json();
+      stateBox.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+      stateBox.textContent = "Error cargando state";
+    }
+  }
+
+  async function fetchHistory() {
+    const historyBox = document.getElementById("historyBox");
+    try {
+      const res = await fetch(API_BASE + "/v1/moltbook/history");
+      const data = await res.json();
+
+      if (!data.items || !data.items.length) {
+        historyBox.textContent = "Sin historial todavía.";
+        return;
+      }
+
+      let html = "";
+      for (let i = 0; i < Math.min(data.items.length, 12); i++) {
+        const item = data.items[i];
+        html +=
+          '<div class="history-item">' +
+            '<div class="tag">' +
+              escapeHtml(item.direction) + ' · ' +
+              escapeHtml(item.actor) + ' → ' +
+              escapeHtml(item.target) +
+            '</div>' +
+            '<div>' + escapeHtml(item.content || "") + '</div>' +
+          '</div>';
+      }
+
+      historyBox.innerHTML = html;
+    } catch (err) {
+      historyBox.textContent = "Error cargando history";
+    }
+  }
+
+  async function sendMessage() {
     const messageInput = document.getElementById("messageInput");
+    const sendStatus = document.getElementById("sendStatus");
+    const orionReply = document.getElementById("orionReply");
+    const consultedAgents = document.getElementById("consultedAgents");
+
+    const message = messageInput.value.trim();
+    if (!message) return;
+
+    sendStatus.textContent = "Enviando...";
+    orionReply.textContent = "Procesando...";
+    consultedAgents.innerHTML = "";
+
+    try {
+      const res = await fetch(API_BASE + "/v1/moltbook/message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          to: "ORION",
+          message: message
+        })
+      });
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        sendStatus.textContent = "Error";
+        orionReply.textContent = JSON.stringify(data, null, 2);
+        return;
+      }
+
+      sendStatus.textContent = "Mensaje procesado.";
+      orionReply.textContent = data.output && data.output.reply
+        ? data.output.reply
+        : "Sin respuesta.";
+
+      const agents = data.consulted_agents || [];
+      if (!agents.length) {
+        consultedAgents.innerHTML = '<span class="muted">No se consultaron agentes.</span>';
+      } else {
+        let html = "";
+        for (let i = 0; i < agents.length; i++) {
+          const a = agents[i];
+          html +=
+            '<div class="agent-card">' +
+              '<div class="pill">' + escapeHtml(a.agent) + '</div>' +
+              '<div style="margin-top:8px; white-space:pre-wrap;">' +
+                escapeHtml(a.insight || "") +
+              '</div>' +
+            '</div>';
+        }
+        consultedAgents.innerHTML = html;
+      }
+
+      await fetchState();
+      await fetchHistory();
+    } catch (err) {
+      sendStatus.textContent = "Error de red";
+      orionReply.textContent = "No se pudo conectar al backend.";
+    }
+  }
+
+  window.onload = function () {
     const sendBtn = document.getElementById("sendBtn");
     const refreshStateBtn = document.getElementById("refreshStateBtn");
     const refreshHistoryBtn = document.getElementById("refreshHistoryBtn");
     const sendStatus = document.getElementById("sendStatus");
-    const orionReply = document.getElementById("orionReply");
-    const consultedAgents = document.getElementById("consultedAgents");
-    const stateBox = document.getElementById("stateBox");
-    const historyBox = document.getElementById("historyBox");
 
-    function escapeHtml(str) {
-      return String(str || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
+    sendStatus.textContent = "JS cargó bien.";
 
-    async function fetchState() {
-      try {
-        const res = await fetch(API_BASE + "/v1/moltbook/state");
-        const data = await res.json();
-        stateBox.textContent = JSON.stringify(data, null, 2);
-      } catch (err) {
-        stateBox.textContent = "Error cargando state";
-      }
-    }
-
-    async function fetchHistory() {
-      try {
-        const res = await fetch(API_BASE + "/v1/moltbook/history");
-        const data = await res.json();
-
-        if (!data.items || !data.items.length) {
-          historyBox.textContent = "Sin historial todavía.";
-          return;
-        }
-
-        historyBox.innerHTML = data.items.slice(0, 12).map(function (item) {
-          return (
-            '<div class="history-item">' +
-              '<div class="tag">' +
-                escapeHtml(item.direction) + ' · ' +
-                escapeHtml(item.actor) + ' → ' +
-                escapeHtml(item.target) +
-              '</div>' +
-              '<div>' + escapeHtml(item.content || "") + '</div>' +
-            '</div>'
-          );
-        }).join("");
-      } catch (err) {
-        historyBox.textContent = "Error cargando history";
-      }
-    }
-
-    async function sendMessage() {
-      const message = messageInput.value.trim();
-      if (!message) return;
-
-      sendStatus.textContent = "Enviando...";
-      orionReply.textContent = "Procesando...";
-      consultedAgents.innerHTML = "";
-
-      try {
-        const res = await fetch(API_BASE + "/v1/moltbook/message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: "ORION",
-            message: message
-          })
-        });
-
-        const data = await res.json();
-
-        if (!data.ok) {
-          sendStatus.textContent = "Error";
-          orionReply.textContent = JSON.stringify(data, null, 2);
-          return;
-        }
-
-        sendStatus.textContent = "Mensaje procesado.";
-        orionReply.textContent = (data.output && data.output.reply) ? data.output.reply : "Sin respuesta.";
-
-        const agents = data.consulted_agents || [];
-        if (!agents.length) {
-          consultedAgents.innerHTML = '<span class="muted">No se consultaron agentes.</span>';
-        } else {
-          consultedAgents.innerHTML = agents.map(function (a) {
-            return (
-              '<div class="agent-card">' +
-                '<div class="pill">' + escapeHtml(a.agent) + '</div>' +
-                '<div style="margin-top:8px; white-space:pre-wrap;">' + escapeHtml(a.insight || "") + '</div>' +
-              '</div>'
-            );
-          }).join("");
-        }
-
-        await fetchState();
-        await fetchHistory();
-      } catch (err) {
-        sendStatus.textContent = "Error de red";
-        orionReply.textContent = "No se pudo conectar al backend.";
-      }
-    }
-
-    sendBtn.addEventListener("click", sendMessage);
-    refreshStateBtn.addEventListener("click", fetchState);
-    refreshHistoryBtn.addEventListener("click", fetchHistory);
+    if (sendBtn) sendBtn.onclick = sendMessage;
+    if (refreshStateBtn) refreshStateBtn.onclick = fetchState;
+    if (refreshHistoryBtn) refreshHistoryBtn.onclick = fetchHistory;
 
     fetchState();
     fetchHistory();
+  };
 </script>
 </body>
 </html>`);
