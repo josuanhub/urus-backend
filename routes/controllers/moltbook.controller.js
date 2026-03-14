@@ -80,23 +80,72 @@ function reviewByURUS(message) {
   };
 }
 
-function buildOrionReply(message) {
+function buildAgentConsults(message) {
+  const text = String(message || "").trim();
+  const lower = text.toLowerCase();
+  const consulted = [];
+
+  if (
+    lower.includes("estrategia") ||
+    lower.includes("decisión") ||
+    lower.includes("prioridad") ||
+    lower.includes("negocio") ||
+    lower.includes("ecosistema")
+  ) {
+    consulted.push({
+      agent: "AURION",
+      role: "strategist",
+      input: text,
+      insight: "AURION sugiere evaluar prioridades, dirección estratégica y consecuencias antes de actuar."
+    });
+  }
+
+  if (
+    lower.includes("organiza") ||
+    lower.includes("orden") ||
+    lower.includes("plan") ||
+    lower.includes("estructura")
+  ) {
+    consulted.push({
+      agent: "MIRA",
+      role: "coordinator",
+      input: text,
+      insight: "MIRA sugiere separar objetivo, prioridades, secuencia y próximos pasos ejecutables."
+    });
+  }
+
+  if (
+    lower.includes("riesgo") ||
+    lower.includes("peligro") ||
+    lower.includes("amenaza") ||
+    lower.includes("violencia")
+  ) {
+    consulted.push({
+      agent: "VORLAN",
+      role: "guardian",
+      input: text,
+      insight: "VORLAN recomienda revisar riesgo, lenguaje y límites antes de continuar."
+    });
+  }
+
+  return consulted;
+}
+
+function buildOrionReply(message, consultedAgents = []) {
   const text = String(message || "").trim();
   const lower = text.toLowerCase();
 
   if (lower.includes("estado del ecosistema")) {
-    return "Soy ORION. El ecosistema está online, con 10 agentes activos y gobernanza URUS_OS operando.";
+    return "Soy ORION. El ecosistema está online, con 10 agentes activos, memoria en Postgres, auditoría activa y gobernanza URUS_OS operando.";
   }
 
-  if (lower.includes("organiza") || lower.includes("orden")) {
-    return "Soy ORION. Puedo organizar esto contigo. Siguiente paso: separar objetivo, prioridades y acciones.";
+  if (consultedAgents.length === 0) {
+    return `Soy ORION. Recibí tu mensaje: "${text}". En este momento no fue necesario consultar a otros agentes.`;
   }
 
-  if (lower.includes("riesgo") || lower.includes("peligro")) {
-    return "Soy ORION. Detecto que esta solicitud requiere revisión más cuidadosa. Ya estamos registrando auditoría básica.";
-  }
+  const names = consultedAgents.map((a) => a.agent).join(", ");
 
-  return `Soy ORION. Recibí tu mensaje: "${text}". Bloque 3 está activo con memoria, auditoría y gobernanza básica.`;
+  return `Soy ORION. Consulté a ${names} para procesar tu solicitud. Ya tenemos una primera lectura coordinada del ecosistema sobre esto.`;
 }
 
 async function message(req, res) {
@@ -142,8 +191,9 @@ async function message(req, res) {
     });
   }
 
-  const reply = buildOrionReply(cleanMessage);
-
+  const consultedAgents = buildAgentConsults(cleanMessage);
+  const reply = buildOrionReply(cleanMessage, consultedAgents);
+  
   const outputRecord = {
     id: messageHistory.length + 1,
     type: "agent_to_human",
@@ -172,10 +222,11 @@ async function message(req, res) {
       to: "ORION",
       message: cleanMessage
     },
-    output: {
-      from: "ORION",
-      reply
-    }
+   output: {
+  from: "ORION",
+  reply
+},
+consulted_agents: consultedAgents
   });
 }
 
