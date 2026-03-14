@@ -1,3 +1,5 @@
+const { getAllAgents } = require("../modules/moltbook/registry/agents.registry");
+
 async function health(req, res) {
   return res.json({
     ok: true,
@@ -6,6 +8,14 @@ async function health(req, res) {
   });
 }
 
+async function agents(req, res) {
+  return res.json({
+    ok: true,
+    items: getAllAgents()
+  });
+}
+
 module.exports = {
-  health
+  health,
+  agents
 };
