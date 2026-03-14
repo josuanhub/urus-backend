@@ -375,10 +375,16 @@ async function message(req, res) {
     );
 
     await pool.query(
-      `INSERT INTO moltbook_audit (event, actor, target, reason, message)
-       VALUES ($1, $2, $3, $4, $5)`,
-      ["message_approved", "URUS_OS", "ORION", null, cleanMessage]
-    );
+  `INSERT INTO moltbook_audit (event, actor, target, reason, message)
+   VALUES ($1, $2, $3, $4, $5)`,
+  [
+    "message_approved",
+    "URUS_OS",
+    "ORION",
+    consultedNames.length ? `consulted:${consultedNames.join(",")}` : null,
+    cleanMessage
+  ]
+);
 
     return res.json({
       ok: true,
