@@ -362,9 +362,15 @@ async function message(req, res) {
     const consultedAgents = [];
 
     for (const agentName of consultedNames) {
-      const result = await runAgentInsight(agentName, cleanMessage);
-      consultedAgents.push(result);
-    }
+  const result = await runAgentInsight(agentName, cleanMessage);
+  consultedAgents.push(result);
+
+  await pool.query(
+    `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status)
+     VALUES ($1, $2, $3, $4, $5)`,
+    ["agent_to_agent", agentName, "ORION", result.insight, "approved"]
+  );
+}
 
     const reply = await buildOrionReply(cleanMessage, consultedAgents);
 
