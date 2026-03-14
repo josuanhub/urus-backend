@@ -35,7 +35,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // OpenAI SDK (robusto)
 const OpenAI = require("openai").default;
-
+const moltbookRoutes = require("./routes/moltbook.routes");
 const app = express();
 
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
