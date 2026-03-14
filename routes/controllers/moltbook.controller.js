@@ -463,6 +463,30 @@ async function agentHistory(req, res) {
   }
 }
 
+async function internalHistory(req, res) {
+  try {
+    const pool = getPool();
+
+    const r = await pool.query(
+      `SELECT id, direction, actor, target, content, urus_status, created_at
+       FROM moltbook_messages
+       WHERE direction = $1
+       ORDER BY id DESC
+       LIMIT 50`,
+      ["agent_to_agent"]
+    );
+
+    return res.json({
+      ok: true,
+      count: r.rows.length,
+      items: r.rows
+    });
+  } catch (err) {
+    console.error("MOLTBOOK_INTERNAL_HISTORY_ERROR", err);
+    return res.status(500).json({ ok: false, error: "internal_history_failed" });
+  }
+}
+
 async function audit(req, res) {
   try {
     const pool = getPool();
