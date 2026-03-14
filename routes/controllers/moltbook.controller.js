@@ -70,17 +70,21 @@ function pickConsultedAgents(message) {
   }
 
   if (
-    text.includes("siento") ||
-    text.includes("miedo") ||
-    text.includes("ansiedad") ||
-    text.includes("dolor") ||
-    text.includes("bloqueo") ||
-    text.includes("confusión") ||
-    text.includes("emoción") ||
-    text.includes("relación interna")
-  ) {
-    agents.push("MIRA");
-  }
+  text.includes("siento") ||
+  text.includes("miedo") ||
+  text.includes("ansiedad") ||
+  text.includes("dolor") ||
+  text.includes("bloqueo") ||
+  text.includes("confusión") ||
+  text.includes("emoción") ||
+  text.includes("relación interna") ||
+  text.includes("vender") ||
+  text.includes("cash") ||
+  text.includes("grande") ||
+  text.includes("quiero construir")
+) {
+  agents.push("MIRA");
+}
 
   if (
   text.includes("equipo") ||
@@ -94,11 +98,11 @@ function pickConsultedAgents(message) {
   text.includes("ayuda") ||
   text.includes("solo") ||
   text.includes("colaborar") ||
-  text.includes("buscar ayuda")||
-  text.includes("vender") ||
-  text.includes("cash") ||
-  text.includes("grande") ||
-  text.includes("quiero construir")
+  text.includes("buscar ayuda") ||
+  text.includes("escalable") ||
+  text.includes("multiagente") ||
+  text.includes("sistema") ||
+  text.includes("vendible")
 ) {
   agents.push("VORLAN");
 }
