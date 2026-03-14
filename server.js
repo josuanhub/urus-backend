@@ -913,8 +913,10 @@ app.get("/moltbook", (req, res) => {
     </div>
   </div>
 
-  <script>
+ <script>
+  window.addEventListener("load", function () {
     const API_BASE = window.location.origin;
+
     const messageInput = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
     const refreshStateBtn = document.getElementById("refreshStateBtn");
@@ -927,16 +929,16 @@ app.get("/moltbook", (req, res) => {
 
     function escapeHtml(str) {
       return String(str || "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
     async function fetchState() {
       try {
-        const res = await fetch(\`\${API_BASE}/v1/moltbook/state\`);
+        const res = await fetch(API_BASE + "/v1/moltbook/state");
         const data = await res.json();
         stateBox.textContent = JSON.stringify(data, null, 2);
       } catch (err) {
@@ -946,7 +948,7 @@ app.get("/moltbook", (req, res) => {
 
     async function fetchHistory() {
       try {
-        const res = await fetch(\`\${API_BASE}/v1/moltbook/history\`);
+        const res = await fetch(API_BASE + "/v1/moltbook/history");
         const data = await res.json();
 
         if (!data.items || !data.items.length) {
@@ -954,13 +956,17 @@ app.get("/moltbook", (req, res) => {
           return;
         }
 
-        historyBox.innerHTML = data.items.slice(0, 12).map(item => {
-          return \`
-            <div class="history-item">
-              <div class="tag">\${escapeHtml(item.direction)} · \${escapeHtml(item.actor)} → \${escapeHtml(item.target)}</div>
-              <div>\${escapeHtml(item.content || "")}</div>
-            </div>
-          \`;
+        historyBox.innerHTML = data.items.slice(0, 12).map(function (item) {
+          return (
+            '<div class="history-item">' +
+              '<div class="tag">' +
+                escapeHtml(item.direction) + ' · ' +
+                escapeHtml(item.actor) + ' → ' +
+                escapeHtml(item.target) +
+              '</div>' +
+              '<div>' + escapeHtml(item.content || "") + '</div>' +
+            '</div>'
+          );
         }).join("");
       } catch (err) {
         historyBox.textContent = "Error cargando history";
@@ -976,12 +982,12 @@ app.get("/moltbook", (req, res) => {
       consultedAgents.innerHTML = "";
 
       try {
-        const res = await fetch(\`\${API_BASE}/v1/moltbook/message\`, {
+        const res = await fetch(API_BASE + "/v1/moltbook/message", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             to: "ORION",
-            message
+            message: message
           })
         });
 
@@ -994,19 +1000,19 @@ app.get("/moltbook", (req, res) => {
         }
 
         sendStatus.textContent = "Mensaje procesado.";
-        orionReply.textContent = data.output?.reply || "Sin respuesta.";
+        orionReply.textContent = (data.output && data.output.reply) ? data.output.reply : "Sin respuesta.";
 
         const agents = data.consulted_agents || [];
         if (!agents.length) {
           consultedAgents.innerHTML = '<span class="muted">No se consultaron agentes.</span>';
         } else {
-          consultedAgents.innerHTML = agents.map(a => {
-            return \`
-              <div class="agent-card">
-                <div class="pill">\${escapeHtml(a.agent)}</div>
-                <div style="margin-top:8px; white-space:pre-wrap;">\${escapeHtml(a.insight || "")}</div>
-              </div>
-            \`;
+          consultedAgents.innerHTML = agents.map(function (a) {
+            return (
+              '<div class="agent-card">' +
+                '<div class="pill">' + escapeHtml(a.agent) + '</div>' +
+                '<div style="margin-top:8px; white-space:pre-wrap;">' + escapeHtml(a.insight || "") + '</div>' +
+              '</div>'
+            );
           }).join("");
         }
 
@@ -1024,7 +1030,7 @@ app.get("/moltbook", (req, res) => {
 
     fetchState();
     fetchHistory();
-  </script>
+</script>
 </body>
 </html>`);
 });
