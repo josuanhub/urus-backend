@@ -281,12 +281,45 @@ async function state(req, res) {
   try {
     const pool = getPool();
 
-    const historyCountR = await pool.query(
+    const totalMessagesR = await pool.query(
       `SELECT COUNT(*)::int AS count FROM moltbook_messages`
+    );
+
+    const humanMessagesR = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM moltbook_messages
+       WHERE direction = 'human_to_agent'`
+    );
+
+    const internalMessagesR = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM moltbook_messages
+       WHERE direction = 'agent_to_agent'`
+    );
+
+    const orionRepliesR = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM moltbook_messages
+       WHERE direction = 'agent_to_human'
+         AND actor = 'ORION'`
     );
 
     const auditCountR = await pool.query(
       `SELECT COUNT(*)::int AS count FROM moltbook_audit`
+    );
+
+    const lastMessageR = await pool.query(
+      `SELECT id, direction, actor, target, content, urus_status, created_at
+       FROM moltbook_messages
+       ORDER BY id DESC
+       LIMIT 1`
+    );
+
+    const lastAuditR = await pool.query(
+      `SELECT id, event, actor, target, reason, message, created_at
+       FROM moltbook_audit
+       ORDER BY id DESC
+       LIMIT 1`
     );
 
     return res.json({
@@ -297,6 +330,7 @@ async function state(req, res) {
         status: "online",
         stability_index: 1,
         active_agents: getAllAgents().length,
+        active_agent_ids: getAllAgents().map((a) => a.id),
         active_groups: [
           "salon_general",
           "consejo_de_tres",
@@ -304,8 +338,15 @@ async function state(req, res) {
           "circulo_archivistico",
           "circulo_tecnico"
         ],
-        history_count: historyCountR.rows[0].count,
-        audit_count: auditCountR.rows[0].count
+        metrics: {
+          total_messages: totalMessagesR.rows[0].count,
+          human_messages: humanMessagesR.rows[0].count,
+          internal_messages: internalMessagesR.rows[0].count,
+          orion_replies: orionRepliesR.rows[0].count,
+          audit_events: auditCountR.rows[0].count
+        },
+        last_message: lastMessageR.rows[0] || null,
+        last_audit: lastAuditR.rows[0] || null
       }
     });
   } catch (err) {
