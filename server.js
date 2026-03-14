@@ -96,6 +96,7 @@ const pool = new Pool({
 
 // 🔧 FIX: alias para que db.query funcione
 const db = pool;
+global.__URUS_DB__ = pool;
 
 // ---------- Security / Middleware ----------
 app.use(helmet());
