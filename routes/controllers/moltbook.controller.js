@@ -491,5 +491,6 @@ module.exports = {
   message,
   history,
   agentHistory,
-  audit
+  audit,
+  internalHistory
 };
