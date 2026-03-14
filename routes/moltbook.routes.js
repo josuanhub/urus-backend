@@ -1,13 +1,8 @@
 const express = require("express");
+const controller = require("../controllers/moltbook.controller");
 
 const router = express.Router();
 
-router.get("/health", async (req, res) => {
-  return res.json({
-    ok: true,
-    module: "moltbook",
-    status: "online"
-  });
-});
+router.get("/health", controller.health);
 
 module.exports = router;
