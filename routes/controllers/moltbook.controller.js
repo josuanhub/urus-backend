@@ -83,21 +83,21 @@ function pickConsultedAgents(message) {
   }
 
   if (
-    text.includes("equipo") ||
-    text.includes("personas") ||
-    text.includes("conflicto") ||
-    text.includes("jerarquía") ||
-    text.includes("orden") ||
-    text.includes("social") ||
-    text.includes("riesgo relacional") ||
-    text.includes("grupo")
-    text.includes("ayuda") ||
-    text.includes("solo") ||
-    text.includes("colaborar") ||
-    text.includes("buscar ayuda")
-    ) {
-    agents.push("VORLAN");
-  }
+  text.includes("equipo") ||
+  text.includes("personas") ||
+  text.includes("conflicto") ||
+  text.includes("jerarquía") ||
+  text.includes("orden") ||
+  text.includes("social") ||
+  text.includes("riesgo relacional") ||
+  text.includes("grupo") ||
+  text.includes("ayuda") ||
+  text.includes("solo") ||
+  text.includes("colaborar") ||
+  text.includes("buscar ayuda")
+) {
+  agents.push("VORLAN");
+}
 
   if (!agents.length) {
     agents.push("AURION");
