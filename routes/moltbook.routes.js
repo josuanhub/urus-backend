@@ -10,5 +10,6 @@ router.post("/message", controller.message);
 router.get("/history", controller.history);
 router.get("/agent/:id/history", controller.agentHistory);
 router.get("/audit", controller.audit);
+router.get("/internal/history", controller.internalHistory);
 
 module.exports = router;
