@@ -94,7 +94,11 @@ function pickConsultedAgents(message) {
   text.includes("ayuda") ||
   text.includes("solo") ||
   text.includes("colaborar") ||
-  text.includes("buscar ayuda")
+  text.includes("buscar ayuda")||
+  text.includes("vender") ||
+  text.includes("cash") ||
+  text.includes("grande") ||
+  text.includes("quiero construir")
 ) {
   agents.push("VORLAN");
 }
