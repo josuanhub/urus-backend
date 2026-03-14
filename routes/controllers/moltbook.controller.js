@@ -425,7 +425,7 @@ async function history(req, res) {
        ORDER BY id DESC
        LIMIT 50`
     );
-
+    
     return res.json({
       ok: true,
       count: r.rows.length,
@@ -434,6 +434,32 @@ async function history(req, res) {
   } catch (err) {
     console.error("MOLTBOOK_HISTORY_ERROR", err);
     return res.status(500).json({ ok: false, error: "history_failed" });
+  }
+}
+
+async function agentHistory(req, res) {
+  try {
+    const pool = getPool();
+    const agentId = String(req.params.id || "").toUpperCase();
+
+    const r = await pool.query(
+      `SELECT id, direction, actor, target, content, urus_status, created_at
+       FROM moltbook_messages
+       WHERE actor = $1 OR target = $1
+       ORDER BY id DESC
+       LIMIT 50`,
+      [agentId]
+    );
+
+    return res.json({
+      ok: true,
+      agent: agentId,
+      count: r.rows.length,
+      items: r.rows
+    });
+  } catch (err) {
+    console.error("MOLTBOOK_AGENT_HISTORY_ERROR", err);
+    return res.status(500).json({ ok: false, error: "agent_history_failed" });
   }
 }
 
