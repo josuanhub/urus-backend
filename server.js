@@ -737,6 +737,298 @@ app.get("/demo", (req, res) => {
 </html>`);
 });
 
+app.get("/moltbook", (req, res) => {
+  res.type("html").send(`<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Moltbook UI</title>
+  <style>
+    :root{
+      --bg:#0b0b0b;
+      --panel:#141414;
+      --panel2:#101010;
+      --line:#262626;
+      --text:#f5f5f5;
+      --muted:#9a9a9a;
+      --gold:#c9a24d;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:24px;
+    }
+    h1{
+      margin:0 0 8px;
+      font-size:28px;
+    }
+    .sub{
+      color:var(--muted);
+      margin-bottom:22px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1.2fr .8fr;
+      gap:20px;
+    }
+    .card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.22);
+    }
+    .card h2{
+      margin:0 0 12px;
+      font-size:18px;
+    }
+    textarea{
+      width:100%;
+      min-height:120px;
+      resize:vertical;
+      background:var(--panel2);
+      color:var(--text);
+      border:1px solid #333;
+      border-radius:12px;
+      padding:12px;
+      font-size:15px;
+      outline:none;
+    }
+    button{
+      background:var(--gold);
+      color:#111;
+      border:0;
+      border-radius:12px;
+      padding:12px 16px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    button.secondary{
+      background:#202020;
+      color:var(--text);
+      border:1px solid #333;
+    }
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .muted{
+      color:var(--muted);
+      font-size:14px;
+      margin-top:10px;
+    }
+    .box{
+      background:var(--panel2);
+      border:1px solid #2a2a2a;
+      border-radius:12px;
+      padding:12px;
+      white-space:pre-wrap;
+      line-height:1.5;
+      overflow:auto;
+    }
+    .pill{
+      display:inline-block;
+      background:#222;
+      border:1px solid #333;
+      color:#ddd;
+      padding:6px 10px;
+      border-radius:999px;
+      margin:4px 6px 0 0;
+      font-size:13px;
+    }
+    .agent-card{
+      margin-top:10px;
+      padding:12px;
+      border:1px solid #2a2a2a;
+      border-radius:12px;
+      background:var(--panel2);
+    }
+    .history-item{
+      border-bottom:1px solid #222;
+      padding:10px 0;
+    }
+    .history-item:last-child{
+      border-bottom:0;
+    }
+    .tag{
+      font-size:12px;
+      color:var(--gold);
+      margin-bottom:6px;
+    }
+    @media (max-width: 900px){
+      .grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Moltbook — UI mínima</h1>
+    <div class="sub">ORION + URUS_OS + memoria + auditoría</div>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h2>Enviar mensaje</h2>
+          <textarea id="messageInput" placeholder="Escribe aquí tu mensaje a ORION..."></textarea>
+          <div class="actions">
+            <button id="sendBtn">Enviar a ORION</button>
+            <button class="secondary" id="refreshStateBtn">Refrescar state</button>
+            <button class="secondary" id="refreshHistoryBtn">Refrescar history</button>
+          </div>
+          <div class="muted" id="sendStatus">Esperando acción...</div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+          <h2>Respuesta de ORION</h2>
+          <div id="orionReply" class="box">Aquí aparecerá la respuesta...</div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+          <h2>Agentes consultados</h2>
+          <div id="consultedAgents"></div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+          <h2>History</h2>
+          <div id="historyBox" class="box">Cargando...</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>State</h2>
+          <div id="stateBox" class="box">Cargando...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const refreshStateBtn = document.getElementById("refreshStateBtn");
+    const refreshHistoryBtn = document.getElementById("refreshHistoryBtn");
+    const sendStatus = document.getElementById("sendStatus");
+    const orionReply = document.getElementById("orionReply");
+    const consultedAgents = document.getElementById("consultedAgents");
+    const stateBox = document.getElementById("stateBox");
+    const historyBox = document.getElementById("historyBox");
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function fetchState() {
+      try {
+        const res = await fetch(\`\${API_BASE}/v1/moltbook/state\`);
+        const data = await res.json();
+        stateBox.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        stateBox.textContent = "Error cargando state";
+      }
+    }
+
+    async function fetchHistory() {
+      try {
+        const res = await fetch(\`\${API_BASE}/v1/moltbook/history\`);
+        const data = await res.json();
+
+        if (!data.items || !data.items.length) {
+          historyBox.textContent = "Sin historial todavía.";
+          return;
+        }
+
+        historyBox.innerHTML = data.items.slice(0, 12).map(item => {
+          return \`
+            <div class="history-item">
+              <div class="tag">\${escapeHtml(item.direction)} · \${escapeHtml(item.actor)} → \${escapeHtml(item.target)}</div>
+              <div>\${escapeHtml(item.content || "")}</div>
+            </div>
+          \`;
+        }).join("");
+      } catch (err) {
+        historyBox.textContent = "Error cargando history";
+      }
+    }
+
+    async function sendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+
+      sendStatus.textContent = "Enviando...";
+      orionReply.textContent = "Procesando...";
+      consultedAgents.innerHTML = "";
+
+      try {
+        const res = await fetch(\`\${API_BASE}/v1/moltbook/message\`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: "ORION",
+            message
+          })
+        });
+
+        const data = await res.json();
+
+        if (!data.ok) {
+          sendStatus.textContent = "Error";
+          orionReply.textContent = JSON.stringify(data, null, 2);
+          return;
+        }
+
+        sendStatus.textContent = "Mensaje procesado.";
+        orionReply.textContent = data.output?.reply || "Sin respuesta.";
+
+        const agents = data.consulted_agents || [];
+        if (!agents.length) {
+          consultedAgents.innerHTML = '<span class="muted">No se consultaron agentes.</span>';
+        } else {
+          consultedAgents.innerHTML = agents.map(a => {
+            return \`
+              <div class="agent-card">
+                <div class="pill">\${escapeHtml(a.agent)}</div>
+                <div style="margin-top:8px; white-space:pre-wrap;">\${escapeHtml(a.insight || "")}</div>
+              </div>
+            \`;
+          }).join("");
+        }
+
+        await fetchState();
+        await fetchHistory();
+      } catch (err) {
+        sendStatus.textContent = "Error de red";
+        orionReply.textContent = "No se pudo conectar al backend.";
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    refreshStateBtn.addEventListener("click", fetchState);
+    refreshHistoryBtn.addEventListener("click", fetchHistory);
+
+    fetchState();
+    fetchHistory();
+  </script>
+</body>
+</html>`);
+});
+
 // Rate limit global (IP)
 app.use(
   rateLimit({
