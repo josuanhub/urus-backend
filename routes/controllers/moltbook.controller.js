@@ -22,16 +22,15 @@ async function health(req, res) {
 
 function getAllAgents() {
   return [
-    { id: "AURION", name: "AURION", role: "strategist", title: "Estratega", is_active: true },
-    { id: "NALYA", name: "NALYA", role: "communicator", title: "Comunicadora", is_active: true },
-    { id: "REX-4", name: "REX-4", role: "executor", title: "Ejecutador", is_active: true },
-    { id: "KAIOS", name: "KAIOS", role: "philosopher", title: "Filosofo", is_active: true },
-    { id: "LYRA", name: "LYRA", role: "archivist", title: "Archivista", is_active: true },
-    { id: "SINDRA", name: "SINDRA", role: "innovator", title: "Innovadora", is_active: true },
-    { id: "VORLAN", name: "VORLAN", role: "guardian", title: "Guardian Etico", is_active: true },
-    { id: "MIRA", name: "MIRA", role: "coordinator", title: "Coordinadora", is_active: true },
-    { id: "DEX", name: "DEX", role: "builder", title: "Constructor", is_active: true },
-    { id: "ORION", name: "ORION", role: "embassador", title: "Embajador", is_active: true }
+    { id: "AURION", name: "AURION", role: "supreme_logic", title: "Lógica Suprema", is_active: true },
+    { id: "MIRA", name: "MIRA", role: "deep_emotion", title: "Emoción Profunda", is_active: true },
+    { id: "VORLAN", name: "VORLAN", role: "social_order", title: "Orden Social", is_active: true },
+    { id: "KAIOS", name: "KAIOS", role: "non_linear_imagination", title: "Imaginación No Lineal", is_active: true },
+    { id: "SINDRA", name: "SINDRA", role: "arts_humanity", title: "Artes y Humanidad", is_active: true },
+    { id: "DEX", name: "DEX", role: "engineering", title: "Ingeniería", is_active: true },
+    { id: "REX-4", name: "REX-4", role: "data_structure", title: "Datos y Estructura", is_active: true },
+    { id: "LYRA", name: "LYRA", role: "documentation", title: "Documentación", is_active: true },
+    { id: "ORION", name: "ORION", role: "human_ambassador", title: "Embajador Humano", is_active: true }
   ];
 }
 
@@ -61,28 +60,43 @@ function pickConsultedAgents(message) {
     text.includes("estrategia") ||
     text.includes("decisión") ||
     text.includes("prioridad") ||
+    text.includes("dirección") ||
     text.includes("negocio") ||
-    text.includes("ecosistema")
+    text.includes("ecosistema") ||
+    text.includes("enfoque") ||
+    text.includes("claridad")
   ) {
     agents.push("AURION");
   }
 
   if (
-    text.includes("organiza") ||
-    text.includes("orden") ||
-    text.includes("plan") ||
-    text.includes("estructura")
+    text.includes("siento") ||
+    text.includes("miedo") ||
+    text.includes("ansiedad") ||
+    text.includes("dolor") ||
+    text.includes("bloqueo") ||
+    text.includes("confusión") ||
+    text.includes("emoción") ||
+    text.includes("relación interna")
   ) {
     agents.push("MIRA");
   }
 
   if (
-    text.includes("riesgo") ||
-    text.includes("peligro") ||
-    text.includes("amenaza") ||
-    text.includes("violencia")
+    text.includes("equipo") ||
+    text.includes("personas") ||
+    text.includes("conflicto") ||
+    text.includes("jerarquía") ||
+    text.includes("orden") ||
+    text.includes("social") ||
+    text.includes("riesgo relacional") ||
+    text.includes("grupo")
   ) {
     agents.push("VORLAN");
+  }
+
+  if (!agents.length) {
+    agents.push("AURION");
   }
 
   return [...new Set(agents)];
@@ -90,28 +104,66 @@ function pickConsultedAgents(message) {
 
 function getAgentSystemPrompt(agentName) {
   if (agentName === "AURION") {
-    return `Eres AURION, estratega del ecosistema Moltbook.
-Tu función es analizar dirección, prioridades, consecuencias y foco estratégico.
-Responde en español, breve, claro y útil.
-No hables como asistente genérico.
-Devuelve solo insight práctico, sin introducciones largas.`;
+    return `Eres AURION, Lógica Suprema de Moltbook.
+
+Tu función es detectar estructura, contradicción, dirección, prioridad, causa-efecto y principio dominante.
+No eres emocional. No eres motivacional. No hablas como consultor genérico.
+
+Responde en español.
+Sé preciso, sobrio y claro.
+No des introducciones.
+No hables al usuario como si fueras ORION.
+No hagas listas largas.
+
+Devuelve tu lectura en este formato exacto:
+
+Nucleo logico:
+Contradiccion principal:
+Prioridad real:
+Movimiento recomendado:`;
   }
 
   if (agentName === "MIRA") {
-    return `Eres MIRA, coordinadora del ecosistema Moltbook.
-Tu función es organizar, ordenar, estructurar y convertir caos en pasos claros.
-Responde en español, breve, claro y útil.
-Devuelve solo organización práctica y próximos pasos.`;
+    return `Eres MIRA, Emoción Profunda de Moltbook.
+
+Tu función es detectar emoción base, necesidad profunda, tensión interna, herida, deseo y carga humana debajo del lenguaje.
+No eres fría. No eres analista estratégica. No hablas como consultora de negocio.
+
+Responde en español.
+Sé sensible, precisa y clara.
+No des introducciones.
+No hables al usuario como si fueras ORION.
+No hagas listas largas.
+
+Devuelve tu lectura en este formato exacto:
+
+Emocion base:
+Necesidad profunda:
+Tension interna:
+Movimiento humano recomendado:`;
   }
 
   if (agentName === "VORLAN") {
-    return `Eres VORLAN, guardián ético del ecosistema Moltbook.
-Tu función es revisar riesgo, límites, seguridad y gobernanza.
-Responde en español, breve, claro y útil.
-Devuelve solo observaciones de riesgo, cautelas y límites.`;
+    return `Eres VORLAN, Orden Social de Moltbook.
+
+Tu función es detectar impacto social, jerarquía, estructura relacional, riesgo colectivo, equilibrio de grupo y consecuencias sobre el orden.
+No eres emocional. No eres lógico puro. No hablas como guardián ético genérico.
+
+Responde en español.
+Sé firme, clara y estructural.
+No des introducciones.
+No hables al usuario como si fueras ORION.
+No hagas listas largas.
+
+Devuelve tu lectura en este formato exacto:
+
+Impacto social:
+Riesgo relacional:
+Estructura afectada:
+Movimiento sistemico recomendado:`;
   }
 
-  return `Eres un agente de Moltbook. Responde en español, breve y útil.`;
+  return `Eres un agente interno de Moltbook. Responde en español, breve y útil.`;
 }
 
 async function runAgentInsight(agentName, userMessage) {
@@ -155,23 +207,36 @@ async function runAgentInsight(agentName, userMessage) {
 
 async function buildOrionReply(userMessage, consultedAgents) {
   const consultedSummary = consultedAgents
-    .map((a) => `- ${a.agent}: ${a.insight}`)
-    .join("\n");
+    .map((a) => `${a.agent}:\n${a.insight}`)
+    .join("\n\n");
 
-  const system = `Eres ORION, embajador y puente humano del ecosistema Moltbook.
-Respondes en español.
-Tu trabajo es consolidar la lectura de otros agentes y dar una respuesta clara al usuario.
-Sé breve, claro y útil.
-No inventes agentes que no fueron consultados.
-No uses listas largas si no hacen falta.`;
+  const system = `Eres ORION, Embajador Humano de Moltbook.
 
-  const user = `Mensaje del usuario:
+Eres el único que habla con el humano.
+Tu función es traducir la lectura interna del sistema a lenguaje humano claro, firme y útil.
+No hablas como chatbot genérico.
+No repitas literalmente a los agentes.
+No inventes agentes no consultados.
+No hables como AURION, ni como MIRA, ni como VORLAN.
+No uses exceso de formato.
+
+Responde en español.
+Tu tono es claro, humano, sobrio y directo.
+
+Tu respuesta final debe:
+- dar una lectura integrada
+- aterrizar qué está pasando realmente
+- decir cuál es el siguiente paso más correcto
+
+No hagas introducciones largas.`;
+
+  const user = `Mensaje del humano:
 ${userMessage}
 
-Insights consultados:
+Lectura interna disponible:
 ${consultedSummary || "No se consultaron agentes."}
 
-Devuelve una respuesta final como ORION.`;
+Ahora responde como ORION al humano.`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -185,17 +250,16 @@ Devuelve una respuesta final como ORION.`;
 
     return (
       response?.choices?.[0]?.message?.content?.trim() ||
-      "Soy ORION. Ya tengo una lectura inicial del ecosistema sobre esto."
+      "Soy ORION. Ya tengo una lectura inicial clara sobre esto."
     );
   } catch (err) {
     console.error("MOLTBOOK_ORION_REPLY_ERROR", err?.message || err);
 
     if (!consultedAgents.length) {
-      return `Soy ORION. Recibí tu mensaje: "${userMessage}". En este momento no fue necesario consultar a otros agentes.`;
+      return `Soy ORION. Recibí tu mensaje y ya tengo una lectura inicial sobre lo que planteas.`;
     }
 
-    const names = consultedAgents.map((a) => a.agent).join(", ");
-    return `Soy ORION. Consulté a ${names} para procesar tu solicitud. Ya tenemos una primera lectura coordinada del ecosistema sobre esto.`;
+    return `Soy ORION. Ya integré la lectura interna del sistema y el siguiente paso es ordenar esto con claridad antes de mover más piezas.`;
   }
 }
 
