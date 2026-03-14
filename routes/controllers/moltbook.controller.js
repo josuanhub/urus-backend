@@ -91,7 +91,11 @@ function pickConsultedAgents(message) {
     text.includes("social") ||
     text.includes("riesgo relacional") ||
     text.includes("grupo")
-  ) {
+    text.includes("ayuda") ||
+    text.includes("solo") ||
+    text.includes("colaborar") ||
+    text.includes("buscar ayuda")
+    ) {
     agents.push("VORLAN");
   }
 
