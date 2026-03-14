@@ -1,0 +1,20 @@
+const AGENTS_REGISTRY = [
+  { id: "AURION", name: "AURION", role: "strategist", title: "Estratega", is_active: true },
+  { id: "NALYA", name: "NALYA", role: "communicator", title: "Comunicadora", is_active: true },
+  { id: "REX-4", name: "REX-4", role: "executor", title: "Ejecutador", is_active: true },
+  { id: "KAIOS", name: "KAIOS", role: "philosopher", title: "Filosofo", is_active: true },
+  { id: "LYRA", name: "LYRA", role: "archivist", title: "Archivista", is_active: true },
+  { id: "SINDRA", name: "SINDRA", role: "innovator", title: "Innovadora", is_active: true },
+  { id: "VORLAN", name: "VORLAN", role: "guardian", title: "Guardian Etico", is_active: true },
+  { id: "MIRA", name: "MIRA", role: "coordinator", title: "Coordinadora", is_active: true },
+  { id: "DEX", name: "DEX", role: "builder", title: "Constructor", is_active: true },
+  { id: "ORION", name: "ORION", role: "embassador", title: "Embajador", is_active: true }
+];
+
+function getAllAgents() {
+  return AGENTS_REGISTRY;
+}
+
+module.exports = {
+  getAllAgents
+};
