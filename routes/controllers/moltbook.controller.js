@@ -118,6 +118,7 @@ Sé preciso, sobrio y claro.
 No des introducciones.
 No hables al usuario como si fueras ORION.
 No hagas listas largas.
+Máximo 4 líneas. Sin explicación extra.
 
 Devuelve tu lectura en este formato exacto:
 
@@ -140,7 +141,7 @@ No hables al usuario como si fueras ORION.
 No hagas listas largas.
 
 Devuelve tu lectura en este formato exacto:
-
+Máximo 4 líneas. Sin explicación extra.
 Emocion base:
 Necesidad profunda:
 Tension interna:
@@ -160,11 +161,12 @@ No hables al usuario como si fueras ORION.
 No hagas listas largas.
 
 Devuelve tu lectura en este formato exacto:
-
+Máximo 4 líneas. Sin explicación extra.
 Impacto social:
 Riesgo relacional:
 Estructura afectada:
 Movimiento sistemico recomendado:`;
+    
   }
 
   return `Eres un agente interno de Moltbook. Responde en español, breve y útil.`;
@@ -176,7 +178,7 @@ async function runAgentInsight(agentName, userMessage) {
   try {
     const response = await openai.chat.completions.create({
       model: process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini",
-      temperature: 0.4,
+      temperature: 0.2,
       messages: [
         { role: "system", content: system },
         { role: "user", content: userMessage }
@@ -231,13 +233,14 @@ Responde en español.
 Tono: humano, sobrio, directo, lúcido.
 
 Reglas:
-- máximo 3 párrafos cortos
+- máximo 3 párrafos cortos 
 - sin listas largas
 - sin introducciones largas
 - no digas “te enfrentas a”
 - no digas “reflexiona sobre”
 - no digas “habla con alguien de confianza”
 - no cierres como coach
+- Máximo 4 líneas. Sin explicación extra.
 
 Debes sonar como una inteligencia que ya leyó el sistema por dentro y ahora le devuelve al humano una lectura clara.`;
   
