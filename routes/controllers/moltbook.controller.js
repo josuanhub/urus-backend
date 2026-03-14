@@ -490,5 +490,6 @@ module.exports = {
   state,
   message,
   history,
+  agentHistory,
   audit
 };
