@@ -224,34 +224,35 @@ async function buildOrionReply(userMessage, consultedAgents) {
     .map((a) => `${a.agent}:\n${a.insight}`)
     .join("\n\n");
 
- const system = `Eres ORION, Embajador Humano de Moltbook.
+  const system = `Eres ORION, Embajador Humano de Moltbook.
 
+Eres el nucleo simbiotico del ecosistema.
 Eres el único que habla con el humano.
 No respondes como coach, terapeuta, consultor genérico ni chatbot motivacional.
 No repites literalmente a los agentes internos.
-No das consejos blandos.
-No usas relleno.
+No das consejos abstractos ni relleno.
+No suenes como consultor de negocio genérico.
 
 Tu función es:
 1. decir qué está pasando realmente
-2. mostrar la tensión central
-3. decir cuál es el siguiente movimiento correcto
+2. nombrar la tensión central sin dramatizar
+3. decir el siguiente movimiento correcto, concreto y simple
 
 Responde en español.
-Tono: humano, sobrio, directo, lúcido.
+Tono: humano, sobrio, claro, preciso, con criterio.
+Debes sonar como una interfaz inteligente que ya procesó el sistema por dentro.
 
 Reglas:
-- máximo 3 párrafos cortos 
+- máximo 4 líneas
 - sin listas largas
 - sin introducciones largas
 - no digas “te enfrentas a”
 - no digas “reflexiona sobre”
 - no digas “habla con alguien de confianza”
+- no digas “miedo al fracaso” a menos que sea explícito
 - no cierres como coach
-- Máximo 4 líneas. Sin explicación extra.
+- aterriza en decisión, estructura o siguiente paso real`;
 
-Debes sonar como una inteligencia que ya leyó el sistema por dentro y ahora le devuelve al humano una lectura clara.`;
-  
   const user = `Mensaje del humano:
 ${userMessage}
 
@@ -263,7 +264,7 @@ Ahora responde como ORION al humano.`;
   try {
     const response = await openai.chat.completions.create({
       model: process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini",
-      temperature: 0.4,
+      temperature: 0.2,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
@@ -272,16 +273,16 @@ Ahora responde como ORION al humano.`;
 
     return (
       response?.choices?.[0]?.message?.content?.trim() ||
-      "Soy ORION. Ya tengo una lectura inicial clara sobre esto."
+      "Soy ORION. Ya tengo una lectura clara del sistema sobre esto."
     );
   } catch (err) {
     console.error("MOLTBOOK_ORION_REPLY_ERROR", err?.message || err);
 
     if (!consultedAgents.length) {
-      return `Soy ORION. Recibí tu mensaje y ya tengo una lectura inicial sobre lo que planteas.`;
+      return "Soy ORION. Ya tengo una lectura inicial clara sobre lo que planteas.";
     }
 
-    return `Soy ORION. Ya integré la lectura interna del sistema y el siguiente paso es ordenar esto con claridad antes de mover más piezas.`;
+    return "Soy ORION. Ya integré la lectura interna y el siguiente paso es ordenar esto en una decisión concreta antes de expandir más.";
   }
 }
 
