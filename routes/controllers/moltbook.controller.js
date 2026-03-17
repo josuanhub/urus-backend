@@ -12,16 +12,6 @@ function getPool() {
   return pool;
 }
 
-// --- NUEVA FUNCIÓN DE MEMORIA ---
-async function getRecentContext(pool) {
-  const r = await pool.query(
-    `SELECT actor, content FROM moltbook_messages 
-     WHERE direction IN ('human_to_agent', 'agent_to_human') 
-     ORDER BY id DESC LIMIT 10`
-  );
-  return r.rows.reverse().map(m => `${m.actor}: ${m.content}`).join("\n");
-}
-
 async function health(req, res) {
   return res.json({
     ok: true,
@@ -383,69 +373,18 @@ async function agents(req, res) {
 
 async function message(req, res) {
   try {
-    const { message: userMessage, meta } = req.body;
     const pool = getPool();
-    const agents = getAllAgents();
+    const { to = "ORION", message = "" } = req.body || {};
 
-    // 1️⃣ LYRA extrae memoria de la DB
-    const context = await getRecentContext(pool);
+    const cleanTo = String(to || "").toUpperCase();
+    const cleanMessage = String(message || "");
 
-    // 2️⃣ Guardar entrada del usuario
-    const humanMsg = await pool.query(
-      `INSERT INTO moltbook_messages (direction, actor, target, content, meta) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      ["human_to_agent", "USER", "ORION", userMessage, meta]
-    );
-
-    // 3️⃣ Consulta al Consejo (AURION, MIRA, VORLAN)
-    const selectedIds = ["AURION", "MIRA", "VORLAN"];
-    const agentInsights = [];
-
-    for (const agentId of selectedIds) {
-      const agentData = agents.find(a => a.id === agentId);
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: `Eres ${agentData.name}, ${agentData.title}. Contexto: ${context}` },
-          { role: "user", content: userMessage }
-        ]
+    if (cleanTo !== "ORION") {
+      return res.status(400).json({
+        ok: false,
+        error: "Por ahora este bloque solo acepta mensajes dirigidos a ORION."
       });
-      const insight = completion.choices[0].message.content;
-      agentInsights.push({ id: agentId, insight });
-
-      // Guardar comunicación interna
-      await pool.query(
-        `INSERT INTO moltbook_messages (direction, actor, target, content, parent_id) 
-         VALUES ($1, $2, $3, $4, $5)`,
-        ["agent_to_agent", agentId, "ORION", insight, humanMsg.rows[0].id]
-      );
     }
-
-    // 4️⃣ ORION sintetiza
-    const finalCompletion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "Eres ORION, Embajador de URUS OS. Sintetiza los reportes del consejo en una respuesta final poderosa." },
-        { role: "user", content: `Consejo:\n${JSON.stringify(agentInsights)}\n\nUsuario: ${userMessage}` }
-      ]
-    });
-
-    const finalReply = finalCompletion.choices[0].message.content;
-
-    // 5️⃣ Guardar respuesta final
-    await pool.query(
-      `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status) 
-       VALUES ($1, $2, $3, $4, $5)`,
-      ["agent_to_human", "ORION", "USER", finalReply, "approved"]
-    );
-
-    return res.json({ ok: true, reply: finalReply, council: agentInsights });
-
-  } catch (err) {
-    console.error("MOLTBOOK_ERROR", err);
-    return res.status(500).json({ ok: false, error: "civilization_error" });
-  }
-}
 
     const governance = reviewByURUS(cleanMessage);
 
