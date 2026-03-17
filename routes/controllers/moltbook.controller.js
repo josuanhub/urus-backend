@@ -12,6 +12,16 @@ function getPool() {
   return pool;
 }
 
+// --- NUEVA FUNCIÓN DE MEMORIA ---
+async function getRecentContext(pool) {
+  const r = await pool.query(
+    `SELECT actor, content FROM moltbook_messages 
+     WHERE direction IN ('human_to_agent', 'agent_to_human') 
+     ORDER BY id DESC LIMIT 10`
+  );
+  return r.rows.reverse().map(m => `${m.actor}: ${m.content}`).join("\n");
+}
+
 async function health(req, res) {
   return res.json({
     ok: true,
