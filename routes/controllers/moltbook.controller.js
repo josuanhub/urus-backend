@@ -411,50 +411,9 @@ async function message(req, res) {
     const consultedNames = pickConsultedAgents(cleanMessage);
     const consultedAgents = [];
 
-    // ---- MEMORY RETRIEVAL (LYRA layer) ----
-let recentMemory = "";
-
-try {
-  const memoryResult = await pool.query(
-    `SELECT content
-     FROM moltbook_messages
-     WHERE direction = 'human_to_agent'
-     ORDER BY id DESC
-     LIMIT 5`
-  );
-  recentMemory = memoryResult.rows.map(r => r.content).join("\n");
-} catch (err) {
-  console.error("MOLTBOOK_MEMORY_ERROR", err);
-}
-
-    // ---- WORLD STATE ----
-const worldState = {
-  topic: cleanMessage.includes("venta") ? "sales" : "general",
-  urgency:
-    cleanMessage.includes("urgente") || cleanMessage.includes("ahora")
-      ? "high"
-      : "normal",
-  consulted_agents: consultedNames,
-  timestamp: new Date().toISOString()
-};
-    
-    
     for (const agentName of consultedNames) {
   const result = await runAgentInsight(agentName, cleanMessage);
   consultedAgents.push(result);
-
-      const enrichedPrompt = `
-WORLD STATE:
-${JSON.stringify(worldState, null, 2)}
-
-RECENT MEMORY:
-${recentMemory}
-
-USER MESSAGE:
-${cleanMessage}
-`;
-
-const result = await runAgentInsight(agentName, enrichedPrompt);
 
   await pool.query(
     `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status)
@@ -470,17 +429,6 @@ const result = await runAgentInsight(agentName, enrichedPrompt);
 }
     const reply = await buildOrionReply(cleanMessage, consultedAgents);
 
-    await pool.query(
-  `INSERT INTO moltbook_audit (input, consulted_agents, insights, orion_reply)
-   VALUES ($1, $2, $3, $4)`,
-  [
-    cleanMessage,
-    consultedNames.join(", "),
-    JSON.stringify(agentInsights),
-    orionReply
-  ]
-);
-      
     await pool.query(
       `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status)
        VALUES ($1, $2, $3, $4, $5)`,
