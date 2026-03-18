@@ -4,25 +4,40 @@ async function sendMessage() {
   const input = document.getElementById("messageInput");
   const chat = document.getElementById("chat");
 
-  const text = input.value;
+  const text = input.value.trim();
   if (!text) return;
 
   addMessage("user", text);
   input.value = "";
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      message: text
-    })
-  });
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        to: "ORION",
+        message: text
+      })
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  addMessage("orion", data.reply || "Sin respuesta");
+    if (!data.ok) {
+      addMessage("orion", "Error: " + JSON.stringify(data));
+      return;
+    }
+
+    const reply =
+      data.output && data.output.reply
+        ? data.output.reply
+        : "Sin respuesta";
+
+    addMessage("orion", reply);
+  } catch (err) {
+    addMessage("orion", "Error de conexión: " + err.message);
+  }
 }
 
 function addMessage(role, text) {
