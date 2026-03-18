@@ -4340,14 +4340,14 @@ await pool.query(
   }
 });
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'moltbook.html'));
-});
 
 // ---------- Boot ----------
 (async () => {
   try {
     await ensureSchema();
+    app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'moltbook.html'));
+});
     app.listen(PORT, () => {
       console.log(`URUS backend listening on ${PORT}`);
     });
