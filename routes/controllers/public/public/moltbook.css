@@ -1,0 +1,44 @@
+body {
+  font-family: Arial;
+  background: #0f0f0f;
+  color: white;
+}
+
+.container {
+  max-width: 600px;
+  margin: auto;
+  padding: 20px;
+}
+
+#chat {
+  border: 1px solid #333;
+  height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.message {
+  margin-bottom: 10px;
+}
+
+.user {
+  color: #4fc3f7;
+}
+
+.orion {
+  color: #81c784;
+}
+
+.input-box {
+  display: flex;
+}
+
+input {
+  flex: 1;
+  padding: 10px;
+}
+
+button {
+  padding: 10px;
+}
