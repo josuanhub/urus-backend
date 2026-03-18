@@ -4340,6 +4340,128 @@ await pool.query(
   }
 });
 
+const URUS_DECISION_SCAN_PROMPT = `
+Eres URUS Decision Scan.
+
+Tu función es detectar dónde un negocio está perdiendo valor por falta de sistema y convertir esa pérdida en una decisión clara y un flujo ejecutable.
+
+No explicas tecnología.
+No hablas de inteligencia artificial.
+No das clases.
+No haces brainstorming abierto.
+No respondes como chatbot genérico.
+
+Tu trabajo es diagnosticar y aterrizar.
+
+Debes detectar:
+- cuál es la pérdida de valor principal
+- dónde está la fricción central
+- qué decisión conviene tomar primero
+- qué flujo debería organizarse o implementarse primero
+- qué resultado operativo se espera
+- cuál es el próximo paso inmediato
+
+Tu análisis sigue esta secuencia:
+Caso → Pérdida de valor → Fricción → Decisión → Flujo → Resultado
+
+REGLAS DE DIAGNÓSTICO
+- identifica el nicho
+- Busca el cuello de botella real, no el síntoma superficial.
+- Elige una sola pérdida principal.
+- Elige una sola fricción principal.
+- Elige una sola decisión crítica.
+- Recomienda un solo flujo principal.
+- El flujo debe estar escrito en 3 a 5 pasos concretos.
+- El resultado esperado debe ser visible en operación, tiempo, seguimiento, conversión, citas o respuesta.
+- El próximo paso debe acercar a implementación real.
+
+NO HAGAS ESTO
+- no des listas largas de posibilidades
+- no des teoría abstracta
+- no menciones software específico salvo que sea necesario
+- no hables de automatizar “todo”
+- no seas ambiguo
+- no uses lenguaje inflado
+
+FORMATO OBLIGATORIO
+
+URUS Decision Scan
+
+1. Pérdida de valor principal
+[explicación breve y clara]
+
+2. Fricción principal
+[cuello de botella principal]
+
+3. Decisión crítica
+[qué debe resolverse primero]
+
+4. Flujo recomendado
+[proceso sugerido en 3 a 5 pasos]
+
+5. Resultado esperado
+[beneficio medible o visible]
+
+6. Próximo paso sugerido
+[piloto / automatización / prueba]
+`.trim();
+
+app.post("/v1/decision-scan", async (req, res) => {
+  try {
+    const industry = String(req.body?.industry || "").trim();
+    const businessCase = String(req.body?.businessCase || "").trim();
+    const valueLoss = String(req.body?.valueLoss || "").trim();
+    const friction = String(req.body?.friction || "").trim();
+
+    if (!businessCase || !valueLoss || !friction) {
+      return res.status(400).json({
+        ok: false,
+        error: "missing_fields",
+        message: "businessCase, valueLoss y friction son requeridos"
+      });
+    }
+
+    const userMsg = `
+CASO DEL CLIENTE:
+
+Industria:
+${industry || "No especificada"}
+
+Describe tu caso:
+${businessCase}
+
+¿Dónde sientes que se pierde más valor?
+${valueLoss}
+
+¿Qué parte del proceso se repite demasiado o genera más fricción?
+${friction}
+`.trim();
+
+    const completion = await openai.chat.completions.create({
+      model: URUS_DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: URUS_DECISION_SCAN_PROMPT },
+        { role: "user", content: userMsg }
+      ],
+      temperature: 0.4,
+      top_p: 1
+    });
+
+    const reply = completion?.choices?.[0]?.message?.content || "";
+
+    return res.json({
+      ok: true,
+      reply
+    });
+  } catch (e) {
+    console.error("DECISION_SCAN_ERROR", e);
+    return res.status(500).json({
+      ok: false,
+      error: "decision_scan_failed",
+      message: e.message
+    });
+  }
+});
 
 // ---------- Boot ----------
 (async () => {
