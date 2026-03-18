@@ -38,6 +38,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const OpenAI = require("openai").default;
 const moltbookRoutes = require("./routes/moltbook.routes");
 const app = express();
+app.use(express.static(path.join(__dirname, 'public')));
+
 
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
 app.set("trust proxy", 1);
