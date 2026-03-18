@@ -4340,6 +4340,10 @@ await pool.query(
   }
 });
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'moltbook.html'));
+});
+
 // ---------- Boot ----------
 (async () => {
   try {
