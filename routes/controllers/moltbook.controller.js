@@ -411,6 +411,25 @@ async function message(req, res) {
     const consultedNames = pickConsultedAgents(cleanMessage);
     const consultedAgents = [];
 
+    // ---- MEMORY (LYRA) ----
+let recentMemory = "";
+
+try {
+  const memoryResult = await pool.query(
+    `
+    SELECT content
+    FROM moltbook_messages
+    WHERE direction = 'human_to_agent'
+    ORDER BY id DESC
+    LIMIT 5
+    `
+  );
+
+  recentMemory = memoryResult.rows.map(r => r.content).join("\n");
+} catch (err) {
+  console.error("MOLTBOOK_MEMORY_ERROR", err);
+}
+
     for (const agentName of consultedNames) {
   const result = await runAgentInsight(agentName, cleanMessage);
   consultedAgents.push(result);
