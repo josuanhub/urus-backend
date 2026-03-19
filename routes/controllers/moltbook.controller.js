@@ -430,6 +430,22 @@ try {
   console.error("MOLTBOOK_MEMORY_ERROR", err);
 }
 
+    // ---- WORLD STATE ----
+const worldState = {
+  topic: cleanMessage.toLowerCase().includes("venta") ? "sales" : "general",
+
+  urgency:
+    cleanMessage.toLowerCase().includes("urgente") ||
+    cleanMessage.toLowerCase().includes("ahora")
+      ? "high"
+      : "normal",
+
+  intent:
+    cleanMessage.length > 120 ? "complex" : "simple",
+
+  timestamp: new Date().toISOString()
+};
+
     for (const agentName of consultedNames) {
   const result = await runAgentInsight(agentName, cleanMessage);
   consultedAgents.push(result);
