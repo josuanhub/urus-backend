@@ -446,7 +446,23 @@ const worldState = {
   timestamp: new Date().toISOString()
 };
 
-    for (const agentName of consultedNames) {
+    // ---- PRIORITY SCORE (AURION) ----
+let priorityScore = 0;
+
+if (worldState.urgency === "high") priorityScore += 2;
+if (worldState.topic === "sales") priorityScore += 2;
+if (worldState.intent === "complex") priorityScore += 1;
+
+    // ---- AGENT FILTER (VORLAN) ----
+const filteredAgents = consultedNames.filter(name => {
+  if (priorityScore >= 3) return true;
+
+  if (name === "AURION" || name === "ORION") return true;
+
+  return false;
+});
+    
+    for (const agentName of filteredAgents) {
   const result = await runAgentInsight(agentName, cleanMessage);
   consultedAgents.push(result);
 
