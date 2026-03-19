@@ -463,7 +463,22 @@ const filteredAgents = consultedNames.filter(name => {
 });
     
     for (const agentName of filteredAgents) {
-  const result = await runAgentInsight(agentName, cleanMessage);
+  // ---- ENRICHED PROMPT ----
+const enrichedPrompt = `
+WORLD STATE:
+${JSON.stringify(worldState, null, 2)}
+
+PRIORITY SCORE:
+${priorityScore}
+
+RECENT MEMORY:
+${recentMemory}
+
+USER MESSAGE:
+${cleanMessage}
+`;
+
+const result = await runAgentInsight(agentName, enrichedPrompt);
   consultedAgents.push(result);
 
   await pool.query(
