@@ -479,64 +479,10 @@ const filteredAgents = consultedNames.filter(name => {
   return false;
 });
 
-  // ---- FOUNDER CONTEXT (PRO) ----
-const founderContext = `
-IDENTIDAD DEL FUNDADOR:
-- Nombre: Josuan
-- Perfil: constructor de sistemas, no principiante
-- Mentalidad: quiere control, claridad y ejecución real, no teoría
-
-PROYECTO PRINCIPAL:
-- URUS OS: sistema operativo cognitivo multiagente
-- Moltbook: mundo multiagente gobernado por URUS
-- My Jarvis: interfaz del sistema
-
-ESTADO ACTUAL:
-- Backend funcional (multiagente + memoria + audit)
-- Frontend básico en Vercel funcionando
-- Sistema ya operativo pero sin monetización activa
-
-FASE REAL:
-- Fase crítica: monetización inicial
-- Objetivo inmediato: cerrar 1–3 automatizaciones pagadas
-- Prioridad: ejecución, no perfección técnica
-
-PROBLEMA CENTRAL:
-- No está vendiendo
-- Está enfocado en sistema pero no en ingresos
-- Riesgo de sobreconstrucción sin validación
-
-RECURSOS DISPONIBLES:
-- Backend listo para WhatsApp automation
-- Sistema multiagente funcional
-- Capacidad de construir rápido
-
-REGLAS PARA RESPONDER:
-- No expliques teoría básica
-- No des consejos genéricos
-- No digas “define”, “analiza”, “reflexiona”
-- No respondas como coach ni consultor
-- No repitas el mensaje del usuario
-
-TU FUNCIÓN COMO SISTEMA:
-- Detectar el cuello de botella real
-- Decir qué está mal sin suavizar
-- Forzar claridad
-- Dar el siguiente movimiento concreto ejecutable
-- Priorizar dinero > sistema
-
-FORMATO DE RESPUESTA ESPERADO:
-- Máximo 4 líneas
-- Directo, sin relleno
-- Enfocado en decisión o acción inmediata
-`;  
-    
-    for (const agentName of filteredAgents) {
+      for (const agentName of filteredAgents) {
+      
   // ---- ENRICHED PROMPT ----
 const enrichedPrompt = `
-FOUNDER CONTEXT:
-${founderContext}
-
 WORLD STATE:
 ${JSON.stringify(worldState, null, 2)}
 
