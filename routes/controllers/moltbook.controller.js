@@ -421,27 +421,44 @@ try {
     FROM moltbook_messages
     WHERE direction = 'human_to_agent'
     ORDER BY id DESC
-    LIMIT 5
+    LIMIT 20
     `
   );
 
-  recentMemory = memoryResult.rows.map(r => r.content).join("\n");
+  recentMemory = memoryResult.rows
+  .map((r, i) => `#${i + 1}: ${r.content}`)
+  .join("\n");
+  
 } catch (err) {
   console.error("MOLTBOOK_MEMORY_ERROR", err);
 }
 
     // ---- WORLD STATE ----
+const text = cleanMessage.toLowerCase();
+
 const worldState = {
-  topic: cleanMessage.toLowerCase().includes("venta") ? "sales" : "general",
+  topic:
+    text.includes("venta") || text.includes("cliente") ? "sales" :
+    text.includes("producto") ? "product" :
+    text.includes("equipo") ? "team" :
+    text.includes("sistema") || text.includes("automatización") ? "system" :
+    "general",
 
   urgency:
-    cleanMessage.toLowerCase().includes("urgente") ||
-    cleanMessage.toLowerCase().includes("ahora")
-      ? "high"
-      : "normal",
+    text.includes("urgente") || text.includes("ahora") ? "high" : "normal",
 
   intent:
-    cleanMessage.length > 120 ? "complex" : "simple",
+    text.length > 120 ? "complex" : "simple",
+
+  founder_state:
+    text.includes("bloqueo") || text.includes("confusión") ? "blocked" :
+    text.includes("claridad") ? "clear" :
+    "neutral",
+
+  business_stage:
+    text.includes("vender") || text.includes("clientes") ? "monetization" :
+    text.includes("construir") ? "build" :
+    "unknown",
 
   timestamp: new Date().toISOString()
 };
