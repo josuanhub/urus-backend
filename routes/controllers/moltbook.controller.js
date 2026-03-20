@@ -557,13 +557,19 @@ const filteredAgents = consultedNames.filter(name => {
       for (const agentName of filteredAgents) {
       
   // ---- ENRICHED PROMPT ----
-const enrichedPrompt = buildAgentEnrichedPrompt(
-  agentName,
-  cleanMessage,
-  worldState,
-  priorityScore,
-  recentMemory
-);
+const enrichedPrompt = `
+WORLD STATE:
+${JSON.stringify(worldState, null, 2)}
+
+PRIORITY SCORE:
+${priorityScore}
+
+RECENT MEMORY:
+${recentMemory}
+
+USER MESSAGE:
+${cleanMessage}
+`;
 
 const result = await runAgentInsight(agentName, enrichedPrompt);
   consultedAgents.push(result);
