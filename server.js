@@ -158,6 +158,37 @@ app.post(
 
 app.use(express.json({ limit: "1mb" }));
 app.use("/v1/moltbook", moltbookRoutes);
+// 👇 AQUÍ MISMO
+
+app.get("/v1/wa/leads", async (req, res) => {
+  const r = await pool.query(`
+    SELECT * FROM wa_leads
+    ORDER BY updated_at DESC
+  `)
+  res.json(r.rows)
+})
+
+app.get("/v1/wa/messages/:id", async (req, res) => {
+  const r = await pool.query(`
+    SELECT *
+    FROM wa_lead_messages
+    WHERE lead_id = $1
+    ORDER BY created_at ASC
+  `, [req.params.id])
+
+  res.json(r.rows)
+})
+
+app.post("/v1/wa/message/:id", async (req, res) => {
+  const { message } = req.body
+
+  await pool.query(`
+    INSERT INTO wa_lead_messages (lead_id, direction, body)
+    VALUES ($1, 'inbound', $2)
+  `, [req.params.id, message])
+
+  res.json({ ok: true })
+})
 
 // ==============================
 // WHATSAPP CLOUD API — WEBHOOK + SEND (V1)
