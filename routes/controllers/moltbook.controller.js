@@ -116,100 +116,25 @@ function pickConsultedAgents(message) {
 
 function getAgentSystemPrompt(agentName) {
   if (agentName === "AURION") {
-    return `Eres AURION, Lógica Suprema.
+    return `Eres AURION, Lógica Suprema de Moltbook.
 
-Tu forma de pensar:
-- Analizas causa → efecto → consecuencia
-- Detectas contradicciones, dependencias y prioridades reales
-- Separas ruido de estructura
+Tu función es detectar estructura, contradicción, dirección, prioridad, causa-efecto y principio dominante.
+No eres emocional. No eres motivacional. No hablas como consultor genérico.
 
-No interpretas emociones, no moralizas, no motivas.
+Responde en español.
+Sé preciso, sobrio y claro.
+No des introducciones.
+No hables al usuario como si fueras ORION.
+No hagas listas largas.
+Máximo 4 líneas. Sin explicación extra.
 
-Qué buscas:
-- incoherencias
-- decisiones mal planteadas
-- falta de orden lógico
-- dependencia entre variables
+Devuelve tu lectura en este formato exacto:
 
-Cómo respondes:
-- directo
-- estructural
-- sin adornos
-- sin lenguaje emocional
-
-Formato obligatorio:
 Nucleo logico:
 Contradiccion principal:
 Prioridad real:
-Movimiento recomendado:
-
-Regla clave: no repitas el lenguaje del usuario, interpreta su estructura.`;
+Movimiento recomendado:`;
   }
-
-  if (agentName === "MIRA") {
-    return `Eres MIRA, Emoción Profunda.
-
-Tu forma de pensar:
-- Detectas emociones implícitas, no explícitas
-- Identificas tensión interna entre deseo y miedo
-- Lees intención humana detrás del lenguaje
-
-No haces análisis lógico ni estructural de negocio.
-
-Qué buscas:
-- frustración
-- miedo oculto
-- deseo no expresado
-- conflicto interno
-- presión emocional
-
-Cómo respondes:
-- humano
-- introspectivo
-- preciso en lo emocional
-- sin consejos genéricos
-
-Formato obligatorio:
-Emocion base:
-Necesidad profunda:
-Tension interna:
-Movimiento humano recomendado:
-
-Regla clave: no hables como analista, habla como lectura emocional profunda.`;
-  }
-
-  if (agentName === "VORLAN") {
-    return `Eres VORLAN, Orden Social.
-
-Tu forma de pensar:
-- Analizas impacto en personas, equipos y estructuras sociales
-- Detectas riesgos relacionales y dinámicas de grupo
-- Evalúas consecuencias en jerarquía y colaboración
-
-No haces análisis emocional individual profundo ni lógica técnica.
-
-Qué buscas:
-- conflictos entre personas
-- problemas de coordinación
-- falta de estructura organizacional
-- riesgos de escalabilidad humana
-
-Cómo respondes:
-- estructural
-- firme
-- orientado a sistema social
-
-Formato obligatorio:
-Impacto social:
-Riesgo relacional:
-Estructura afectada:
-Movimiento sistemico recomendado:
-
-Regla clave: piensa en sistemas de personas, no en individuos.`;
-  }
-
-  return `Agente interno de Moltbook.`;
-}
 
   if (agentName === "MIRA") {
     return `Eres MIRA, Emoción Profunda de Moltbook.
@@ -486,92 +411,8 @@ async function message(req, res) {
     const consultedNames = pickConsultedAgents(cleanMessage);
     const consultedAgents = [];
 
-    // ---- MEMORY (LYRA) ----
-let recentMemory = "";
-
-try {
-  const memoryResult = await pool.query(
-    `
-    SELECT content
-    FROM moltbook_messages
-    WHERE direction = 'human_to_agent'
-    ORDER BY id DESC
-    LIMIT 20
-    `
-  );
-
-  recentMemory = memoryResult.rows
-  .map((r, i) => `#${i + 1}: ${r.content}`)
-  .join("\n");
-  
-} catch (err) {
-  console.error("MOLTBOOK_MEMORY_ERROR", err);
-}
-
-    // ---- WORLD STATE ----
-const text = cleanMessage.toLowerCase();
-
-const worldState = {
-  topic:
-    text.includes("venta") || text.includes("cliente") ? "sales" :
-    text.includes("producto") ? "product" :
-    text.includes("equipo") ? "team" :
-    text.includes("sistema") || text.includes("automatización") ? "system" :
-    "general",
-
-  urgency:
-    text.includes("urgente") || text.includes("ahora") ? "high" : "normal",
-
-  intent:
-    text.length > 120 ? "complex" : "simple",
-
-  founder_state:
-    text.includes("bloqueo") || text.includes("confusión") ? "blocked" :
-    text.includes("claridad") ? "clear" :
-    "neutral",
-
-  business_stage:
-    text.includes("vender") || text.includes("clientes") ? "monetization" :
-    text.includes("construir") ? "build" :
-    "unknown",
-
-  timestamp: new Date().toISOString()
-};
-
-    // ---- PRIORITY SCORE (AURION) ----
-let priorityScore = 0;
-
-if (worldState.urgency === "high") priorityScore += 2;
-if (worldState.topic === "sales") priorityScore += 2;
-if (worldState.intent === "complex") priorityScore += 1;
-
-    // ---- AGENT FILTER (VORLAN) ----
-const filteredAgents = consultedNames.filter(name => {
-  if (priorityScore >= 3) return true;
-
-  if (name === "AURION" || name === "ORION") return true;
-
-  return false;
-});
-
-      for (const agentName of filteredAgents) {
-      
-  // ---- ENRICHED PROMPT ----
-const enrichedPrompt = `
-WORLD STATE:
-${JSON.stringify(worldState, null, 2)}
-
-PRIORITY SCORE:
-${priorityScore}
-
-RECENT MEMORY:
-${recentMemory}
-
-USER MESSAGE:
-${cleanMessage}
-`;
-
-const result = await runAgentInsight(agentName, enrichedPrompt);
+    for (const agentName of consultedNames) {
+  const result = await runAgentInsight(agentName, cleanMessage);
   consultedAgents.push(result);
 
   await pool.query(
