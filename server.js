@@ -623,6 +623,15 @@ const reply = await buildLeadReplyAI({
 // Pegar después de: app.use(express.json({ limit: "1mb" }));
 // ==============================
 
+app.get("/v1/wa/leads", async (req, res) => {
+  const r = await pool.query(`
+    SELECT id, name, phone, last_message, status, score
+    FROM wa_leads
+    ORDER BY updated_at DESC
+  `);
+
+  res.json(r.rows);
+});
 const DEMO_PROMPT = `
 Eres URUS DEMO para negocios locales.
 
