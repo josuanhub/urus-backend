@@ -37,6 +37,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // OpenAI SDK (robusto)
 const OpenAI = require("openai").default;
 const moltbookRoutes = require("./routes/moltbook.routes");
+const urusScoutRoutes = require("./routes/urus_scout.routes");
 const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -158,6 +159,8 @@ app.post(
 
 app.use(express.json({ limit: "1mb" }));
 app.use("/v1/moltbook", moltbookRoutes);
+app.use("/v1/urus_scout", urusScoutRoutes);
+
 // 👇 AQUÍ MISMO
 
 app.get("/v1/wa/leads", async (req, res) => {
