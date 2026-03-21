@@ -158,7 +158,6 @@ app.post(
 
 app.use(express.json({ limit: "1mb" }));
 app.use("/v1/moltbook", moltbookRoutes);
-app.use("/v1/urus_scout", urusScoutRoutes);
 
 // 👇 AQUÍ MISMO
 
