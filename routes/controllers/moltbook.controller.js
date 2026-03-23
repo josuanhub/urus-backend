@@ -219,6 +219,64 @@ async function runAgentInsight(agentName, userMessage) {
   }
 }
 
+async function runAgentLoop(seedMessage, options = {}) {
+  const pool = getPool();
+  const maxIterations = Math.max(1, Math.min(Number(options.maxIterations || 2), 3));
+
+  console.log("AGENT_LOOP_STARTED");
+
+  let currentMessage = String(seedMessage || "").trim();
+  const iterations = [];
+  const consultedSet = new Set();
+
+  for (let i = 0; i < maxIterations; i++) {
+    console.log(`LOOP_ITERATION_${i + 1}`);
+
+    const consultedNames = pickConsultedAgents(currentMessage);
+    const round = [];
+
+    for (const agentName of consultedNames) {
+      consultedSet.add(agentName);
+
+      const result = await runAgentInsight(agentName, currentMessage);
+
+      round.push({
+        agent: result.agent,
+        insight: result.insight,
+        source: result.source,
+        iteration: i + 1
+      });
+
+      await pool.query(
+        `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          "agent_to_agent",
+          agentName,
+          "ORION",
+          `[LOOP ${i + 1}] SOURCE: ${result.source}\n\n${result.insight}`,
+          "approved"
+        ]
+      );
+    }
+
+    iterations.push(round);
+
+    currentMessage = round
+      .map((r) => `${r.agent}:\n${r.insight}`)
+      .join("\n\n");
+  }
+
+  console.log("AGENT_LOOP_FINISHED");
+
+  return {
+    seed_message: seedMessage,
+    iterations,
+    final_context: currentMessage,
+    consulted_names: [...consultedSet]
+  };
+}
+
 async function buildOrionReply(userMessage, consultedAgents) {
   const consultedSummary = consultedAgents
     .map((a) => `${a.agent}:\n${a.insight}`)
