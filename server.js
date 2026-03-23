@@ -37,7 +37,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // OpenAI SDK (robusto)
 const OpenAI = require("openai").default;
 const moltbookRoutes = require("./routes/moltbook.routes");
+const { runHunterBrain } = require("./services/hunter/brain");
+const { runHunterFollowUps } = require("./services/hunter/followup");
 const app = express();
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 
