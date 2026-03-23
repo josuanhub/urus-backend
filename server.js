@@ -488,6 +488,19 @@ app.post("/v1/wa/webhook", async (req, res) => {
     const text = msg?.text?.body || "";
     const name = value?.contacts?.[0]?.profile?.name || null;
 
+    function detectIntent(text = "") {
+  const t = text.toLowerCase();
+
+  if (t.includes("precio") || t.includes("cuánto") || t.includes("cuanto")) return "PRICE";
+  if (t.includes("interesa") || t.includes("quiero")) return "HIGH";
+  if (t.includes("como funciona")) return "INFO";
+  if (t.includes("ok") || t.includes("dale")) return "HIGH";
+
+  return "NORMAL";
+}
+
+const intent = detectIntent(text);
+
     // 🔥 MARCAR LEAD DE HUNTER COMO RESPONDIDO
  await pool.query(`
   UPDATE hunter_leads
