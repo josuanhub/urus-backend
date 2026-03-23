@@ -183,6 +183,30 @@ Movimiento sistemico recomendado:`;
 async function runAgentInsight(agentName, userMessage) {
   const system = getAgentSystemPrompt(agentName);
 
+  async function runAgentLoop(initialMessage) {
+  let currentMessage = initialMessage;
+  let allIterations = [];
+
+  for (let i = 0; i < 3; i++) {
+    const consultedNames = pickConsultedAgents(currentMessage);
+    let iterationResults = [];
+
+    for (const agentName of consultedNames) {
+      const result = await runAgentInsight(agentName, currentMessage);
+      iterationResults.push(result);
+    }
+
+    allIterations.push(iterationResults);
+
+    // construir siguiente mensaje interno
+    currentMessage = iterationResults
+      .map(r => `${r.agent}: ${r.insight}`)
+      .join("\n");
+  }
+
+  return allIterations;
+}
+  
   try {
     const response = await openai.chat.completions.create({
       model: process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini",
@@ -430,12 +454,12 @@ async function message(req, res) {
       });
     }
 
-    const consultedNames = pickConsultedAgents(cleanMessage);
-    const consultedAgents = [];
+    const loopIterations = await runAgentLoop(cleanMessage);
 
-    for (const agentName of consultedNames) {
-  const result = await runAgentInsight(agentName, cleanMessage);
-  consultedAgents.push(result);
+// agarramos la última iteración como output final
+const lastIteration = loopIterations[loopIterations.length - 1] || [];
+
+const consultedAgents = lastIteration;
 
   await pool.query(
     `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status)
