@@ -654,7 +654,8 @@ const reply = await buildLeadReplyAI({
     const sent = await sendWhatsAppText({ to: from, text: reply });
     console.log("WA_REPLY_SENT", { ok: sent.ok, to: from, lead_id: finalLead.id });
 
-  } catch (e) {
+  } 
+  catch (e) {
     console.error("WA_WEBHOOK_ERROR", e);
     // ya respondimos 200 arriba; aquí solo log
   }
