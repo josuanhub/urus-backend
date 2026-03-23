@@ -535,9 +535,27 @@ async function message(req, res) {
 
     const cleanTo = String(to || "").toUpperCase();
     const cleanMessage = String(message || "");
+    const cleanMode = String(mode || "").toLowerCase().trim();
+    const cleanSeed = String(seed || "").trim();
 
+if (cleanMode === "autonomous") {
+  const autonomousResult = await runAutonomousCycle(cleanSeed);
 
-    
+  return res.json({
+    ok: true,
+    mode: "autonomous",
+    input: {
+      seed: autonomousResult.seed
+    },
+    output: {
+      from: "ORION",
+      reply: autonomousResult.reply
+    },
+    consulted_agents: autonomousResult.consulted_agents,
+    loop: autonomousResult.loop
+  });
+}
+  
     if (cleanTo !== "ORION") {
       return res.status(400).json({
         ok: false,
