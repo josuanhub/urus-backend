@@ -637,6 +637,52 @@ if (cleanMode === "autonomous") {
   }
 }
 
+async function autonomousRun(req, res) {
+  try {
+    const secretHeader = String(req.headers["x-urus-secret"] || "").trim();
+    const expectedSecret = String(process.env.URUS_AUTONOMOUS_SECRET || "").trim();
+
+    if (!expectedSecret) {
+      return res.status(500).json({
+        ok: false,
+        error: "missing_autonomous_secret"
+      });
+    }
+
+    if (!secretHeader || secretHeader !== expectedSecret) {
+      return res.status(401).json({
+        ok: false,
+        error: "unauthorized"
+      });
+    }
+
+    const { seed = "" } = req.body || {};
+    const cleanSeed = String(seed || "").trim();
+
+    const autonomousResult = await runAutonomousCycle(cleanSeed);
+
+    return res.json({
+      ok: true,
+      mode: "autonomous",
+      input: {
+        seed: autonomousResult.seed
+      },
+      output: {
+        from: "ORION",
+        reply: autonomousResult.reply
+      },
+      consulted_agents: autonomousResult.consulted_agents,
+      loop: autonomousResult.loop
+    });
+  } catch (err) {
+    console.error("MOLTBOOK_AUTONOMOUS_RUN_ERROR", err);
+    return res.status(500).json({
+      ok: false,
+      error: "autonomous_run_failed"
+    });
+  }
+}
+
 async function history(req, res) {
   try {
     const pool = getPool();
@@ -734,6 +780,7 @@ module.exports = {
   agents,
   state,
   message,
+  autonomousRun,
   history,
   agentHistory,
   audit,
