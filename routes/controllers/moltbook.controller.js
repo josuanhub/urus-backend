@@ -488,26 +488,15 @@ async function message(req, res) {
       });
     }
 
-    const consultedNames = pickConsultedAgents(cleanMessage);
-    const consultedAgents = [];
+       const loopResult = await runAgentLoop(cleanMessage, { maxIterations: 2 });
 
-    for (const agentName of consultedNames) {
-  const result = await runAgentInsight(agentName, cleanMessage);
-  consultedAgents.push(result);
+    const flattenedAgents = loopResult.iterations.flat().map(({ agent, insight, source }) => ({
+      agent,
+      insight,
+      source
+    }));
 
-  await pool.query(
-    `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [
-      "agent_to_agent",
-      agentName,
-      "ORION",
-      `SOURCE: ${result.source}\n\n${result.insight}`,
-      "approved"
-    ]
-  );
-}
-    const reply = await buildOrionReply(cleanMessage, consultedAgents);
+    const reply = await buildOrionReply(cleanMessage, flattenedAgents);
 
     await pool.query(
       `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status)
@@ -516,16 +505,18 @@ async function message(req, res) {
     );
 
     await pool.query(
-  `INSERT INTO moltbook_audit (event, actor, target, reason, message)
-   VALUES ($1, $2, $3, $4, $5)`,
-  [
-    "message_approved",
-    "URUS_OS",
-    "ORION",
-    consultedNames.length ? `consulted:${consultedNames.join(",")}` : null,
-    cleanMessage
-  ]
-);
+      `INSERT INTO moltbook_audit (event, actor, target, reason, message)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        "message_approved",
+        "URUS_OS",
+        "ORION",
+        loopResult.consulted_names.length
+          ? `loop:2|consulted:${loopResult.consulted_names.join(",")}`
+          : "loop:2",
+        cleanMessage
+      ]
+    );
 
     return res.json({
       ok: true,
@@ -538,8 +529,11 @@ async function message(req, res) {
         from: "ORION",
         reply
       },
-      consulted_agents: consultedAgents
+      consulted_agents: flattenedAgents,
+      loop: loopResult
     });
+
+    
   } catch (err) {
     console.error("MOLTBOOK_MESSAGE_ERROR", err);
     return res.status(500).json({ ok: false, error: "message_failed" });
