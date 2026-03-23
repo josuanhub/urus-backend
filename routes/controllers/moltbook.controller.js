@@ -232,13 +232,37 @@ async function runAgentLoop(seedMessage, options = {}) {
   for (let i = 0; i < maxIterations; i++) {
     console.log(`LOOP_ITERATION_${i + 1}`);
 
-    const consultedNames = pickConsultedAgents(currentMessage);
+    const consultedNames = pickConsultedAgents(
+      i === 0 ? seedMessage : currentMessage
+    );
+
     const round = [];
 
     for (const agentName of consultedNames) {
       consultedSet.add(agentName);
 
-      const result = await runAgentInsight(agentName, currentMessage);
+      let result;
+
+      if (i === 0) {
+        result = await runAgentInsight(agentName, seedMessage);
+      } else {
+        const previousRoundText = iterations[i - 1]
+          .map((r) => `${r.agent}:\n${r.insight}`)
+          .join("\n\n");
+
+        const reactionInput = `
+Mensaje original del humano:
+${seedMessage}
+
+Lo que dijeron los otros agentes en la ronda anterior:
+${previousRoundText}
+
+Tu tarea ahora no es repetir.
+Tu tarea es reaccionar, corregir, profundizar o señalar contradicción.
+`.trim();
+
+        result = await runAgentInsight(agentName, reactionInput);
+      }
 
       round.push({
         agent: result.agent,
