@@ -488,6 +488,13 @@ app.post("/v1/wa/webhook", async (req, res) => {
     const text = msg?.text?.body || "";
     const name = value?.contacts?.[0]?.profile?.name || null;
 
+    // 🔥 MARCAR LEAD DE HUNTER COMO RESPONDIDO
+ await pool.query(`
+  UPDATE hunter_leads
+  SET status = 'RESPONDED'
+  WHERE phone = $1
+`, ['+' + from]);
+
     // SOLO texto por ahora
     const message_type = msg.type || "text";
     if (message_type !== "text") {
@@ -4591,6 +4598,44 @@ Diagnostica el cuello de botella principal de este caso y recomienda solo el pri
     app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'moltbook.html'));
 });
+
+// ==============================
+// 🔥 URUS HUNTER ENGINE (AUTO)
+// ==============================
+
+// fuente temporal (luego la cambiamos por scraping real)
+const sources = {
+  async getLeads() {
+    return [
+      {
+        name: "Test Business",
+        phone: "19395851479",
+        tipo_negocio: "clinic",
+        nivel_actividad: "alto"
+      }
+    ];
+  }
+};
+
+// loop hunter (cada 10 min)
+setInterval(() => {
+  console.log("🔥 Hunter running...");
+  runHunterBrain({
+    pool,
+    sendWhatsAppText,
+    sources
+  });
+}, 10 * 60 * 1000);
+
+// loop follow-up (cada 15 min)
+setInterval(() => {
+  console.log("🔁 Follow-up running...");
+  runHunterFollowUps({
+    pool,
+    sendWhatsAppText
+  });
+}, 15 * 60 * 1000);
+    
     app.listen(PORT, () => {
       console.log(`URUS backend listening on ${PORT}`);
     });
