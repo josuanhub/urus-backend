@@ -653,8 +653,7 @@ const reply = await buildLeadReplyAI({
     // D) enviar reply a WhatsApp REAL (Cloud API)
     const sent = await sendWhatsAppText({ to: from, text: reply });
     console.log("WA_REPLY_SENT", { ok: sent.ok, to: from, lead_id: finalLead.id });
-
-  
+}
   catch (e) {
     console.error("WA_WEBHOOK_ERROR", e);
     // ya respondimos 200 arriba; aquí solo log
