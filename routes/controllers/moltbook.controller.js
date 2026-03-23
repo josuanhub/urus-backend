@@ -301,6 +301,59 @@ Tu tarea es reaccionar, corregir, profundizar o señalar contradicción.
   };
 }
 
+async function runAutonomousCycle(seedInput = "") {
+  const pool = getPool();
+
+  const seed = String(seedInput || "").trim() || 
+    "Revisa el estado interno del sistema, detecta la tensión principal y define el siguiente movimiento operativo.";
+
+  await pool.query(
+    `INSERT INTO moltbook_audit (event, actor, target, reason, message)
+     VALUES ($1, $2, $3, $4, $5)`,
+    ["autonomous_cycle_started", "URUS_OS", "ORION", null, seed]
+  );
+
+  const loopResult = await runAgentLoop(seed, { maxIterations: 2 });
+
+  const flattenedAgents = loopResult.iterations.flat().map(({ agent, insight, source }) => ({
+    agent,
+    insight,
+    source
+  }));
+
+  const reply = await buildOrionReply(
+    `CICLO AUTONOMO INTERNO\n\nSeed:\n${seed}`,
+    flattenedAgents
+  );
+
+  await pool.query(
+    `INSERT INTO moltbook_messages (direction, actor, target, content, urus_status)
+     VALUES ($1, $2, $3, $4, $5)`,
+    ["agent_to_human", "ORION", "SYSTEM", reply, "approved"]
+  );
+
+  await pool.query(
+    `INSERT INTO moltbook_audit (event, actor, target, reason, message)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [
+      "autonomous_cycle_completed",
+      "URUS_OS",
+      "ORION",
+      loopResult.consulted_names.length
+        ? `loop:2|consulted:${loopResult.consulted_names.join(",")}`
+        : "loop:2",
+      seed
+    ]
+  );
+
+  return {
+    seed,
+    reply,
+    loop: loopResult,
+    consulted_agents: flattenedAgents
+  };
+}
+
 async function buildOrionReply(userMessage, consultedAgents) {
   const consultedSummary = consultedAgents
     .map((a) => `${a.agent}:\n${a.insight}`)
@@ -478,11 +531,13 @@ async function agents(req, res) {
 async function message(req, res) {
   try {
     const pool = getPool();
-    const { to = "ORION", message = "" } = req.body || {};
+    const { to = "ORION", message = "", mode = "", seed = "" } = req.body || {};
 
     const cleanTo = String(to || "").toUpperCase();
     const cleanMessage = String(message || "");
 
+
+    
     if (cleanTo !== "ORION") {
       return res.status(400).json({
         ok: false,
