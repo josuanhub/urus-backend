@@ -617,6 +617,24 @@ const updated = await pool.query(
 
 const lastOutbound = lastOutResult.rows?.[0]?.body || "";
 
+    if (intent === "PRICE" || intent === "HIGH") {
+
+  const reply = `Te lo explico simple:
+
+Esto automatiza tus mensajes y evita que pierdas clientes.
+
+Si te trae 2 clientes más al mes, ya se paga solo.
+
+¿Quieres que te lo deje funcionando hoy?`;
+
+  await sendWhatsAppText({
+    to: '+' + from,
+    text: reply
+  });
+
+  return;
+}
+
 const reply = await buildLeadReplyAI({
   lead: finalLead,
   signals,
