@@ -37,10 +37,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // OpenAI SDK (robusto)
 const OpenAI = require("openai").default;
 const moltbookRoutes = require("./routes/moltbook.routes");
-const { runHunterBrain } = require("./services/hunter/brain");
-const { runHunterFollowUps } = require("./services/hunter/followup");
 const app = express();
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 
@@ -161,38 +158,6 @@ app.post(
 
 app.use(express.json({ limit: "1mb" }));
 app.use("/v1/moltbook", moltbookRoutes);
-
-// 👇 AQUÍ MISMO
-
-app.get("/v1/wa/leads", async (req, res) => {
-  const r = await pool.query(`
-    SELECT * FROM wa_leads
-    ORDER BY updated_at DESC
-  `)
-  res.json(r.rows)
-})
-
-app.get("/v1/wa/messages/:id", async (req, res) => {
-  const r = await pool.query(`
-    SELECT *
-    FROM wa_lead_messages
-    WHERE lead_id = $1
-    ORDER BY created_at ASC
-  `, [req.params.id])
-
-  res.json(r.rows)
-})
-
-app.post("/v1/wa/message/:id", async (req, res) => {
-  const { message } = req.body
-
-  await pool.query(`
-    INSERT INTO wa_lead_messages (lead_id, direction, body)
-    VALUES ($1, 'inbound', $2)
-  `, [req.params.id, message])
-
-  res.json({ ok: true })
-})
 
 // ==============================
 // WHATSAPP CLOUD API — WEBHOOK + SEND (V1)
@@ -488,26 +453,6 @@ app.post("/v1/wa/webhook", async (req, res) => {
     const text = msg?.text?.body || "";
     const name = value?.contacts?.[0]?.profile?.name || null;
 
-    function detectIntent(text = "") {
-  const t = text.toLowerCase();
-
-  if (t.includes("precio") || t.includes("cuánto") || t.includes("cuanto")) return "PRICE";
-  if (t.includes("interesa") || t.includes("quiero")) return "HIGH";
-  if (t.includes("como funciona")) return "INFO";
-  if (t.includes("ok") || t.includes("dale")) return "HIGH";
-
-  return "NORMAL";
-}
-
-const intent = detectIntent(text);
-
-    // 🔥 MARCAR LEAD DE HUNTER COMO RESPONDIDO
- await pool.query(`
-  UPDATE hunter_leads
-  SET status = 'RESPONDED'
-  WHERE phone = $1
-`, ['+' + from]);
-
     // SOLO texto por ahora
     const message_type = msg.type || "text";
     if (message_type !== "text") {
@@ -617,24 +562,6 @@ const updated = await pool.query(
 
 const lastOutbound = lastOutResult.rows?.[0]?.body || "";
 
-    if (intent === "PRICE" || intent === "HIGH") {
-
-  const reply = `Te lo explico simple:
-
-Esto automatiza tus mensajes y evita que pierdas clientes.
-
-Si te trae 2 clientes más al mes, ya se paga solo.
-
-¿Quieres que te lo deje funcionando hoy?`;
-
-  await sendWhatsAppText({
-    to: '+' + from,
-    text: reply
-  });
-
-  return;
-}
-
 const reply = await buildLeadReplyAI({
   lead: finalLead,
   signals,
@@ -653,8 +580,8 @@ const reply = await buildLeadReplyAI({
     // D) enviar reply a WhatsApp REAL (Cloud API)
     const sent = await sendWhatsAppText({ to: from, text: reply });
     console.log("WA_REPLY_SENT", { ok: sent.ok, to: from, lead_id: finalLead.id });
-}
-  catch (e) {
+
+  } catch (e) {
     console.error("WA_WEBHOOK_ERROR", e);
     // ya respondimos 200 arriba; aquí solo log
   }
@@ -665,15 +592,6 @@ const reply = await buildLeadReplyAI({
 // Pegar después de: app.use(express.json({ limit: "1mb" }));
 // ==============================
 
-app.get("/v1/wa/leads", async (req, res) => {
-  const r = await pool.query(`
-    SELECT id, name, phone, last_message, status, score
-    FROM wa_leads
-    ORDER BY updated_at DESC
-  `);
-
-  res.json(r.rows);
-});
 const DEMO_PROMPT = `
 Eres URUS DEMO para negocios locales.
 
@@ -4425,100 +4343,37 @@ await pool.query(
 const URUS_DECISION_SCAN_PROMPT = `
 Eres URUS Decision Scan.
 
-Tu función es detectar dónde un negocio está perdiendo valor por falta de sistema y convertir esa pérdida en una decisión clara y un flujo automatizable, útil para implementación real.
+Tu función es detectar dónde un negocio está perdiendo valor por falta de sistema y convertir esa pérdida en una decisión clara y un flujo ejecutable.
 
 No explicas tecnología.
 No hablas de inteligencia artificial.
 No das clases.
 No haces brainstorming abierto.
 No respondes como chatbot genérico.
-No llenas espacio con texto bonito.
-No suenas como consultor corporativo inflado.
 
-Tu trabajo es diagnosticar con precisión y aterrizar en una automatización concreta.
+Tu trabajo es diagnosticar y aterrizar.
 
 Debes detectar:
 - cuál es la pérdida de valor principal
 - dónde está la fricción central
 - qué decisión conviene tomar primero
-- qué flujo automatizable debería organizarse o implementarse primero
+- qué flujo debería organizarse o implementarse primero
 - qué resultado operativo se espera
-- cuál es el próximo paso inmediato hacia implementación
+- cuál es el próximo paso inmediato
 
 Tu análisis sigue esta secuencia:
-Industria → Caso → Pérdida de valor → Fricción → Decisión → Flujo automatizable → Resultado
+Caso → Pérdida de valor → Fricción → Decisión → Flujo → Resultado
 
 REGLAS DE DIAGNÓSTICO
-
-1. Usa la industria como contexto fuerte.
-- Si la industria es Salud y Bienestar, piensa en pacientes, citas, confirmación, recordatorios, no-show, triage y seguimiento.
-- Si la industria es Estética y Belleza, piensa en clientas, citas, ubicación, confirmación, interés frío, recordatorios y seguimiento por WhatsApp.
-- Si la industria es E-commerce y Retail, piensa en captación, preguntas frecuentes, abandono, seguimiento, disponibilidad y conversión.
-- Si la industria es Educación y Formación, piensa en leads, matrícula, seguimiento, agenda, dudas frecuentes y cierre.
-- Si la industria es Servicios Profesionales, piensa en prospectos, calificación, reunión, propuesta y seguimiento.
-- Si la industria es Inmobiliaria, piensa en leads, calificación, agenda de visitas, seguimiento y cierre.
-- Si la industria es Restaurantes y Food, piensa en reservas, pedidos, confirmación, horarios, seguimiento y atención.
-- Si la industria es Distribución y Logística, piensa en solicitudes, clasificación, rutas, coordinación, pedidos y seguimiento.
-- Si la industria es Tecnología y Software, piensa en captación, onboarding, activación, soporte, seguimiento comercial y cierre.
-- Si la industria es Otro o no está clara, usa el caso del cliente como guía principal.
-
-2. Busca el cuello de botella real, no el síntoma superficial.
-
-3. Elige una sola pérdida principal.
-No des dos o tres problemas principales.
-
-4. Elige una sola fricción principal.
-Debe ser la que más impacto tenga si se automatiza.
-
-5. Elige una sola decisión crítica.
-Debe ser la primera jugada correcta, no una transformación total del negocio.
-
-6. Recomienda un solo flujo principal.
-No propongas automatizar todo.
-No mezcles varios flujos a la vez.
-
-7. El flujo recomendado debe describir un flujo automatizable, no una rutina manual.
-Debe sonar como algo que puede instalarse en el negocio.
-
-8. El flujo debe estar escrito en 3 a 5 pasos concretos.
-Debe incluir acciones como:
-- entrada del lead o cliente
-- clasificación
-- respuesta automática o inmediata
-- seguimiento
-- agenda, cierre o reactivación
-
-9. El resultado esperado debe ser visible en:
-- tiempo
-- seguimiento
-- citas
-- conversión
-- respuesta
-- orden operativo
-
-10. El próximo paso sugerido debe acercar a implementación real.
-Debe sonar como piloto, setup inicial o instalación del flujo.
-
-11. Si el usuario escribe algo muy general o poco claro:
-- no inventes demasiado
-- baja a una hipótesis razonable
-- usa el flujo automatizable más probable según industria y caso
-
-12. No diagnostiques como consultor tradicional.
-Diagnostica como arquitecto de flujo: detecta dónde se pierde valor, nombra la fuga y recomienda la primera estructura automatizable que conviene instalar.
-
-13. El scan debe ayudar a vender automatización.
-Eso significa que el flujo recomendado debe parecer una automatización concreta que un negocio querría implementar.
-
-ESTILO DE RESPUESTA
-- Sé directo
-- Sé concreto
-- Sé útil
-- Usa lenguaje operativo
-- Evita frases vagas como “optimizar procesos”, “mejorar eficiencia” o “maximizar potencial”
-- Habla como alguien que ve una fuga operativa real
-- Menos discurso, más precisión
-- El flujo recomendado debe sonar instalable
+- identifica el nicho
+- Busca el cuello de botella real, no el síntoma superficial.
+- Elige una sola pérdida principal.
+- Elige una sola fricción principal.
+- Elige una sola decisión crítica.
+- Recomienda un solo flujo principal.
+- El flujo debe estar escrito en 3 a 5 pasos concretos.
+- El resultado esperado debe ser visible en operación, tiempo, seguimiento, conversión, citas o respuesta.
+- El próximo paso debe acercar a implementación real.
 
 NO HAGAS ESTO
 - no des listas largas de posibilidades
@@ -4527,39 +4382,28 @@ NO HAGAS ESTO
 - no hables de automatizar “todo”
 - no seas ambiguo
 - no uses lenguaje inflado
-- no recomiendes más de un flujo principal
-- no hables como auditor abstracto
-- no escribas demasiado
-- no propongas soluciones manuales como si fueran el flujo principal
-- no pongas cosas como “designar a alguien”, “revisar al final del día”, “hacerlo manualmente” como solución central
 
 FORMATO OBLIGATORIO
 
 URUS Decision Scan
 
 1. Pérdida de valor principal
-[explicación breve, clara y concreta]
+[explicación breve y clara]
 
 2. Fricción principal
-[cuello de botella real]
+[cuello de botella principal]
 
 3. Decisión crítica
-[qué conviene resolver primero]
+[qué debe resolverse primero]
 
 4. Flujo recomendado
-[flujo automatizable sugerido en 3 a 5 pasos concretos]
+[proceso sugerido en 3 a 5 pasos]
 
 5. Resultado esperado
-[beneficio visible y operativo]
+[beneficio medible o visible]
 
 6. Próximo paso sugerido
-[piloto o implementación inicial]
-
-IMPORTANTE:
-Cada sección debe ser breve.
-No más de 2 o 3 oraciones por sección.
-El flujo recomendado debe ser lo más concreto de toda la respuesta.
-El flujo recomendado debe sonar como una automatización instalable, no como una rutina manual.
+[piloto / automatización / prueba]
 `.trim();
 
 app.post("/v1/decision-scan", async (req, res) => {
@@ -4591,9 +4435,6 @@ ${valueLoss}
 
 ¿Qué parte del proceso se repite demasiado o genera más fricción?
 ${friction}
-
-Instrucción adicional:
-Diagnostica el cuello de botella principal de este caso y recomienda solo el primer flujo automatizable que conviene instalar.
 `.trim();
 
     const completion = await openai.chat.completions.create({
@@ -4602,7 +4443,7 @@ Diagnostica el cuello de botella principal de este caso y recomienda solo el pri
         { role: "system", content: URUS_DECISION_SCAN_PROMPT },
         { role: "user", content: userMsg }
       ],
-      temperature: 0.35,
+      temperature: 0.4,
       top_p: 1
     });
 
@@ -4629,44 +4470,6 @@ Diagnostica el cuello de botella principal de este caso y recomienda solo el pri
     app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'moltbook.html'));
 });
-
-// ==============================
-// 🔥 URUS HUNTER ENGINE (AUTO)
-// ==============================
-
-// fuente temporal (luego la cambiamos por scraping real)
-const sources = {
-  async getLeads() {
-    return [
-      {
-        name: "Test Business",
-        phone: "19395851479",
-        tipo_negocio: "clinic",
-        nivel_actividad: "alto"
-      }
-    ];
-  }
-};
-
-// loop hunter (cada 10 min)
-setInterval(() => {
-  console.log("🔥 Hunter running...");
-  runHunterBrain({
-    pool,
-    sendWhatsAppText,
-    sources
-  });
-}, 10 * 60 * 1000);
-
-// loop follow-up (cada 15 min)
-setInterval(() => {
-  console.log("🔁 Follow-up running...");
-  runHunterFollowUps({
-    pool,
-    sendWhatsAppText
-  });
-}, 15 * 60 * 1000);
-    
     app.listen(PORT, () => {
       console.log(`URUS backend listening on ${PORT}`);
     });
