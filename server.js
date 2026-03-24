@@ -1662,10 +1662,12 @@ await pool.query(`
   `);
 
   // ---------- MULTI-CLIENTE: conexiones WhatsApp por cliente ----------
+  await pool.query(`DROP TABLE IF EXISTS wa_connections CASCADE;`);
+  
   await pool.query(`
     CREATE TABLE IF NOT EXISTS wa_connections (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       business_name TEXT,
       phone_number TEXT,
       wa_phone_number_id TEXT,
@@ -1691,7 +1693,7 @@ await pool.query(`
   // ---------- Amarrar leads al cliente / conexión ----------
   await pool.query(`
     ALTER TABLE wa_leads
-    ADD COLUMN IF NOT EXISTS user_id INT REFERENCES users(id) ON DELETE SET NULL;
+    ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
   `);
 
   await pool.query(`
