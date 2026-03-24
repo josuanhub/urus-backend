@@ -7,17 +7,11 @@ const appState = {
 };
 
 // 🚀 INIT
-window.addEventListener("DOMContentLoaded", init);
-
-async function init() {
-  try {
-    await loadBlueprintStatus();
-    bindEvents();
-    render();
-  } catch (err) {
-    console.error("INIT ERROR", err);
-  }
-}
+window.addEventListener("DOMContentLoaded", async () => {
+  await loadBlueprintStatus();
+  bindGlobalEvents();
+  render();
+});
 
 // 🔍 STATUS
 async function loadBlueprintStatus() {
@@ -32,33 +26,46 @@ async function loadBlueprintStatus() {
     } else {
       appState.whatsappConnected = false;
     }
-
   } catch (err) {
     console.error("STATUS ERROR", err);
     appState.whatsappConnected = false;
   }
 }
 
-// 🎯 RENDER ROOT
+// 🎯 RENDER ROOT (NO rompe tu HTML)
 function render() {
   if (appState.whatsappConnected) {
-    showDashboardState();
+    showDashboard();
   } else {
-    showConnectState();
+    showConnect();
   }
 }
 
-// 🧩 SOLO CONTROLA VISIBILIDAD (NO TOCA TU HTML)
-function showConnectState() {
-  safeShow(".connect-wrapper");
-  safeHide(".dashboard");
+// 🔌 ESTADO: CONECTAR
+function showConnect() {
+  const stats = document.querySelector(".stats-grid");
+  const dashboard = document.querySelector(".dashboard-grid");
+
+  if (stats) stats.style.display = "none";
+  if (dashboard) dashboard.style.display = "none";
+
+  // asegura que la card de conectar esté visible
+  const connect = document.querySelector(".connect-wrapper");
+  if (connect) connect.style.display = "flex";
 }
 
-function showDashboardState() {
-  safeHide(".connect-wrapper");
-  safeShow(".dashboard");
+// 📊 ESTADO: DASHBOARD
+function showDashboard() {
+  const stats = document.querySelector(".stats-grid");
+  const dashboard = document.querySelector(".dashboard-grid");
 
-  // opcional: actualizar datos si existen elementos
+  if (stats) stats.style.display = "grid";
+  if (dashboard) dashboard.style.display = "grid";
+
+  const connect = document.querySelector(".connect-wrapper");
+  if (connect) connect.style.display = "none";
+
+  // opcional: setear datos si existen
   const nameEl = document.getElementById("businessName");
   const phoneEl = document.getElementById("phoneNumber");
 
@@ -66,58 +73,40 @@ function showDashboardState() {
   if (phoneEl) phoneEl.innerText = appState.phoneNumber;
 }
 
-// 🧠 EVENTOS CENTRALIZADOS (NO ROMPE NADA)
-function bindEvents() {
+// 🧠 EVENTOS GLOBALES (CLAVE — NO FALLA)
+function bindGlobalEvents() {
 
   document.addEventListener("click", (e) => {
 
-    // 🔥 ABRIR MODAL
+    // 🟢 ABRIR MODAL
     if (e.target.id === "openModalBtn") {
       const modal = document.getElementById("modalOverlay");
       if (modal) modal.classList.remove("hidden");
     }
 
-    // ❌ CERRAR MODAL
+    // 🔴 CERRAR MODAL
     if (e.target.id === "cancelBtn") {
       const modal = document.getElementById("modalOverlay");
       if (modal) modal.classList.add("hidden");
     }
 
-    // 🚀 CONTINUAR A META
+    // 🚀 CONTINUAR → META
     if (e.target.id === "continueBtn") {
-      handleConnect();
+
+      const phone = document.getElementById("phoneInput")?.value?.trim();
+      const business = document.getElementById("businessInput")?.value?.trim();
+
+      if (!phone || !business) {
+        alert("Completa el número y nombre del negocio");
+        return;
+      }
+
+      appState.phoneNumber = phone;
+      appState.businessName = business;
+
+      window.location.href = `${API_BASE}/v1/blueprint/connect/meta`;
     }
 
   });
-}
 
-// 🔗 CONEXIÓN
-function handleConnect() {
-  const phoneInput = document.getElementById("phoneInput");
-  const businessInput = document.getElementById("businessInput");
-
-  const phone = phoneInput ? phoneInput.value.trim() : "";
-  const business = businessInput ? businessInput.value.trim() : "";
-
-  if (!phone || !business) {
-    alert("Completa número y nombre del negocio");
-    return;
-  }
-
-  appState.phoneNumber = phone;
-  appState.businessName = business;
-
-  // 🔥 REDIRECT REAL
-  window.location.href = `${API_BASE}/v1/blueprint/connect/meta`;
-}
-
-// 🛠 HELPERS
-function safeHide(selector) {
-  const el = document.querySelector(selector);
-  if (el) el.style.display = "none";
-}
-
-function safeShow(selector) {
-  const el = document.querySelector(selector);
-  if (el) el.style.display = "block";
 }
