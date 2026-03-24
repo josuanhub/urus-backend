@@ -3286,6 +3286,140 @@ app.post("/v1/wa-jobs/process-followups", authRequired, async (req, res) => {
   }
 });
 
+app.get("/v1/blueprint/status", authRequired, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `
+      SELECT id, user_id, business_name, phone_number, wa_phone_number_id,
+             wa_business_account_id, status, connected_at, created_at, updated_at
+      FROM wa_connections
+      WHERE user_id = $1
+      ORDER BY updated_at DESC
+      LIMIT 1
+      `,
+      [req.user.id]
+    );
+
+    const connection = r.rows[0] || null;
+
+    return res.json({
+      ok: true,
+      connected: !!connection && connection.status === "connected",
+      connection,
+    });
+  } catch (e) {
+    console.error("BLUEPRINT_STATUS_ERROR", e);
+    return res.status(500).json({
+      ok: false,
+      error: "blueprint_status_failed",
+      message: e.message,
+    });
+  }
+});
+
+app.post("/v1/blueprint/connect/demo", authRequired, async (req, res) => {
+  try {
+    const {
+      business_name = "",
+      phone_number = "",
+      wa_phone_number_id = "",
+      wa_business_account_id = "",
+      access_token = "",
+    } = req.body || {};
+
+    const cleanBusinessName = String(business_name || "").trim();
+    const cleanPhoneNumber = String(phone_number || "").trim();
+    const cleanPhoneNumberId = String(wa_phone_number_id || "").trim();
+    const cleanBusinessAccountId = String(wa_business_account_id || "").trim();
+    const cleanAccessToken = String(access_token || "").trim();
+
+    if (!cleanBusinessName || !cleanPhoneNumber) {
+      return res.status(400).json({
+        ok: false,
+        error: "business_name_and_phone_number_required",
+      });
+    }
+
+    const existing = await pool.query(
+      `
+      SELECT id
+      FROM wa_connections
+      WHERE user_id = $1
+      ORDER BY updated_at DESC
+      LIMIT 1
+      `,
+      [req.user.id]
+    );
+
+    let saved;
+
+    if (existing.rows[0]) {
+      saved = await pool.query(
+        `
+        UPDATE wa_connections
+        SET
+          business_name = $2,
+          phone_number = $3,
+          wa_phone_number_id = $4,
+          wa_business_account_id = $5,
+          access_token = $6,
+          status = 'connected',
+          connected_at = now(),
+          updated_at = now()
+        WHERE id = $1
+        RETURNING *
+        `,
+        [
+          existing.rows[0].id,
+          cleanBusinessName,
+          cleanPhoneNumber,
+          cleanPhoneNumberId || null,
+          cleanBusinessAccountId || null,
+          cleanAccessToken || null,
+        ]
+      );
+    } else {
+      saved = await pool.query(
+        `
+        INSERT INTO wa_connections (
+          user_id,
+          business_name,
+          phone_number,
+          wa_phone_number_id,
+          wa_business_account_id,
+          access_token,
+          status,
+          connected_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, 'connected', now())
+        RETURNING *
+        `,
+        [
+          req.user.id,
+          cleanBusinessName,
+          cleanPhoneNumber,
+          cleanPhoneNumberId || null,
+          cleanBusinessAccountId || null,
+          cleanAccessToken || null,
+        ]
+      );
+    }
+
+    return res.json({
+      ok: true,
+      connected: true,
+      connection: saved.rows[0],
+    });
+  } catch (e) {
+    console.error("BLUEPRINT_CONNECT_DEMO_ERROR", e);
+    return res.status(500).json({
+      ok: false,
+      error: "blueprint_connect_demo_failed",
+      message: e.message,
+    });
+  }
+});
+
 app.get("/v1/wa-leads", authRequired, async (req, res) => {
   try {
     const status = req.query.status ? String(req.query.status).trim() : null;
