@@ -7,8 +7,18 @@ const appState = {
 };
 
 // 🚀 INIT
-window.addEventListener("DOMContentLoaded", () => {
-  loadBlueprintStatus().then(render);
+window.addEventListener("DOMContentLoaded", async () => {
+  // 🔥 Detecta regreso de Meta
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("meta") === "connected") {
+    appState.whatsappConnected = true;
+
+    // limpia URL (pro)
+    window.history.replaceState({}, document.title, "/blueprint/index.html");
+  }
+
+  await loadBlueprintStatus();
+  render();
 });
 
 // 🔍 STATUS
@@ -40,47 +50,87 @@ function render() {
   }
 }
 
-// 🔌 PANTALLA CONECTAR
+// 🔌 PANTALLA CONECTAR (SaaS PRO)
 function renderConnect() {
   const app = document.getElementById("app");
 
   app.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;">
-      <h2>Conecta tu WhatsApp</h2>
-      <p>Empieza a automatizar tus conversaciones</p>
-      <button id="connectBtn" style="padding:12px 20px;margin-top:20px;">
-        Conectar con Meta
-      </button>
+    <div class="connect-container">
+      <div class="connect-card">
+        
+        <div class="status-dot"></div>
+
+        <h2>Conecta tu WhatsApp Business</h2>
+        <p>
+          Conecta el número de WhatsApp de tu negocio para integrar tus leads,
+          mensajes y seguimientos dentro de este sistema.
+        </p>
+
+        <ul class="benefits">
+          <li>✔ Recibe mensajes y leads automáticamente</li>
+          <li>✔ Envía seguimientos desde la plataforma</li>
+        </ul>
+
+        <button id="connectBtn" class="btn-primary">
+          Conectar mi WhatsApp
+        </button>
+
+        <span class="meta-note">
+          Requiere WhatsApp Business · API oficial
+        </span>
+
+      </div>
     </div>
   `;
 
   document.getElementById("connectBtn").addEventListener("click", () => {
-    // 🔥 REDIRECT REAL
     window.location.href = `${API_BASE}/v1/blueprint/connect/meta`;
   });
 }
 
-// 📊 DASHBOARD
+// 📊 DASHBOARD (SaaS PRO)
 function renderDashboard() {
   const app = document.getElementById("app");
 
   app.innerHTML = `
-    <div>
-      <h2>Dashboard</h2>
-      <p><strong>Negocio:</strong> ${appState.businessName || "Conectado"}</p>
-      <p><strong>Teléfono:</strong> ${appState.phoneNumber || "-"}</p>
+    <div class="dashboard">
 
-      <div style="margin-top:20px;">
-        <div style="padding:20px;border:1px solid #333;margin-bottom:10px;">
-          Leads hoy: 12
-        </div>
-        <div style="padding:20px;border:1px solid #333;margin-bottom:10px;">
-          Conversaciones activas: 5
-        </div>
-        <div style="padding:20px;border:1px solid #333;">
-          Ventas generadas: $2,450
-        </div>
+      <div class="top-bar">
+        <h2>Buenos días, Agent</h2>
+        <div class="status-badge">🟢 WhatsApp conectado</div>
       </div>
+
+      <div class="cards">
+
+        <div class="card">
+          <h3>Leads hoy</h3>
+          <p class="big">18</p>
+          <span>+12%</span>
+        </div>
+
+        <div class="card">
+          <h3>Mensajes enviados</h3>
+          <p class="big">147</p>
+          <span>+23%</span>
+        </div>
+
+        <div class="card">
+          <h3>Citas generadas</h3>
+          <p class="big">5</p>
+        </div>
+
+        <div class="card">
+          <h3>Ingresos</h3>
+          <p class="big">$45,000</p>
+        </div>
+
+      </div>
+
+      <div class="info">
+        <p><strong>Negocio:</strong> ${appState.businessName}</p>
+        <p><strong>Teléfono:</strong> ${appState.phoneNumber}</p>
+      </div>
+
     </div>
   `;
 }
