@@ -819,3 +819,38 @@ a {
     font-size: 20px;
   }
 }
+
+.modal-overlay {
+  position: fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background: rgba(0,0,0,0.75);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:999;
+}
+
+.modal-box {
+  background: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  width: 320px;
+}
+
+.modal-box input {
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+}
+
+.modal-actions {
+  display:flex;
+  justify-content:space-between;
+}
+
+.hidden {
+  display:none;
+}
