@@ -46,34 +46,50 @@ function render() {
 
 // CONNECT SCREEN (TU DISEÑO + MODAL)
 function renderConnect() {
-  const app = document.getElementById("app");
+  // 🔥 NO TOCAMOS HTML, solo controlamos visibilidad
 
-  app.innerHTML = `
-    <div class="connect-wrapper">
-      
-      <div class="connect-card">
-        <div class="status-dot"></div>
+  const stats = document.querySelector(".stats-grid");
+  const dashboard = document.querySelector(".dashboard-grid");
 
-        <h2>Conecta tu WhatsApp Business</h2>
-        <p>
-          Conecta el número de WhatsApp de tu negocio para integrar tus leads,
-          mensajes y seguimientos dentro de este sistema.
-        </p>
+  if (stats) stats.style.display = "none";
+  if (dashboard) dashboard.style.display = "none";
 
-        <ul class="benefits">
-          <li>✔ Recibe mensajes, leads y seguimientos</li>
-          <li>✔ Envía mensajes desde la plataforma</li>
-        </ul>
+  // 👉 Creamos SOLO el bloque central (sin romper layout)
+  const container = document.createElement("div");
+  container.className = "connect-overlay";
 
-        <button id="openModalBtn" class="btn-gold">
-          Conectar mi WhatsApp
-        </button>
+  container.innerHTML = `
+    <div class="connect-card">
+      <div class="status-dot"></div>
 
-        <span class="meta-note">
-          Requiere WhatsApp Business · API oficial
-        </span>
-      </div>
+      <h2>Conecta tu WhatsApp Business</h2>
+      <p>
+        Conecta el número de WhatsApp de tu negocio para integrar tus leads,
+        mensajes y seguimientos dentro de este sistema.
+      </p>
 
+      <ul class="benefits">
+        <li>✔ Recibe mensajes, leads y seguimientos</li>
+        <li>✔ Envía mensajes desde la plataforma</li>
+      </ul>
+
+      <button id="openModalBtn" class="btn-gold">
+        Conectar mi WhatsApp
+      </button>
+
+      <span class="meta-note">
+        Requiere WhatsApp Business · API oficial
+      </span>
+    </div>
+  `;
+
+  document.querySelector(".main-content").appendChild(container);
+
+  // 🔥 EVENTO ABRIR MODAL
+  document.getElementById("openModalBtn").addEventListener("click", () => {
+    document.getElementById("metaModal").classList.remove("hidden");
+  });
+}
       <!-- MODAL -->
       <div id="modalOverlay" class="modal-overlay hidden">
         <div class="modal-box">
