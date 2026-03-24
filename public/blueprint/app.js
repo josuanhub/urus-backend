@@ -340,16 +340,16 @@ document.addEventListener("DOMContentLoaded", () => {
         confirmMetaBtn.disabled = true;
         confirmMetaBtn.textContent = "Conectando...";
 
-        try {
-      window.location.href = `${API_BASE}/v1/blueprint/connect/meta`;
-      return;
-   } catch (error) {
-     console.error("BLUEPRINT_CONNECT_META_ERROR", error);
-    alert("No se pudo iniciar conexión con Meta.");
-  } finally {
-    confirmMetaBtn.disabled = false;
-    confirmMetaBtn.textContent = "Continuar con Meta";
- }  
+     try {
+  window.location.href = `${API_BASE}/v1/blueprint/connect/meta`;
+  return;
+} catch (error) {
+  console.error("BLUEPRINT_CONNECT_META_ERROR", error);
+  alert("No se pudo iniciar conexión con Meta.");
+} finally {
+  confirmMetaBtn.disabled = false;
+  confirmMetaBtn.textContent = "Continuar con Meta";
+}
 
       });
     }
