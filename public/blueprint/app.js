@@ -11,6 +11,26 @@ document.addEventListener("DOMContentLoaded", () => {
     phoneNumber: "+1 305 592 3928",
   };
 
+  const API_BASE = window.location.origin;
+
+  async function loadBlueprintStatus() {
+    try {
+      const res = await fetch(`${API_BASE}/v1/blueprint/status`);
+      const data = await res.json();
+
+      if (data.ok && data.connected && data.connection) {
+        appState.whatsappConnected = true;
+        appState.businessName = data.connection.business_name || appState.businessName;
+        appState.phoneNumber = data.connection.phone_number || appState.phoneNumber;
+      } else {
+        appState.whatsappConnected = false;
+      }
+    } catch (error) {
+      console.error("BLUEPRINT_STATUS_LOAD_ERROR", error);
+      appState.whatsappConnected = false;
+    }
+  }
+  
   // --------- Render principal ----------
   function render() {
     if (!appState.whatsappConnected) {
@@ -309,19 +329,56 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    if (confirmMetaBtn) {
-      confirmMetaBtn.addEventListener("click", () => {
+      if (confirmMetaBtn) {
+      confirmMetaBtn.addEventListener("click", async () => {
         const phoneInput = document.getElementById("metaPhoneInput");
         const businessInput = document.getElementById("metaBusinessInput");
 
-        appState.phoneNumber = phoneInput?.value?.trim() || appState.phoneNumber;
-        appState.businessName = businessInput?.value?.trim() || appState.businessName;
-        appState.whatsappConnected = true;
+        const phoneNumber = phoneInput?.value?.trim() || appState.phoneNumber;
+        const businessName = businessInput?.value?.trim() || appState.businessName;
 
-        render();
+        confirmMetaBtn.disabled = true;
+        confirmMetaBtn.textContent = "Conectando...";
+
+        try {
+          const res = await fetch(`${API_BASE}/v1/blueprint/connect/demo`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              business_name: businessName,
+              phone_number: phoneNumber,
+              wa_phone_number_id: "demo-phone-id",
+              wa_business_account_id: "demo-waba-id",
+              access_token: "demo-token"
+            })
+          });
+
+          const data = await res.json();
+
+          if (!data.ok) {
+            throw new Error(data.error || "No se pudo conectar");
+          }
+
+          appState.phoneNumber = data.connection?.phone_number || phoneNumber;
+          appState.businessName = data.connection?.business_name || businessName;
+          appState.whatsappConnected = true;
+
+          if (metaModal) {
+            metaModal.classList.remove("show");
+          }
+
+          render();
+        } catch (error) {
+          console.error("BLUEPRINT_CONNECT_DEMO_ERROR", error);
+          alert("No se pudo conectar WhatsApp demo.");
+        } finally {
+          confirmMetaBtn.disabled = false;
+          confirmMetaBtn.textContent = "Continuar con Meta";
+        }
       });
     }
-  }
 
-  render();
+    loadBlueprintStatus().then(render);
 });
