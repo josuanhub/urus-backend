@@ -2,44 +2,37 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>URUS Blueprint</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/blueprint/styles.css" />
 </head>
+
 <body>
- <div class="app-shell">
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-mark"></div>
-      <div>
-        <h1>URUS Blueprint</h1>
-        <p>WhatsApp Growth OS</p>
-      </div>
-    </div>
 
-    <nav class="nav">
-      <button class="nav-item active">Dashboard</button>
-      <button class="nav-item">Leads</button>
-      <button class="nav-item">Follow-ups</button>
-      <button class="nav-item">Calendario</button>
-      <button class="nav-item">Plantillas</button>
-      <button class="nav-item">Analytics</button>
-    </nav>
-
-    <div class="sidebar-footer">
-      <div class="agent-card">
-        <div class="agent-avatar">UB</div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"></div>
         <div>
-          <strong>Agent Master</strong>
-          <p>En línea</p>
+          <h1>URUS Blueprint</h1>
+          <p>WhatsApp Growth OS</p>
         </div>
       </div>
-    </div>
-  </aside>
 
-  <main class="main-content"></main>
-</div>
+      <nav class="nav">
+        <button class="nav-item active">Dashboard</button>
+        <button class="nav-item">Leads</button>
+        <button class="nav-item">Follow-ups</button>
+        <button class="nav-item">Calendario</button>
+        <button class="nav-item">Plantillas</button>
+        <button class="nav-item">Analytics</button>
+      </nav>
+    </aside>
 
-  <script src="./app.js"></script>
+    <!-- 🔥 AQUÍ SE RENDERIZA TODO -->
+    <main id="app" class="main-content"></main>
+  </div>
+
+  <script src="/blueprint/app.js"></script>
 </body>
 </html>
