@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>URUS Blueprint</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <h1>URUS Blueprint</h1>
+          <p>WhatsApp Growth OS</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active">Dashboard</button>
+        <button class="nav-item">Leads</button>
+        <button class="nav-item">Follow-ups</button>
+        <button class="nav-item">Calendario</button>
+        <button class="nav-item">Plantillas</button>
+        <button class="nav-item">Analytics</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="agent-card">
+          <div class="agent-avatar">UB</div>
+          <div>
+            <strong>Agent Master</strong>
+            <p>En línea</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>Buenos días, Agent</h2>
+          <p>Aquí está el rendimiento de tu sistema hoy</p>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="status-pill online">
+            <span class="dot"></span>
+            WhatsApp Conectado
+          </div>
+          <button class="icon-btn">🔔</button>
+          <div class="account-pill">URUS Elite Motors</div>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <div class="stat-card yellow">
+          <div class="stat-top">
+            <span>Leads Hoy</span>
+            <span class="trend">+12%</span>
+          </div>
+          <h3 id="stat-leads">18</h3>
+          <p>+4 más que ayer</p>
+        </div>
+
+        <div class="stat-card blue">
+          <div class="stat-top">
+            <span>Mensajes Enviados</span>
+            <span class="trend">+23%</span>
+          </div>
+          <h3 id="stat-messages">147</h3>
+          <p>Alta conversión hoy</p>
+        </div>
+
+        <div class="stat-card green">
+          <div class="stat-top">
+            <span>Citas Generadas</span>
+            <span class="trend">+2</span>
+          </div>
+          <h3 id="stat-appointments">5</h3>
+          <p>27% tasa de éxito</p>
+        </div>
+
+        <div class="stat-card purple">
+          <div class="stat-top">
+            <span>Ingresos Est.</span>
+            <span class="trend">+18%</span>
+          </div>
+          <h3 id="stat-revenue">$45,000</h3>
+          <p>En negociaciones</p>
+        </div>
+      </section>
+
+      <section class="dashboard-grid">
+        <div class="panel panel-large">
+          <div class="panel-header">
+            <h3>Rendimiento de la semana</h3>
+            <select>
+              <option>Últimos 7 días</option>
+            </select>
+          </div>
+
+          <div class="chart-mock">
+            <div class="chart-line"></div>
+            <div class="chart-glow"></div>
+            <div class="chart-label">Hoy · 18 leads</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Actividad reciente</h3>
+          </div>
+
+          <div class="activity-list" id="activity-list">
+            <div class="activity-item">
+              <div class="activity-icon whatsapp">🟢</div>
+              <div>
+                <strong>Nuevo lead: Carlos Mendoza</strong>
+                <p>BMW X6 2020</p>
+              </div>
+              <span>2 min</span>
+            </div>
+
+            <div class="activity-item">
+              <div class="activity-icon telegram">🔵</div>
+              <div>
+                <strong>Mensaje enviado</strong>
+                <p>Audi R8 · Follow-up</p>
+              </div>
+              <span>5 min</span>
+            </div>
+
+            <div class="activity-item">
+              <div class="activity-icon green">🟩</div>
+              <div>
+                <strong>Cita confirmada</strong>
+                <p>María González · Urus 2023</p>
+              </div>
+              <span>12 min</span>
+            </div>
+
+            <div class="activity-item">
+              <div class="activity-icon yellow">🟨</div>
+              <div>
+                <strong>Lead vio catálogo</strong>
+                <p>Porsche Cayenne Turbo</p>
+              </div>
+              <span>18 min</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Fuentes de Leads</h3>
+            <select>
+              <option>Este mes</option>
+            </select>
+          </div>
+
+          <div class="sources">
+            <div class="source-row">
+              <span>Instagram Ads</span>
+              <div class="bar"><div class="fill fill-45"></div></div>
+              <strong>45%</strong>
+            </div>
+            <div class="source-row">
+              <span>Facebook</span>
+              <div class="bar"><div class="fill fill-30"></div></div>
+              <strong>30%</strong>
+            </div>
+            <div class="source-row">
+              <span>Referidos</span>
+              <div class="bar"><div class="fill fill-15"></div></div>
+              <strong>15%</strong>
+            </div>
+            <div class="source-row">
+              <span>Web / Landing</span>
+              <div class="bar"><div class="fill fill-10"></div></div>
+              <strong>10%</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Top Leads Clientes</h3>
+          </div>
+
+          <div class="lead-list">
+            <div class="lead-row">
+              <div class="lead-avatar">CM</div>
+              <div>
+                <strong>Carlos Mendoza</strong>
+                <p>BMW X6 2020 · $1.2M</p>
+              </div>
+              <span class="lead-score">95</span>
+            </div>
+
+            <div class="lead-row">
+              <div class="lead-avatar">MG</div>
+              <div>
+                <strong>María González</strong>
+                <p>Lamborghini Urus · $4.5M</p>
+              </div>
+              <span class="lead-score">89</span>
+            </div>
+
+            <div class="lead-row">
+              <div class="lead-avatar">RA</div>
+              <div>
+                <strong>Roberto Alves</strong>
+                <p>Porsche 911 · $2.1M</p>
+              </div>
+              <span class="lead-score">87</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
