@@ -7,10 +7,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Estado simple MVP
   let appState = {
     whatsappConnected: false,
-    businessName: "URUS Elite Motors",
+    businessName: "URUS BLUEPRINT SYSTEM",
     phoneNumber: "+1 305 592 3928",
   };
-
+  
   const API_BASE = window.location.origin;
 
   async function loadBlueprintStatus() {
@@ -330,29 +330,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
       if (confirmMetaBtn) {
-      confirmMetaBtn.addEventListener("click", async () => {
-        const phoneInput = document.getElementById("metaPhoneInput");
-        const businessInput = document.getElementById("metaBusinessInput");
+      confirmMetaBtn.addEventListener("click", () => {
+  const phoneInput = document.getElementById("metaPhoneInput");
+  const businessInput = document.getElementById("metaBusinessInput");
 
-        const phoneNumber = phoneInput?.value?.trim() || appState.phoneNumber;
-        const businessName = businessInput?.value?.trim() || appState.businessName;
+  const phoneNumber = phoneInput?.value?.trim() || appState.phoneNumber;
+  const businessName = businessInput?.value?.trim() || appState.businessName;
 
-        confirmMetaBtn.disabled = true;
-        confirmMetaBtn.textContent = "Conectando...";
+  confirmMetaBtn.disabled = true;
+  confirmMetaBtn.textContent = "Conectando...";
 
-     try {
-  window.location.href = `${API_BASE}/v1/blueprint/connect/meta`;
-  return;
-} catch (error) {
-  console.error("BLUEPRINT_CONNECT_META_ERROR", error);
-  alert("No se pudo iniciar conexión con Meta.");
-} finally {
-  confirmMetaBtn.disabled = false;
-  confirmMetaBtn.textContent = "Continuar con Meta";
-}
-
-      });
-    }
-
+  // 🔥 REDIRECT REAL A META
+  window.location.href = `${window.location.origin}/v1/blueprint/connect/meta`;
+});
     loadBlueprintStatus().then(render);
 });
