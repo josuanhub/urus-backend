@@ -341,19 +341,15 @@ document.addEventListener("DOMContentLoaded", () => {
         confirmMetaBtn.textContent = "Conectando...";
 
         try {
-          const res = await fetch(`${API_BASE}/v1/blueprint/connect/demo`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              business_name: businessName,
-              phone_number: phoneNumber,
-              wa_phone_number_id: "demo-phone-id",
-              wa_business_account_id: "demo-waba-id",
-              access_token: "demo-token"
-            })
-          });
+  window.location.href = `${API_BASE}/v1/blueprint/connect/meta`;
+  return;
+} catch (error) {
+  console.error("BLUEPRINT_CONNECT_DEMO_ERROR", error);
+  alert("No se pudo iniciar conexión con Meta.");
+} finally {
+  confirmMetaBtn.disabled = false;
+  confirmMetaBtn.textContent = "Continuar con Meta";
+}
 
           const data = await res.json();
 
