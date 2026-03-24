@@ -3317,6 +3317,94 @@ app.get("/v1/blueprint/status", authRequired, async (req, res) => {
   }
 });
 
+app.get('/v1/blueprint/connect/meta', async (req, res) => {
+  try {
+    const redirectUri = `${req.protocol}://${req.get('host')}/v1/blueprint/connect/meta/callback`;
+
+    const metaAuthUrl =
+      `https://www.facebook.com/v23.0/dialog/oauth` +
+      `?client_id=${encodeURIComponent(process.env.META_APP_ID || '')}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&scope=${encodeURIComponent('whatsapp_business_management,whatsapp_business_messaging,business_management')}` +
+      `&response_type=code` +
+      `&state=blueprint_connect`;
+
+    return res.redirect(metaAuthUrl);
+  } catch (error) {
+    console.error('BLUEPRINT_META_CONNECT_ERROR', error);
+    return res.status(500).json({
+      ok: false,
+      error: 'No se pudo iniciar conexión con Meta'
+    });
+  }
+});
+
+app.get('/v1/blueprint/connect/meta/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+
+    if (!code) {
+      return res.redirect('/blueprint/index.html?meta=error');
+    }
+
+    if (state !== 'blueprint_connect') {
+      return res.redirect('/blueprint/index.html?meta=invalid_state');
+    }
+
+    // MVP real: por ahora guardamos la conexión como pendiente hasta cambiar code por token real
+    const demoUserId = DEFAULT_USER_ID;
+
+    await pool.query(
+      `
+      INSERT INTO wa_connections (
+        user_id,
+        business_name,
+        phone_number,
+        wa_phone_number_id,
+        wa_business_account_id,
+        access_token,
+        status,
+        connected_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, 'connected', NOW(), NOW())
+      ON CONFLICT DO NOTHING
+      `,
+      [
+        demoUserId,
+        'URUS Blueprint System',
+        '',
+        'pending-phone-id',
+        'pending-waba-id',
+        `oauth_code:${code}`
+      ]
+    );
+
+    await pool.query(
+      `
+      UPDATE wa_connections
+      SET
+        business_name = $2,
+        access_token = $3,
+        status = 'connected',
+        connected_at = NOW(),
+        updated_at = NOW()
+      WHERE user_id = $1
+      `,
+      [
+        demoUserId,
+        'URUS Blueprint System',
+        `oauth_code:${code}`
+      ]
+    );
+
+    return res.redirect('/blueprint/index.html?meta=connected');
+  } catch (error) {
+    console.error('BLUEPRINT_META_CALLBACK_ERROR', error);
+    return res.redirect('/blueprint/index.html?meta=error');
+  }
+});
+
 app.post("/v1/blueprint/connect/demo", authRequired, async (req, res) => {
   try {
     const {
