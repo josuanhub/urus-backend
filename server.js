@@ -1660,6 +1660,72 @@ await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_wa_lead_events_lead_id_created_at
     ON wa_lead_events(lead_id, created_at DESC);
   `);
+
+  // ---------- MULTI-CLIENTE: conexiones WhatsApp por cliente ----------
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wa_connections (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      business_name TEXT,
+      phone_number TEXT,
+      wa_phone_number_id TEXT,
+      wa_business_account_id TEXT,
+      access_token TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      connected_at TIMESTAMPTZ
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_connections_user_id
+    ON wa_connections(user_id);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_connections_status
+    ON wa_connections(status);
+  `);
+
+  // ---------- Amarrar leads al cliente / conexión ----------
+  await pool.query(`
+    ALTER TABLE wa_leads
+    ADD COLUMN IF NOT EXISTS user_id INT REFERENCES users(id) ON DELETE SET NULL;
+  `);
+
+  await pool.query(`
+    ALTER TABLE wa_leads
+    ADD COLUMN IF NOT EXISTS wa_connection_id UUID REFERENCES wa_connections(id) ON DELETE SET NULL;
+  `);
+
+  await pool.query(`
+    ALTER TABLE wa_leads
+    ADD COLUMN IF NOT EXISTS wa_phone_number_id TEXT;
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_leads_user_id
+    ON wa_leads(user_id);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_wa_leads_connection_id
+    ON wa_leads(wa_connection_id);
+  `);
+
+  // Quitar unicidad global del phone y pasar a unicidad por conexión
+  await pool.query(`
+    ALTER TABLE wa_leads
+    DROP CONSTRAINT IF EXISTS wa_leads_phone_key;
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_wa_leads_connection_phone
+    ON wa_leads(wa_connection_id, phone)
+    WHERE wa_connection_id IS NOT NULL;
+  `);
+  
   
   console.log("DB schema ensured");
 }
