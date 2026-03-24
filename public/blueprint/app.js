@@ -344,35 +344,13 @@ document.addEventListener("DOMContentLoaded", () => {
   window.location.href = `${API_BASE}/v1/blueprint/connect/meta`;
   return;
 } catch (error) {
-  console.error("BLUEPRINT_CONNECT_DEMO_ERROR", error);
+  console.error("BLUEPRINT_CONNECT_META_ERROR", error);
   alert("No se pudo iniciar conexión con Meta.");
 } finally {
   confirmMetaBtn.disabled = false;
   confirmMetaBtn.textContent = "Continuar con Meta";
 }
 
-          const data = await res.json();
-
-          if (!data.ok) {
-            throw new Error(data.error || "No se pudo conectar");
-          }
-
-          appState.phoneNumber = data.connection?.phone_number || phoneNumber;
-          appState.businessName = data.connection?.business_name || businessName;
-          appState.whatsappConnected = true;
-
-          if (metaModal) {
-            metaModal.classList.remove("show");
-          }
-
-          render();
-        } catch (error) {
-          console.error("BLUEPRINT_CONNECT_DEMO_ERROR", error);
-          alert("No se pudo conectar WhatsApp demo.");
-        } finally {
-          confirmMetaBtn.disabled = false;
-          confirmMetaBtn.textContent = "Continuar con Meta";
-        }
       });
     }
 
