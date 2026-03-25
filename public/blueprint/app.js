@@ -9,6 +9,13 @@ document.addEventListener("DOMContentLoaded", () => {
     phoneNumber: "+1 305 592 3928",
   };
 
+  const urlParams = new URLSearchParams(window.location.search);
+
+if (urlParams.get("connected") === "1") {
+  appState.whatsappConnected = true;
+  window.history.replaceState({}, document.title, "/blueprint/index.html");
+}
+  
   // ---------- RENDER ----------
   function render() {
     if (!appState.whatsappConnected) {
