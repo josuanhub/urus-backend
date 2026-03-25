@@ -200,6 +200,7 @@ if (urlParams.get("connected") === "1") {
 
   };
 }
-
+    
+  }
   render();
 });
