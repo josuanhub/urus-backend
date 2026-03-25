@@ -569,6 +569,30 @@ const reply = await buildLeadReplyAI({
   lastOutbound,
 });
 
+    // ==============================
+// GET LEADS (PARA DASHBOARD)
+// ==============================
+
+app.get("/v1/wa/leads", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, name, phone, status, score, last_message
+      FROM wa_leads
+      ORDER BY updated_at DESC
+      LIMIT 50
+    `);
+
+    res.json({
+      success: true,
+      leads: result.rows
+    });
+
+  } catch (err) {
+    console.error("GET LEADS ERROR", err);
+    res.status(500).json({ success: false });
+  }
+});
+    
     await pool.query(
       `
       INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
