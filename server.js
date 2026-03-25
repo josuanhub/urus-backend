@@ -1130,7 +1130,7 @@ app.post("/v1/wa/connect", async (req, res) => {
       )
       VALUES ($1, $2, $3, 'connected', now())
     `, [
-  "demo-user-1",
+  "11111111-1111-1111-1111-111111111111",
   business,
   phone
 ]);
