@@ -1107,6 +1107,42 @@ app.get("/v1/blueprint/connect/meta/callback", async (req, res) => {
   }
 });
 
+
+// ==============================
+// 🔗 FAKE CONNECT (MVP)
+// ==============================
+
+app.post("/v1/wa/connect", async (req, res) => {
+  try {
+    const { phone, business } = req.body;
+
+    if (!phone || !business) {
+      return res.status(400).json({ error: "Missing data" });
+    }
+
+    await pool.query(`
+      INSERT INTO wa_connections (
+        user_id,
+        business_name,
+        phone_number,
+        status,
+        connected_at
+      )
+      VALUES ($1, $2, $3, 'connected', now())
+    `, [
+      null,
+      business,
+      phone
+    ]);
+
+    return res.json({ success: true });
+
+  } catch (err) {
+    console.error("FAKE CONNECT ERROR", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
 // Rate limit global (IP)
 app.use(
   rateLimit({
