@@ -134,11 +134,21 @@ if (urlParams.get("connected") === "1") {
           </div>
         </header>
 
-        <section class="stats-grid">
-  <div class="stat-card yellow"><h3>18</h3><p>Leads hoy</p></div>
-  <div class="stat-card blue"><h3>147</h3><p>Mensajes</p></div>
-  <div class="stat-card green"><h3>5</h3><p>Citas</p></div>
-  <div class="stat-card purple"><h3>$45K</h3><p>Ingresos</p></div>
+       <section class="stats-grid">
+  <div class="stat-card yellow"><h3 id="stat-leads">0</h3><p>Leads</p></div>
+  <div class="stat-card blue"><h3 id="stat-messages">0</h3><p>Mensajes</p></div>
+  <div class="stat-card green"><h3 id="stat-status">-</h3><p>Status</p></div>
+  <div class="stat-card purple"><h3 id="stat-last">-</h3><p>Último lead</p></div>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Leads en tiempo real</h3>
+  </div>
+
+  <div id="leadsContainer" class="lead-list">
+    <p>Cargando leads...</p>
+  </div>
 </section>
 
 <section class="dashboard-grid">
@@ -277,6 +287,56 @@ if (urlParams.get("connected") === "1") {
     }
 
   };
+}
+
+async function loadLeads() {
+  try {
+    const res = await fetch("/v1/wa/leads");
+    const data = await res.json();
+
+    if (!data.success) return;
+
+    const leads = data.leads || [];
+
+    // stats
+    document.getElementById("stat-leads").innerText = leads.length;
+    document.getElementById("stat-messages").innerText = leads.length; // simple por ahora
+
+    if (leads[0]) {
+      document.getElementById("stat-status").innerText = leads[0].status;
+      document.getElementById("stat-last").innerText = leads[0].name || "Sin nombre";
+    }
+
+    // render lista
+    const container = document.getElementById("leadsContainer");
+
+    if (!container) return;
+
+    if (leads.length === 0) {
+      container.innerHTML = "<p>No hay leads todavía</p>";
+      return;
+    }
+
+    container.innerHTML = leads.map(lead => `
+      <div class="lead-row">
+        <div class="lead-avatar">
+          ${(lead.name || "U").charAt(0).toUpperCase()}
+        </div>
+
+        <div>
+          <strong>${lead.name || "Sin nombre"}</strong>
+          <p>${lead.last_message || "Sin mensaje"}</p>
+        </div>
+
+        <div class="lead-score">
+          ${lead.status}
+        </div>
+      </div>
+    `).join("");
+
+  } catch (err) {
+    console.error("LOAD LEADS ERROR", err);
+  }
 }
     
   }
