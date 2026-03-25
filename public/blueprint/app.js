@@ -135,14 +135,92 @@ if (urlParams.get("connected") === "1") {
         </header>
 
         <section class="stats-grid">
-          <div class="stat-card yellow"><h3>18</h3><p>Leads hoy</p></div>
-          <div class="stat-card blue"><h3>147</h3><p>Mensajes</p></div>
-          <div class="stat-card green"><h3>5</h3><p>Citas</p></div>
-          <div class="stat-card purple"><h3>$45K</h3><p>Ingresos</p></div>
-        </section>
+  <div class="stat-card yellow"><h3>18</h3><p>Leads hoy</p></div>
+  <div class="stat-card blue"><h3>147</h3><p>Mensajes</p></div>
+  <div class="stat-card green"><h3>5</h3><p>Citas</p></div>
+  <div class="stat-card purple"><h3>$45K</h3><p>Ingresos</p></div>
+</section>
 
+<section class="dashboard-grid">
+
+  <div class="panel panel-large">
+    <div class="panel-header">
+      <h3>Leads recientes</h3>
+    </div>
+
+    <div class="lead-list">
+
+      <div class="lead-row">
+        <div class="lead-avatar">JM</div>
+        <div>
+          <strong>Juan Martínez</strong>
+          <p>Interesado en vehículo SUV</p>
+        </div>
+        <div class="lead-score">92</div>
       </div>
-    `;
+
+      <div class="lead-row">
+        <div class="lead-avatar">AC</div>
+        <div>
+          <strong>Ana Cruz</strong>
+          <p>Preguntó por financiamiento</p>
+        </div>
+        <div class="lead-score">85</div>
+      </div>
+
+      <div class="lead-row">
+        <div class="lead-avatar">RL</div>
+        <div>
+          <strong>Roberto López</strong>
+          <p>Solicitó cita</p>
+        </div>
+        <div class="lead-score">78</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Actividad reciente</h3>
+    </div>
+
+    <div class="activity-list">
+
+      <div class="activity-item">
+        <div class="activity-icon whatsapp">💬</div>
+        <div>
+          <strong>Nuevo mensaje</strong>
+          <p>Juan Martínez escribió por WhatsApp</p>
+        </div>
+        <span>Hace 2m</span>
+      </div>
+
+      <div class="activity-item">
+        <div class="activity-icon whatsapp">💬</div>
+        <div>
+          <strong>Seguimiento enviado</strong>
+          <p>Mensaje automático enviado</p>
+        </div>
+        <span>Hace 10m</span>
+      </div>
+
+      <div class="activity-item">
+        <div class="activity-icon whatsapp">💬</div>
+        <div>
+          <strong>Nueva cita</strong>
+          <p>Ana Cruz agendó una llamada</p>
+        </div>
+        <span>Hace 1h</span>
+      </div>
+
+    </div>
+  </div>
+
+</section>
+
+</div>
+`;
   }
 
   // ---------- EVENTS ----------
