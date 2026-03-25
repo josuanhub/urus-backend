@@ -569,7 +569,25 @@ const reply = await buildLeadReplyAI({
   lastOutbound,
 });
 
-    // ==============================
+    await pool.query(
+      `
+      INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
+      VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
+      `,
+      [finalLead.id, reply]
+    );
+
+    // D) enviar reply a WhatsApp REAL (Cloud API)
+    const sent = await sendWhatsAppText({ to: from, text: reply });
+    console.log("WA_REPLY_SENT", { ok: sent.ok, to: from, lead_id: finalLead.id });
+
+  } catch (e) {
+    console.error("WA_WEBHOOK_ERROR", e);
+    // ya respondimos 200 arriba; aquí solo log
+  }
+});
+
+  // ==============================
 // GET LEADS (PARA DASHBOARD)
 // ==============================
 
@@ -590,24 +608,6 @@ app.get("/v1/wa/leads", async (req, res) => {
   } catch (err) {
     console.error("GET LEADS ERROR", err);
     res.status(500).json({ success: false });
-  }
-});
-    
-    await pool.query(
-      `
-      INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
-      VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
-      `,
-      [finalLead.id, reply]
-    );
-
-    // D) enviar reply a WhatsApp REAL (Cloud API)
-    const sent = await sendWhatsAppText({ to: from, text: reply });
-    console.log("WA_REPLY_SENT", { ok: sent.ok, to: from, lead_id: finalLead.id });
-
-  } catch (e) {
-    console.error("WA_WEBHOOK_ERROR", e);
-    // ya respondimos 200 arriba; aquí solo log
   }
 });
 
