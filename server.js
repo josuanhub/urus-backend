@@ -1054,6 +1054,59 @@ app.get("/moltbook", (req, res) => {
 </html>`);
 });
 
+// ==============================
+// 🔗 META CONNECT (OAUTH)
+// ==============================
+
+app.get("/v1/blueprint/connect/meta", (req, res) => {
+  const redirectUri = `${req.protocol}://${req.get("host")}/v1/blueprint/connect/meta/callback`;
+
+  const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${process.env.META_APP_ID}&redirect_uri=${redirectUri}&scope=whatsapp_business_management,whatsapp_business_messaging,business_management&response_type=code`;
+
+  return res.redirect(url);
+});
+
+// ==============================
+// 🔁 META CALLBACK
+// ==============================
+
+app.get("/v1/blueprint/connect/meta/callback", async (req, res) => {
+  try {
+    const code = req.query.code;
+
+    if (!code) {
+      return res.send("Missing code");
+    }
+
+    // 🔥 MVP: guardar conexión fake por ahora
+    const userId = null; // luego lo conectamos con auth
+
+    await pool.query(`
+      INSERT INTO wa_connections (
+        user_id,
+        business_name,
+        phone_number,
+        status,
+        access_token,
+        connected_at
+      )
+      VALUES ($1, $2, $3, 'connected', $4, now())
+    `, [
+      userId,
+      "Demo Business",
+      "+123456789",
+      `oauth_code:${code}`
+    ]);
+
+    // 🔥 REDIRECT FINAL
+    return res.redirect("/blueprint/index.html?connected=1");
+
+  } catch (err) {
+    console.error("META CALLBACK ERROR", err);
+    return res.status(500).send("Error en callback");
+  }
+});
+
 // Rate limit global (IP)
 app.use(
   rateLimit({
