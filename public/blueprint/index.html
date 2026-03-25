@@ -10,6 +10,8 @@
 <body>
 
   <div class="app-shell">
+    
+    <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark"></div>
@@ -29,26 +31,13 @@
       </nav>
     </aside>
 
-    <!-- 🔥 AQUÍ SE RENDERIZA TODO -->
+    <!-- MAIN APP -->
     <main id="app" class="main-content"></main>
-  </div>
-<div id="metaModal" class="modal hidden">
-  <div class="modal-content">
-    <h3>Conectar WhatsApp Business</h3>
 
-    <input id="metaPhoneInput" placeholder="+1 305 592 3928" />
-    <input id="metaBusinessInput" placeholder="Nombre del negocio" />
-
-    <div class="modal-actions">
-      <button id="closeMetaModal">Cancelar</button>
-      <button id="confirmMetaBtn" class="btn-primary">
-        Continuar con Meta
-      </button>
-    </div>
   </div>
-</div>
-  
-  
+
+  <!-- JS -->
   <script src="/blueprint/app.js"></script>
+
 </body>
 </html>
