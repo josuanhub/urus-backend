@@ -163,23 +163,43 @@ if (urlParams.get("connected") === "1") {
     }
 
     if (confirmBtn) {
-      confirmBtn.onclick = () => {
+  confirmBtn.onclick = async () => {
 
-        const phone = document.getElementById("metaPhoneInput").value;
-        const business = document.getElementById("metaBusinessInput").value;
+    const phone = document.getElementById("metaPhoneInput").value;
+    const business = document.getElementById("metaBusinessInput").value;
 
-        if (!phone || !business) {
-          alert("Completa los datos");
-          return;
-        }
-
-        appState.phoneNumber = phone;
-        appState.businessName = business;
-
-        // 🔥 ESTE ES EL PASO FINAL
-        window.location.href = `${window.location.origin}/v1/blueprint/connect/meta`;
-      };
+    if (!phone || !business) {
+      alert("Completa los datos");
+      return;
     }
+
+    try {
+      const res = await fetch("/v1/wa/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          phone: phone,
+          business: business
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        window.location.href = "/blueprint/index.html?connected=1";
+      } else {
+        alert("Error conectando");
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Error de conexión");
+    }
+
+  };
+}
 
   }
 
