@@ -1130,10 +1130,10 @@ app.post("/v1/wa/connect", async (req, res) => {
       )
       VALUES ($1, $2, $3, 'connected', now())
     `, [
-      null,
-      business,
-      phone
-    ]);
+  "demo-user-1",
+  business,
+  phone
+]);
 
     return res.json({ success: true });
 
