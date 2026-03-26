@@ -612,6 +612,117 @@ app.get("/v1/wa/leads", async (req, res) => {
 });
 
 // ==============================
+// GET MENSAJES DE UN LEAD
+// ==============================
+app.get("/v1/wa/leads/:id/messages", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const leadResult = await pool.query(
+      `
+      SELECT id, name, phone, status, score, last_message
+      FROM wa_leads
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (!leadResult.rows[0]) {
+      return res.status(404).json({ success: false, error: "lead_not_found" });
+    }
+
+    const messagesResult = await pool.query(
+      `
+      SELECT id, direction, channel, message_type, body, media_url, created_at
+      FROM wa_lead_messages
+      WHERE lead_id = $1
+      ORDER BY created_at ASC
+      `,
+      [id]
+    );
+
+    return res.json({
+      success: true,
+      lead: leadResult.rows[0],
+      messages: messagesResult.rows
+    });
+
+  } catch (err) {
+    console.error("GET LEAD MESSAGES ERROR", err);
+    return res.status(500).json({ success: false, error: "server_error" });
+  }
+});
+
+// ==============================
+// ENVIAR MENSAJE MANUAL A UN LEAD
+// ==============================
+app.post("/v1/wa/leads/:id/send", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const message = String(req.body?.message || "").trim();
+
+    if (!message) {
+      return res.status(400).json({ success: false, error: "missing_message" });
+    }
+
+    const leadResult = await pool.query(
+      `
+      SELECT id, phone
+      FROM wa_leads
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    const lead = leadResult.rows[0];
+
+    if (!lead) {
+      return res.status(404).json({ success: false, error: "lead_not_found" });
+    }
+
+    const sent = await sendWhatsAppText({
+      to: lead.phone,
+      text: message
+    });
+
+    if (!sent.ok) {
+      console.error("MANUAL_WA_SEND_ERROR", sent);
+      return res.status(500).json({
+        success: false,
+        error: "whatsapp_send_failed",
+        details: sent
+      });
+    }
+
+    await pool.query(
+      `
+      INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
+      VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
+      `,
+      [id, message]
+    );
+
+    await pool.query(
+      `
+      UPDATE wa_leads
+      SET last_message = $2,
+          updated_at = now()
+      WHERE id = $1
+      `,
+      [id, message]
+    );
+
+    return res.json({ success: true });
+
+  } catch (err) {
+    console.error("SEND LEAD MESSAGE ERROR", err);
+    return res.status(500).json({ success: false, error: "server_error" });
+  }
+});
+
+// ==============================
 // DEMO PÚBLICO (HTML + endpoint)
 // Pegar después de: app.use(express.json({ limit: "1mb" }));
 // ==============================
