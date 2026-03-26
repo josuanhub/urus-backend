@@ -557,17 +557,7 @@ if (cleanMode === "autonomous") {
     loop: autonomousResult.loop
   });
 }
-
-async function autonomous(req, res) {
-  try {
-    const result = await runAutonomousCycle();
-    return res.json({ ok: true, result });
-  } catch (err) {
-    console.error("AUTONOMOUS_ENDPOINT_ERROR", err);
-    return res.status(500).json({ ok: false, error: "autonomous_failed" });
-  }
-}
-    
+  
     if (cleanTo !== "ORION") {
       return res.status(400).json({
         ok: false,
@@ -789,13 +779,12 @@ async function audit(req, res) {
 
 module.exports = {
   health,
-  agenautonomous,ts,
+  agents,
   state,
   message,
   autonomousRun,
   history,
   agentHistory,
   audit,
-  internalHistory,
-  autonomous,  
+  internalHistory
 };
