@@ -160,6 +160,41 @@ app.use(express.json({ limit: "1mb" }));
 app.use("/v1/moltbook", moltbookRoutes);
 
 // ==============================
+// META BASIC URLS
+// ==============================
+
+app.get("/privacy", (req, res) => {
+  res
+    .status(200)
+    .send(`
+      <h1>Privacy Policy</h1>
+      <p>URUS WA OS collects limited account and integration data needed to connect WhatsApp and operate the service.</p>
+      <p>For questions or deletion requests, contact: josuanbayon@gmail.com</p>
+    `);
+});
+
+app.get("/terms", (req, res) => {
+  res
+    .status(200)
+    .send(`
+      <h1>Terms of Service</h1>
+      <p>URUS WA OS is provided as-is for business messaging automation and related integrations.</p>
+      <p>By using this service, you agree to use it lawfully and only with authorized accounts.</p>
+    `);
+});
+
+app.get("/delete-data", (req, res) => {
+  res
+    .status(200)
+    .send(`
+      <h1>Data Deletion Instructions</h1>
+      <p>To request deletion of your data from URUS WA OS, email josuanbayon@gmail.com with the subject: Data Deletion Request.</p>
+      <p>Include your app-connected email and business phone number.</p>
+    `);
+});
+
+
+// ==============================
 // WHATSAPP CLOUD API — WEBHOOK + SEND (V1)
 // ==============================
 const WA_VERIFY_TOKEN = process.env.WA_VERIFY_TOKEN || "";
