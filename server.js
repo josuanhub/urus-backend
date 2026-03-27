@@ -218,9 +218,48 @@ app.get("/auth/facebook/callback", (req, res) => {
 const WA_VERIFY_TOKEN = process.env.WA_VERIFY_TOKEN || "";
 const WA_TOKEN = process.env.WA_TOKEN || "";
 const WA_PHONE_NUMBER_ID = process.env.WA_PHONE_NUMBER_ID || "";
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
+const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886";
+
+const twilioClient =
+  TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN
+    ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+    : null;
 
 function digitsOnly(s) {
   return String(s || "").replace(/\D/g, "");
+}
+
+async function sendWhatsAppTextTwilio({ to, text }) {
+  if (!twilioClient || !TWILIO_WHATSAPP_FROM) {
+    console.error("TWILIO_SEND_MISSING_ENV", {
+      hasSid: !!TWILIO_ACCOUNT_SID,
+      hasToken: !!TWILIO_AUTH_TOKEN,
+      hasFrom: !!TWILIO_WHATSAPP_FROM,
+    });
+    return { ok: false, error: "missing_twilio_env" };
+  }
+
+  try {
+    const clean = digitsOnly(to);
+    const formatted = clean.startsWith("1") ? `+${clean}` : `+${clean}`;
+
+    const msg = await twilioClient.messages.create({
+      from: TWILIO_WHATSAPP_FROM,
+      to: `whatsapp:${formatted}`,
+      body: String(text || "").slice(0, 4000),
+    });
+
+    return { ok: true, data: msg };
+  } catch (err) {
+    console.error("TWILIO_SEND_ERROR", err?.message || err);
+    return {
+      ok: false,
+      error: "twilio_send_failed",
+      details: err?.message || String(err),
+    };
+  }
 }
 
 async function sendWhatsAppText({ to, text }) {
