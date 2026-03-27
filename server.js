@@ -735,11 +735,11 @@ app.post("/v1/wa/leads/:id/send", async (req, res) => {
       return res.status(404).json({ success: false, error: "lead_not_found" });
     }
 
-    const sent = await sendWhatsAppText({
-      to: lead.phone,
-      text: message
-    });
-
+    const sent = await sendWhatsAppTextTwilio({
+  to: lead.phone,
+  text: message
+});
+    
     if (!sent.ok) {
       console.error("MANUAL_WA_SEND_ERROR", sent);
       return res.status(500).json({
