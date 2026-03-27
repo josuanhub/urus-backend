@@ -32,6 +32,7 @@ const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const crypto = require("crypto");
 const Stripe = require("stripe");
+const twilio = require("twilio");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // OpenAI SDK (robusto)
