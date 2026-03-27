@@ -683,6 +683,149 @@ const reply = await buildLeadReplyAI({
 // GET LEADS (PARA DASHBOARD)
 // ==============================
 
+app.post("/v1/twilio/wa/webhook", async (req, res) => {
+  try {
+    const fromRaw = String(req.body?.From || "");
+    const body = String(req.body?.Body || "").trim();
+    const profileName = String(req.body?.ProfileName || "").trim() || null;
+
+    if (!fromRaw || !body) {
+      return res.status(200).send("ok");
+    }
+
+    const from = fromRaw.replace("whatsapp:", "").trim();
+    const phone = from.startsWith("+") ? from : `+${from}`;
+
+    const leadUpsert = await pool.query(
+      `
+      INSERT INTO wa_leads (phone, name, source, status, score, last_message, updated_at)
+      VALUES ($1, $2, 'twilio_whatsapp', 'NEW', 0, $3, now())
+      ON CONFLICT (phone)
+      DO UPDATE SET
+        name = COALESCE(wa_leads.name, EXCLUDED.name),
+        last_message = EXCLUDED.last_message,
+        updated_at = now()
+      RETURNING *
+      `,
+      [phone, profileName, body]
+    );
+
+    const lead = leadUpsert.rows[0];
+
+    await pool.query(
+      `
+      INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
+      VALUES ($1, 'inbound', 'whatsapp', 'text', $2)
+      `,
+      [lead.id, body]
+    );
+
+    const signals = extractLeadSignals({ body, message_type: "text" });
+
+    const mergedLead = {
+      ...lead,
+      last_message: body || lead.last_message,
+      has_logo: lead.has_logo || signals.hasLogo,
+      wants_call: lead.wants_call || signals.wantsCall,
+      objection: lead.objection || signals.objection,
+      wants_pause: signals.wantsPause,
+      main_service:
+        lead.main_service ||
+        (signals.mentionsBusinessIntent ? "pending_definition" : null),
+      follow_up_step: lead.follow_up_step || 0,
+      status: lead.status,
+    };
+
+    const nextScore = computeLeadScore(mergedLead);
+    const nextStatus = computeLeadStatus({ ...mergedLead, score: nextScore });
+    const nextFollowUpAt = computeNextFollowUp({
+      ...mergedLead,
+      score: nextScore,
+      status: nextStatus,
+    });
+
+    const prevStep = Number(lead.follow_up_step || 0);
+    const nextStep =
+      nextStatus === "READY_TO_CALL" || nextStatus === "INFO_RECEIVED"
+        ? Math.min(prevStep + 1, 2)
+        : prevStep;
+
+    const updated = await pool.query(
+      `
+      UPDATE wa_leads
+      SET
+        last_message = $2,
+        has_logo = $3,
+        wants_call = $4,
+        objection = COALESCE($5, objection),
+        main_service = COALESCE($6, main_service),
+        score = $7,
+        status = $8,
+        next_follow_up_at = $9,
+        follow_up_step = $10,
+        updated_at = now()
+      WHERE id = $1
+      RETURNING *
+      `,
+      [
+        lead.id,
+        mergedLead.last_message,
+        mergedLead.has_logo,
+        mergedLead.wants_call,
+        mergedLead.objection,
+        mergedLead.main_service,
+        nextScore,
+        nextStatus,
+        nextFollowUpAt,
+        nextStep,
+      ]
+    );
+
+    const finalLead = updated.rows[0];
+
+    const lastOutResult = await pool.query(
+      `
+      SELECT body
+      FROM wa_lead_messages
+      WHERE lead_id = $1 AND direction = 'outbound'
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+      [finalLead.id]
+    );
+
+    const lastOutbound = lastOutResult.rows?.[0]?.body || "";
+
+    const reply = await buildLeadReplyAI({
+      lead: finalLead,
+      signals,
+      lastInbound: body,
+      lastOutbound,
+    });
+
+    await pool.query(
+      `
+      INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
+      VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
+      `,
+      [finalLead.id, reply]
+    );
+
+    const sent = await sendWhatsAppTextTwilio({ to: phone, text: reply });
+    console.log("TWILIO_WA_REPLY_SENT", {
+      ok: sent.ok,
+      to: phone,
+      lead_id: finalLead.id,
+    });
+
+    return res.status(200).send("ok");
+  } catch (e) {
+    console.error("TWILIO_WA_WEBHOOK_ERROR", e);
+    return res.status(200).send("ok");
+  }
+});
+
+
 app.get("/v1/wa/leads", async (req, res) => {
   try {
     const result = await pool.query(`
