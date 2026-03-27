@@ -670,7 +670,7 @@ const reply = await buildLeadReplyAI({
     );
 
     // D) enviar reply a WhatsApp REAL (Cloud API)
-    const sent = await sendWhatsAppText({ to: from, text: reply });
+   const sent = await sendWhatsAppTextTwilio({ to: from, text: reply });
     console.log("WA_REPLY_SENT", { ok: sent.ok, to: from, lead_id: finalLead.id });
 
   } catch (e) {
