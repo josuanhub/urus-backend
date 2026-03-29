@@ -4,10 +4,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   injectBlueprintProStyles();
 
+  const STORAGE_KEY = "urus_blueprint_session_v1";
+
   const appState = {
     whatsappConnected: false,
     businessName: "URUS Elite Motors",
     phoneNumber: "+1 305 592 3928",
+    currentView: "dashboard",
     leads: [],
     filteredLeads: [],
     selectedLeadId: null,
@@ -20,10 +23,121 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshTimer: null,
   };
 
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get("connected") === "1") {
-    appState.whatsappConnected = true;
-    window.history.replaceState({}, document.title, "/blueprint/index.html");
+  bootSession();
+  render();
+
+  function bootSession() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      if (saved && typeof saved === "object") {
+        appState.whatsappConnected = !!saved.whatsappConnected;
+        appState.businessName = saved.businessName || appState.businessName;
+        appState.phoneNumber = saved.phoneNumber || appState.phoneNumber;
+        appState.currentView = saved.currentView || appState.currentView;
+      }
+    } catch {}
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("connected") === "1") {
+      appState.whatsappConnected = true;
+      persistSession();
+      window.history.replaceState({}, document.title, "/blueprint/index.html");
+    }
+  }
+
+  function persistSession() {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        whatsappConnected: appState.whatsappConnected,
+        businessName: appState.businessName,
+        phoneNumber: appState.phoneNumber,
+        currentView: appState.currentView,
+      })
+    );
+  }
+
+  function bindSidebarNav() {
+    const navItems = Array.from(document.querySelectorAll(".nav-item"));
+    if (!navItems.length) return;
+
+    const labelToView = {
+      "dashboard": "dashboard",
+      "leads": "leads",
+      "follow-ups": "followups",
+      "calendario": "calendar",
+      "plantillas": "templates",
+      "analytics": "analytics",
+    };
+
+    navItems.forEach((btn) => {
+      const label = String(btn.textContent || "").trim().toLowerCase();
+      const view = labelToView[label];
+
+      btn.classList.toggle("active", view === appState.currentView);
+
+      btn.onclick = async () => {
+        if (!view) return;
+
+        if (!appState.whatsappConnected) {
+          const modal = document.getElementById("metaModal");
+          if (modal) modal.classList.add("show");
+          return;
+        }
+
+        appState.currentView = view;
+        persistSession();
+        renderConnectedView();
+
+        if ((view === "dashboard" || view === "leads" || view === "followups") && !appState.leads.length) {
+          await loadLeads();
+        }
+      };
+    });
+  }
+
+  function render() {
+    bindSidebarNav();
+
+    if (!appState.whatsappConnected) {
+      stopAutoRefresh();
+      renderConnectScreen();
+      bindSharedEvents();
+      return;
+    }
+
+    renderConnectedView();
+    startAutoRefresh();
+  }
+
+  function renderConnectedView() {
+    bindSidebarNav();
+
+    if (appState.currentView === "analytics") {
+      renderAnalyticsView();
+      bindConnectedCommonEvents();
+      return;
+    }
+
+    if (appState.currentView === "calendar") {
+      renderCalendarView();
+      bindConnectedCommonEvents();
+      return;
+    }
+
+    if (appState.currentView === "templates") {
+      renderTemplatesView();
+      bindConnectedCommonEvents();
+      return;
+    }
+
+    renderDashboardLikeView();
+    bindConnectedCommonEvents();
+    bindDashboardEvents();
+
+    if (!appState.leads.length) {
+      loadLeads();
+    }
   }
 
   function injectBlueprintProStyles() {
@@ -48,9 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
         --ub-shadow:0 20px 60px rgba(0,0,0,.42);
       }
 
-      .main-content{
-        overflow:auto;
-      }
+      .main-content{ overflow:auto; }
 
       .ub-wrap{
         padding:34px 34px 28px;
@@ -169,9 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
         color:#d0d0d0;
       }
 
-      .ub-primary-btn,
-      .ub-secondary-btn,
-      .ub-ghost-btn{
+      .ub-primary-btn,.ub-secondary-btn,.ub-ghost-btn,.ub-refresh{
         border:0;
         outline:0;
         cursor:pointer;
@@ -180,7 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       .ub-primary-btn{
-        min-width:250px;
+        min-width:220px;
         height:56px;
         padding:0 22px;
         border-radius:18px;
@@ -190,12 +300,12 @@ document.addEventListener("DOMContentLoaded", () => {
         font-size:16px;
       }
 
-      .ub-primary-btn:hover{
+      .ub-primary-btn:hover,.ub-refresh:hover{
         transform:translateY(-1px);
         filter:brightness(1.03);
       }
 
-      .ub-secondary-btn{
+      .ub-secondary-btn,.ub-refresh{
         height:48px;
         padding:0 16px;
         border-radius:14px;
@@ -252,9 +362,7 @@ document.addEventListener("DOMContentLoaded", () => {
         padding:18px;
       }
 
-      .ub-modal-backdrop.show{
-        display:flex;
-      }
+      .ub-modal-backdrop.show{ display:flex; }
 
       .ub-modal{
         width:min(560px, 100%);
@@ -282,9 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
         line-height:1.5;
       }
 
-      .ub-field{
-        margin-bottom:14px;
-      }
+      .ub-field{ margin-bottom:14px; }
 
       .ub-label{
         display:block;
@@ -318,14 +424,8 @@ document.addEventListener("DOMContentLoaded", () => {
         margin-top:8px;
       }
 
-      .ub-grid{
-        display:grid;
-        gap:18px;
-      }
-
-      .ub-stats{
-        grid-template-columns:repeat(4, minmax(0,1fr));
-      }
+      .ub-grid{ display:grid; gap:18px; }
+      .ub-stats{ grid-template-columns:repeat(4, minmax(0,1fr)); }
 
       .ub-card{
         border-radius:24px;
@@ -386,9 +486,7 @@ document.addEventListener("DOMContentLoaded", () => {
         min-height:640px;
       }
 
-      .ub-panel{
-        overflow:hidden;
-      }
+      .ub-panel{ overflow:hidden; }
 
       .ub-panel-head{
         display:flex;
@@ -566,13 +664,8 @@ document.addEventListener("DOMContentLoaded", () => {
         padding:30px;
       }
 
-      .ub-msg-row{
-        display:flex;
-      }
-
-      .ub-msg-row.outbound{
-        justify-content:flex-end;
-      }
+      .ub-msg-row{ display:flex; }
+      .ub-msg-row.outbound{ justify-content:flex-end; }
 
       .ub-msg{
         max-width:min(70%, 680px);
@@ -645,63 +738,58 @@ document.addEventListener("DOMContentLoaded", () => {
         align-items:center;
       }
 
-      .ub-refresh{
-        height:44px;
-        padding:0 14px;
-        border-radius:14px;
-        background:#131313;
-        color:#fff;
-        border:1px solid rgba(255,255,255,.08);
-        cursor:pointer;
-        font-weight:700;
-      }
-
       .ub-loading{
         color:var(--ub-muted);
         font-size:13px;
       }
 
+      .ub-simple-grid{
+        display:grid;
+        grid-template-columns:repeat(2, minmax(0,1fr));
+        gap:18px;
+        margin-top:18px;
+      }
+
+      .ub-list-card{
+        padding:22px;
+      }
+
+      .ub-list-card h4{
+        margin:0 0 12px;
+        font-size:20px;
+        letter-spacing:-.03em;
+      }
+
+      .ub-list{
+        display:grid;
+        gap:10px;
+      }
+
+      .ub-list-item{
+        padding:12px 14px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.06);
+        background:rgba(255,255,255,.02);
+        color:#d7d7d7;
+      }
+
       @media (max-width: 1280px){
-        .ub-stats{
-          grid-template-columns:repeat(2, minmax(0,1fr));
-        }
+        .ub-stats{ grid-template-columns:repeat(2, minmax(0,1fr)); }
       }
 
       @media (max-width: 1100px){
-        .ub-main{
-          grid-template-columns:1fr;
-        }
-        .ub-leads{
-          max-height:300px;
-        }
-        .ub-chat-body{
-          max-height:460px;
-        }
+        .ub-main,.ub-simple-grid{ grid-template-columns:1fr; }
+        .ub-leads{ max-height:300px; }
+        .ub-chat-body{ max-height:460px; }
       }
 
       @media (max-width: 760px){
-        .ub-wrap{
-          padding:20px 16px 18px;
-        }
-        .ub-title{
-          font-size:38px;
-        }
-        .ub-topbar{
-          flex-direction:column;
-          align-items:flex-start;
-        }
-        .ub-stats{
-          grid-template-columns:1fr;
-        }
-        .ub-connect-points{
-          grid-template-columns:1fr;
-        }
-        .ub-compose-row{
-          grid-template-columns:1fr;
-        }
-        .ub-msg{
-          max-width:88%;
-        }
+        .ub-wrap{ padding:20px 16px 18px; }
+        .ub-title{ font-size:38px; }
+        .ub-topbar{ flex-direction:column; align-items:flex-start; }
+        .ub-stats,.ub-connect-points{ grid-template-columns:1fr; }
+        .ub-compose-row{ grid-template-columns:1fr; }
+        .ub-msg{ max-width:88%; }
       }
     `;
     document.head.appendChild(style);
@@ -757,20 +845,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const ready = leads.filter(l => String(l.status).toUpperCase() === "READY_TO_CALL").length;
     const info = leads.filter(l => String(l.status).toUpperCase() === "INFO_RECEIVED").length;
     const waiting = leads.filter(l => String(l.status).toUpperCase() === "WAITING_INFO").length;
-
     return { total, ready, info, waiting };
   }
 
-  function render() {
-    if (!appState.whatsappConnected) {
-      renderConnectScreen();
-    } else {
-      renderDashboardScreen();
-      bindDashboardEvents();
-      loadLeads();
-      startAutoRefresh();
-    }
-    bindSharedEvents();
+  function getFollowupLeads() {
+    return appState.leads.filter((lead) => {
+      const status = String(lead.status || "").toUpperCase();
+      return status === "WAITING_INFO" || status === "INFO_RECEIVED";
+    });
   }
 
   function renderConnectScreen() {
@@ -823,7 +905,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="ub-modal">
             <h3>Conectar WhatsApp Business</h3>
             <p>
-              Guarda la cuenta inicial para entrar al panel. Luego puedes reemplazar este paso por OAuth real de Meta.
+              Esto hoy entra al panel y guarda la sesión visual. Luego conectamos Meta o Twilio real.
             </p>
 
             <div class="ub-field">
@@ -844,17 +926,29 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       </div>
     `;
+
+    bindSharedEvents();
   }
 
-  function renderDashboardScreen() {
+  function renderDashboardLikeView() {
     const stats = computeStats(appState.leads);
+    const titleMap = {
+      dashboard: "Dashboard",
+      leads: "Leads",
+      followups: "Follow-ups",
+    };
+    const subMap = {
+      dashboard: "Sistema activo. Conversaciones, seguimiento y operación desde un solo lugar.",
+      leads: "Vista completa de leads activos con historial real.",
+      followups: "Leads que requieren continuidad y seguimiento operativo.",
+    };
 
     appRoot.innerHTML = `
       <div class="ub-wrap">
         <header class="ub-topbar">
           <div>
-            <h2 class="ub-title">Dashboard</h2>
-            <p class="ub-subtitle">Sistema activo. Conversaciones, seguimiento y operación desde un solo lugar.</p>
+            <h2 class="ub-title">${titleMap[appState.currentView] || "Dashboard"}</h2>
+            <p class="ub-subtitle">${subMap[appState.currentView] || ""}</p>
           </div>
 
           <div class="ub-action-row">
@@ -896,8 +990,8 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="ub-card ub-panel">
             <div class="ub-panel-head">
               <div>
-                <h3 class="ub-panel-title">Leads</h3>
-                <p class="ub-panel-copy">Lista operativa de conversaciones activas</p>
+                <h3 class="ub-panel-title">${appState.currentView === "followups" ? "Follow-ups" : "Leads"}</h3>
+                <p class="ub-panel-copy">${appState.currentView === "followups" ? "Cola operativa de continuidad" : "Lista operativa de conversaciones activas"}</p>
               </div>
               <div class="ub-loading" id="leadsLoadingLabel"></div>
             </div>
@@ -929,11 +1023,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     placeholder="${appState.selectedLeadId ? "Escribe una respuesta manual..." : "Selecciona un lead para responder..."}"
                     ${appState.selectedLeadId ? "" : "disabled"}
                   ></textarea>
-                  <button
-                    class="ub-primary-btn"
-                    id="sendMessageBtn"
-                    ${appState.selectedLeadId ? "" : "disabled"}
-                  >
+                  <button class="ub-primary-btn" id="sendMessageBtn" ${appState.selectedLeadId ? "" : "disabled"}>
                     ${appState.sending ? "Enviando..." : "Enviar"}
                   </button>
                 </div>
@@ -948,16 +1038,184 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
+  function renderAnalyticsView() {
+    const stats = computeStats(appState.leads);
+    const total = Math.max(stats.total, 1);
+    const readyPct = Math.round((stats.ready / total) * 100);
+    const infoPct = Math.round((stats.info / total) * 100);
+    const waitingPct = Math.round((stats.waiting / total) * 100);
+
+    appRoot.innerHTML = `
+      <div class="ub-wrap">
+        <header class="ub-topbar">
+          <div>
+            <h2 class="ub-title">Analytics</h2>
+            <p class="ub-subtitle">Lectura real basada en los leads y status que ya tienes guardados.</p>
+          </div>
+
+          <div class="ub-action-row">
+            <button class="ub-refresh" id="refreshDashboardBtn">Actualizar</button>
+            <div class="ub-status">
+              <span class="ub-dot"></span>
+              Conectado
+            </div>
+          </div>
+        </header>
+
+        <section class="ub-grid ub-stats">
+          <div class="ub-card ub-stat gold">
+            <div class="ub-stat-label">Total Leads</div>
+            <div class="ub-stat-value">${stats.total}</div>
+            <div class="ub-stat-sub">Base real actual</div>
+          </div>
+
+          <div class="ub-card ub-stat blue">
+            <div class="ub-stat-label">Ready %</div>
+            <div class="ub-stat-value">${readyPct}%</div>
+            <div class="ub-stat-sub">Proporción lista para cierre</div>
+          </div>
+
+          <div class="ub-card ub-stat green">
+            <div class="ub-stat-label">Info %</div>
+            <div class="ub-stat-value">${infoPct}%</div>
+            <div class="ub-stat-sub">Leads con data suficiente</div>
+          </div>
+
+          <div class="ub-card ub-stat purple">
+            <div class="ub-stat-label">Waiting %</div>
+            <div class="ub-stat-value">${waitingPct}%</div>
+            <div class="ub-stat-sub">Pendientes de contexto</div>
+          </div>
+        </section>
+
+        <section class="ub-simple-grid">
+          <div class="ub-card ub-list-card">
+            <h4>Status breakdown</h4>
+            <div class="ub-list">
+              <div class="ub-list-item">Ready to Call: ${stats.ready}</div>
+              <div class="ub-list-item">Info Received: ${stats.info}</div>
+              <div class="ub-list-item">Waiting Info: ${stats.waiting}</div>
+              <div class="ub-list-item">Otros: ${Math.max(0, stats.total - stats.ready - stats.info - stats.waiting)}</div>
+            </div>
+          </div>
+
+          <div class="ub-card ub-list-card">
+            <h4>Lectura operativa</h4>
+            <div class="ub-list">
+              <div class="ub-list-item">Más valor inmediato: mover Waiting Info → Info Received.</div>
+              <div class="ub-list-item">Más cerca del cierre: Ready to Call.</div>
+              <div class="ub-list-item">Cuello de botella actual: seguimiento manual y conexión real del número.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    `;
+
+    bindConnectedCommonEvents();
+  }
+
+  function renderCalendarView() {
+    const followups = getFollowupLeads();
+
+    appRoot.innerHTML = `
+      <div class="ub-wrap">
+        <header class="ub-topbar">
+          <div>
+            <h2 class="ub-title">Calendario</h2>
+            <p class="ub-subtitle">Vista operativa de continuidad basada en tus leads actuales.</p>
+          </div>
+
+          <div class="ub-action-row">
+            <button class="ub-refresh" id="refreshDashboardBtn">Actualizar</button>
+            <div class="ub-status">
+              <span class="ub-dot"></span>
+              Conectado
+            </div>
+          </div>
+        </header>
+
+        <section class="ub-simple-grid">
+          <div class="ub-card ub-list-card">
+            <h4>Leads para seguimiento</h4>
+            <div class="ub-list">
+              ${followups.length ? followups.map(lead => `
+                <div class="ub-list-item">
+                  <strong>${escapeHtml(lead.name || "Sin nombre")}</strong><br>
+                  <span style="color:#9f9f9f">${escapeHtml(lead.phone || "")}</span><br>
+                  <span style="color:#d8d8d8">${escapeHtml(formatStatusLabel(lead.status))}</span>
+                </div>
+              `).join("") : `<div class="ub-list-item">No hay follow-ups detectados ahora mismo.</div>`}
+            </div>
+          </div>
+
+          <div class="ub-card ub-list-card">
+            <h4>Cómo usar esta vista</h4>
+            <div class="ub-list">
+              <div class="ub-list-item">Usa esta sección para revisar quién necesita continuidad.</div>
+              <div class="ub-list-item">Cuando conectemos Meta/Twilio real, aquí podrás ver fechas reales de follow-up.</div>
+              <div class="ub-list-item">Hoy esta vista se alimenta de status reales del backend.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    `;
+
+    bindConnectedCommonEvents();
+  }
+
+  function renderTemplatesView() {
+    appRoot.innerHTML = `
+      <div class="ub-wrap">
+        <header class="ub-topbar">
+          <div>
+            <h2 class="ub-title">Plantillas</h2>
+            <p class="ub-subtitle">Base operativa de mensajes que luego puedes convertir en templates reales.</p>
+          </div>
+
+          <div class="ub-action-row">
+            <button class="ub-refresh" id="refreshDashboardBtn">Actualizar</button>
+            <div class="ub-status">
+              <span class="ub-dot"></span>
+              Conectado
+            </div>
+          </div>
+        </header>
+
+        <section class="ub-simple-grid">
+          <div class="ub-card ub-list-card">
+            <h4>Apertura</h4>
+            <div class="ub-list">
+              <div class="ub-list-item">Hola, gracias por escribir. Cuéntame un poco sobre tu negocio y qué te gustaría mejorar en WhatsApp.</div>
+              <div class="ub-list-item">Perfecto. Te explico simple: esto te ayuda a no perder prospectos y a ordenar mejor tus conversaciones.</div>
+            </div>
+          </div>
+
+          <div class="ub-card ub-list-card">
+            <h4>Seguimiento</h4>
+            <div class="ub-list">
+              <div class="ub-list-item">Quedo pendiente. Cuando tengas el nombre del negocio y lo que quieres que haga la página, te lo preparo.</div>
+              <div class="ub-list-item">Si quieres, coordinamos una demo breve y te enseño cómo se vería con tu caso.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    `;
+
+    bindConnectedCommonEvents();
+  }
+
   function renderLeadListHtml() {
-    if (appState.loadingLeads && appState.filteredLeads.length === 0) {
+    const sourceLeads = appState.currentView === "followups" ? getFollowupLeads() : appState.filteredLeads;
+
+    if (appState.loadingLeads && sourceLeads.length === 0) {
       return `<div class="ub-empty">Cargando leads...</div>`;
     }
 
-    if (!appState.filteredLeads.length) {
-      return `<div class="ub-empty">No hay leads que coincidan con la búsqueda.</div>`;
+    if (!sourceLeads.length) {
+      return `<div class="ub-empty">No hay leads que coincidan con la vista actual.</div>`;
     }
 
-    return appState.filteredLeads.map(lead => `
+    return sourceLeads.map(lead => `
       <div class="ub-lead ${appState.selectedLeadId === lead.id ? "active" : ""}" data-lead-id="${escapeHtml(lead.id)}">
         <div class="ub-avatar">${escapeHtml(getInitials(lead.name))}</div>
 
@@ -1041,13 +1299,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeBtn = document.getElementById("closeMetaModal");
     const confirmBtn = document.getElementById("confirmMetaConnect");
 
-    if (openBtn && modal) {
-      openBtn.onclick = () => modal.classList.add("show");
-    }
-
-    if (closeBtn && modal) {
-      closeBtn.onclick = () => modal.classList.remove("show");
-    }
+    if (openBtn && modal) openBtn.onclick = () => modal.classList.add("show");
+    if (closeBtn && modal) closeBtn.onclick = () => modal.classList.remove("show");
 
     if (modal) {
       modal.onclick = (e) => {
@@ -1080,7 +1333,10 @@ document.addEventListener("DOMContentLoaded", () => {
           if (data.success) {
             appState.phoneNumber = phone;
             appState.businessName = business;
-            window.location.href = "/blueprint/index.html?connected=1";
+            appState.whatsappConnected = true;
+            persistSession();
+            renderConnectedView();
+            startAutoRefresh();
           } else {
             alert("No se pudo conectar.");
           }
@@ -1095,20 +1351,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function bindDashboardEvents() {
-    const refreshBtn = document.getElementById("refreshDashboardBtn");
-    const searchInput = document.getElementById("leadSearchInput");
-    const sendBtn = document.getElementById("sendMessageBtn");
-    const chatInput = document.getElementById("chatInput");
+  function bindConnectedCommonEvents() {
+    bindSidebarNav();
 
+    const refreshBtn = document.getElementById("refreshDashboardBtn");
     if (refreshBtn) {
       refreshBtn.onclick = async () => {
         await loadLeads(true);
-        if (appState.selectedLeadId) {
+        if (appState.selectedLeadId && (appState.currentView === "dashboard" || appState.currentView === "leads" || appState.currentView === "followups")) {
           await loadLeadMessages(appState.selectedLeadId, true);
         }
       };
     }
+  }
+
+  function bindDashboardEvents() {
+    const searchInput = document.getElementById("leadSearchInput");
+    const sendBtn = document.getElementById("sendMessageBtn");
+    const chatInput = document.getElementById("chatInput");
 
     if (searchInput) {
       searchInput.oninput = (e) => {
@@ -1150,14 +1410,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    appState.filteredLeads = appState.leads.filter(lead => {
-      const haystack = `
-        ${lead.name || ""}
-        ${lead.phone || ""}
-        ${lead.last_message || ""}
-        ${lead.status || ""}
-      `.toLowerCase();
-
+    appState.filteredLeads = appState.leads.filter((lead) => {
+      const haystack = `${lead.name || ""} ${lead.phone || ""} ${lead.last_message || ""} ${lead.status || ""}`.toLowerCase();
       return haystack.includes(q);
     });
   }
@@ -1165,6 +1419,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadLeads(preserveSelection = true) {
     appState.loadingLeads = true;
     updateLeadsLoadingLabel("Actualizando...");
+
     try {
       const res = await fetch("/v1/wa/leads");
       const data = await res.json();
@@ -1178,20 +1433,23 @@ document.addEventListener("DOMContentLoaded", () => {
       applyLeadFilter();
 
       if (!preserveSelection || !appState.selectedLeadId) {
-        if (appState.filteredLeads[0]) {
-          appState.selectedLeadId = appState.filteredLeads[0].id;
-        }
+        const source = appState.currentView === "followups" ? getFollowupLeads() : appState.filteredLeads;
+        if (source[0]) appState.selectedLeadId = source[0].id;
       }
 
-      const selectedExists = appState.leads.some(l => l.id === appState.selectedLeadId);
+      const selectedExists = appState.leads.some((l) => l.id === appState.selectedLeadId);
       if (!selectedExists) {
-        appState.selectedLeadId = appState.filteredLeads[0]?.id || null;
+        const source = appState.currentView === "followups" ? getFollowupLeads() : appState.filteredLeads;
+        appState.selectedLeadId = source[0]?.id || null;
       }
 
-      rerenderDashboardOnly();
-
-      if (appState.selectedLeadId) {
-        await loadLeadMessages(appState.selectedLeadId, true);
+      if (appState.currentView === "dashboard" || appState.currentView === "leads" || appState.currentView === "followups") {
+        rerenderDashboardOnly();
+        if (appState.selectedLeadId) {
+          await loadLeadMessages(appState.selectedLeadId, true);
+        }
+      } else {
+        renderConnectedView();
       }
     } catch (err) {
       console.error("LOAD LEADS ERROR", err);
@@ -1241,7 +1499,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const input = document.getElementById("chatInput");
     const message = input?.value?.trim();
-
     if (!message) return;
 
     appState.sending = true;
@@ -1275,7 +1532,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function rerenderDashboardOnly() {
     const stats = computeStats(appState.leads);
-
     const statTotal = document.getElementById("stat-total");
     const statReady = document.getElementById("stat-ready");
     const statInfo = document.getElementById("stat-info");
@@ -1343,6 +1599,4 @@ document.addEventListener("DOMContentLoaded", () => {
       appState.refreshTimer = null;
     }
   }
-
-  render();
 });
