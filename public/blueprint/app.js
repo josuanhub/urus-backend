@@ -4,12 +4,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   injectBlueprintStyles();
 
-  const STORAGE_KEY = "urus_blueprint_ui_session_v2";
+  const STORAGE_KEY = "urus_blueprint_ui_session_v3";
+  const MOBILE_BREAKPOINT = 980;
 
   const appState = {
     whatsappConnected: false,
-    businessName: "URUS Elite Motors",
-    phoneNumber: "+1 305 592 3928",
+    businessName: "URUS WA OS",
+    phoneNumber: "+1 415 523 8886",
     currentView: "dashboard",
     leads: [],
     filteredLeads: [],
@@ -22,10 +23,24 @@ document.addEventListener("DOMContentLoaded", () => {
     sending: false,
     refreshTimer: null,
     activeStatusFilter: "all",
+    mobileMode: window.innerWidth <= MOBILE_BREAKPOINT,
+    mobileLeadsScreen: true, // true = lista, false = chat
   };
 
   boot();
   render();
+
+  window.addEventListener("resize", () => {
+    const wasMobile = appState.mobileMode;
+    appState.mobileMode = window.innerWidth <= MOBILE_BREAKPOINT;
+
+    if (wasMobile !== appState.mobileMode) {
+      if (!appState.mobileMode) {
+        appState.mobileLeadsScreen = true;
+      }
+      renderCurrentView();
+    }
+  });
 
   function boot() {
     try {
@@ -61,10 +76,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function injectBlueprintStyles() {
-    if (document.getElementById("urus-blueprint-final-styles")) return;
+    if (document.getElementById("urus-blueprint-mobile-final-styles")) return;
 
     const style = document.createElement("style");
-    style.id = "urus-blueprint-final-styles";
+    style.id = "urus-blueprint-mobile-final-styles";
     style.textContent = `
       :root{
         --ub-bg:#060606;
@@ -88,6 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       .main-content{
         overflow:auto;
+        min-height:100vh;
       }
 
       .ub-wrap{
@@ -215,7 +231,8 @@ document.addEventListener("DOMContentLoaded", () => {
       .ub-secondary-btn,
       .ub-ghost-btn,
       .ub-refresh,
-      .ub-chip{
+      .ub-chip,
+      .ub-back-btn{
         border:0;
         outline:0;
         cursor:pointer;
@@ -241,7 +258,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       .ub-secondary-btn,
-      .ub-refresh{
+      .ub-refresh,
+      .ub-back-btn{
         height:48px;
         padding:0 16px;
         border-radius:14px;
@@ -502,9 +520,7 @@ document.addEventListener("DOMContentLoaded", () => {
         border-bottom:1px solid rgba(255,255,255,.05);
       }
 
-      .ub-activity-item:last-child{
-        border-bottom:0;
-      }
+      .ub-activity-item:last-child{ border-bottom:0; }
 
       .ub-activity-dot{
         width:12px;
@@ -758,6 +774,8 @@ document.addEventListener("DOMContentLoaded", () => {
         display:flex;
         flex-direction:column;
         gap:12px;
+        overscroll-behavior:contain;
+        -webkit-overflow-scrolling:touch;
       }
 
       .ub-empty{
@@ -801,9 +819,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       .ub-compose{
-        padding:14px 18px 18px;
+        padding:14px 18px calc(18px + env(safe-area-inset-bottom));
         border-top:1px solid rgba(255,255,255,.06);
-        background:rgba(8,8,8,.72);
+        background:rgba(8,8,8,.88);
+        backdrop-filter:blur(12px);
+        position:sticky;
+        bottom:0;
       }
 
       .ub-compose-row{
@@ -816,13 +837,13 @@ document.addEventListener("DOMContentLoaded", () => {
         width:100%;
         min-height:58px;
         max-height:140px;
-        resize:vertical;
+        resize:none;
         border-radius:16px;
         background:#101010;
         color:var(--ub-text);
         border:1px solid rgba(255,255,255,.08);
         padding:14px 16px;
-        font-size:14px;
+        font-size:16px;
         outline:0;
       }
 
@@ -912,6 +933,8 @@ document.addEventListener("DOMContentLoaded", () => {
         margin-bottom:8px;
       }
 
+      .ub-mobile-only{ display:none; }
+
       @media (max-width: 1280px){
         .ub-stats{ grid-template-columns:repeat(2, minmax(0,1fr)); }
       }
@@ -922,19 +945,82 @@ document.addEventListener("DOMContentLoaded", () => {
         .ub-simple-grid{
           grid-template-columns:1fr;
         }
-        .ub-leads{ max-height:320px; }
-        .ub-chat-body{ max-height:460px; }
       }
 
-      @media (max-width: 760px){
-        .ub-wrap{ padding:20px 16px 18px; }
-        .ub-title{ font-size:38px; }
-        .ub-topbar{ flex-direction:column; align-items:flex-start; }
-        .ub-stats,.ub-connect-points{ grid-template-columns:1fr; }
-        .ub-compose-row{ grid-template-columns:1fr; }
-        .ub-msg{ max-width:88%; }
-        .ub-calendar-item{ grid-template-columns:1fr; }
-        .ub-bar-row{ grid-template-columns:1fr; }
+      @media (max-width: 980px){
+        .ub-wrap{
+          padding:18px 14px 16px;
+        }
+
+        .ub-title{
+          font-size:38px;
+        }
+
+        .ub-topbar{
+          flex-direction:column;
+          align-items:flex-start;
+        }
+
+        .ub-stats,
+        .ub-connect-points,
+        .ub-simple-grid,
+        .ub-dashboard-grid{
+          grid-template-columns:1fr;
+        }
+
+        .ub-mobile-only{ display:inline-flex; }
+
+        .ub-desktop-chat{
+          display:none !important;
+        }
+
+        .ub-mobile-shell{
+          min-height:calc(100vh - 140px);
+        }
+
+        .ub-mobile-leads,
+        .ub-mobile-chat{
+          min-height:calc(100vh - 170px);
+        }
+
+        .ub-mobile-chat .ub-chat-shell{
+          min-height:calc(100vh - 190px);
+        }
+
+        .ub-mobile-chat .ub-chat-body{
+          max-height:none;
+          min-height:calc(100vh - 360px);
+          padding-bottom:24px;
+        }
+
+        .ub-mobile-chat .ub-chat-head{
+          position:sticky;
+          top:0;
+          z-index:3;
+          background:rgba(8,8,8,.92);
+          backdrop-filter:blur(12px);
+        }
+
+        .ub-leads{
+          max-height:none;
+          min-height:calc(100vh - 300px);
+        }
+
+        .ub-compose-row{
+          grid-template-columns:minmax(0,1fr) 112px;
+        }
+
+        .ub-msg{
+          max-width:88%;
+        }
+
+        .ub-calendar-item{
+          grid-template-columns:1fr;
+        }
+
+        .ub-bar-row{
+          grid-template-columns:1fr;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -1129,6 +1215,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("connected") === "1") {
       appState.whatsappConnected = true;
+      persistSession();
       window.history.replaceState({}, document.title, "/blueprint/index.html");
     }
   }
@@ -1214,6 +1301,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         appState.currentView = key;
+        appState.mobileLeadsScreen = true;
+        persistSession();
         renderCurrentView();
       };
     });
@@ -1346,7 +1435,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <section class="ub-dashboard-grid">
           <div class="ub-card ub-chart-card">
             <h3 class="ub-card-title">Rendimiento de la semana</h3>
-            <p class="ub-card-copy">Lectura visual del movimiento actual del sistema basado en tu volumen real de leads.</p>
+            <p class="ub-card-copy">Lectura visual del movimiento actual del sistema basada en tu volumen real de leads.</p>
 
             <div class="ub-graph-wrap">
               <div class="ub-graph-grid"></div>
@@ -1410,6 +1499,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderLeadsView() {
+    const isMobile = appState.mobileMode;
+    const showingList = appState.mobileLeadsScreen || !appState.selectedLeadId;
+
     appRoot.innerHTML = `
       <div class="ub-wrap">
         <header class="ub-topbar">
@@ -1427,58 +1519,155 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         </header>
 
-        <section class="ub-main">
-          <div class="ub-card ub-panel">
-            <div class="ub-panel-head">
-              <div>
-                <h3 class="ub-panel-title">Leads</h3>
-                <p class="ub-panel-copy">Lista operativa de conversaciones activas</p>
-              </div>
-              <div class="ub-loading" id="leadsLoadingLabel"></div>
-            </div>
-
-            <div class="ub-search-wrap">
-              <input class="ub-search" id="leadSearchInput" placeholder="Buscar por nombre, teléfono o mensaje..." value="${escapeHtml(appState.search)}" />
-            </div>
-
-            <div class="ub-status-filters">
-              ${renderStatusChips()}
-            </div>
-
-            <div class="ub-leads" id="leadsList">
-              ${renderLeadListHtml()}
-            </div>
-          </div>
-
-          <div class="ub-card ub-panel">
-            <div class="ub-chat-shell">
-              <div class="ub-chat-head" id="chatHeader">
-                ${renderChatHeaderHtml()}
-              </div>
-
-              <div class="ub-chat-body" id="chatMessages">
-                ${renderMessagesHtml()}
-              </div>
-
-              <div class="ub-compose">
-                <div class="ub-compose-row">
-                  <textarea
-                    id="chatInput"
-                    class="ub-textarea"
-                    placeholder="${appState.selectedLeadId ? "Escribe una respuesta manual..." : "Selecciona un lead para responder..."}"
-                    ${appState.selectedLeadId ? "" : "disabled"}
-                  ></textarea>
-                  <button class="ub-primary-btn" id="sendMessageBtn" ${appState.selectedLeadId ? "" : "disabled"}>
-                    ${appState.sending ? "Enviando..." : "Enviar"}
-                  </button>
+        ${
+          isMobile
+            ? `
+          <section class="ub-mobile-shell">
+            <div class="ub-mobile-leads" style="${showingList ? "" : "display:none;"}">
+              <div class="ub-card ub-panel">
+                <div class="ub-panel-head">
+                  <div>
+                    <h3 class="ub-panel-title">Leads</h3>
+                    <p class="ub-panel-copy">Toca un lead para abrir el chat</p>
+                  </div>
+                  <div class="ub-loading" id="leadsLoadingLabel"></div>
                 </div>
-                <div class="ub-muted-note">
-                  ${appState.selectedLeadId ? "Envía respuesta manual al lead seleccionado." : "Aún no hay conversación seleccionada."}
+
+                <div class="ub-search-wrap">
+                  <input class="ub-search" id="leadSearchInput" placeholder="Buscar por nombre, teléfono o mensaje..." value="${escapeHtml(appState.search)}" />
+                </div>
+
+                <div class="ub-status-filters">
+                  ${renderStatusChips()}
+                </div>
+
+                <div class="ub-leads" id="leadsList">
+                  ${renderLeadListHtml()}
                 </div>
               </div>
             </div>
+
+            <div class="ub-mobile-chat" style="${showingList ? "display:none;" : ""}">
+              <div class="ub-card ub-panel">
+                <div class="ub-chat-shell">
+                  <div class="ub-chat-head" id="chatHeader">
+                    ${renderMobileChatHeaderHtml()}
+                  </div>
+
+                  <div class="ub-chat-body" id="chatMessages">
+                    ${renderMessagesHtml()}
+                  </div>
+
+                  <div class="ub-compose">
+                    <div class="ub-compose-row">
+                      <textarea
+                        id="chatInput"
+                        class="ub-textarea"
+                        placeholder="${appState.selectedLeadId ? "Escribe una respuesta manual..." : "Selecciona un lead para responder..."}"
+                        ${appState.selectedLeadId ? "" : "disabled"}
+                      ></textarea>
+                      <button class="ub-primary-btn" id="sendMessageBtn" ${appState.selectedLeadId ? "" : "disabled"}>
+                        ${appState.sending ? "Enviando..." : "Enviar"}
+                      </button>
+                    </div>
+                    <div class="ub-muted-note">
+                      ${appState.selectedLeadId ? "Respuesta manual al lead seleccionado." : "Aún no hay conversación seleccionada."}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        `
+            : `
+          <section class="ub-main ub-desktop-chat">
+            <div class="ub-card ub-panel">
+              <div class="ub-panel-head">
+                <div>
+                  <h3 class="ub-panel-title">Leads</h3>
+                  <p class="ub-panel-copy">Lista operativa de conversaciones activas</p>
+                </div>
+                <div class="ub-loading" id="leadsLoadingLabel"></div>
+              </div>
+
+              <div class="ub-search-wrap">
+                <input class="ub-search" id="leadSearchInput" placeholder="Buscar por nombre, teléfono o mensaje..." value="${escapeHtml(appState.search)}" />
+              </div>
+
+              <div class="ub-status-filters">
+                ${renderStatusChips()}
+              </div>
+
+              <div class="ub-leads" id="leadsList">
+                ${renderLeadListHtml()}
+              </div>
+            </div>
+
+            <div class="ub-card ub-panel">
+              <div class="ub-chat-shell">
+                <div class="ub-chat-head" id="chatHeader">
+                  ${renderChatHeaderHtml()}
+                </div>
+
+                <div class="ub-chat-body" id="chatMessages">
+                  ${renderMessagesHtml()}
+                </div>
+
+                <div class="ub-compose">
+                  <div class="ub-compose-row">
+                    <textarea
+                      id="chatInput"
+                      class="ub-textarea"
+                      placeholder="${appState.selectedLeadId ? "Escribe una respuesta manual..." : "Selecciona un lead para responder..."}"
+                      ${appState.selectedLeadId ? "" : "disabled"}
+                    ></textarea>
+                    <button class="ub-primary-btn" id="sendMessageBtn" ${appState.selectedLeadId ? "" : "disabled"}>
+                      ${appState.sending ? "Enviando..." : "Enviar"}
+                    </button>
+                  </div>
+                  <div class="ub-muted-note">
+                    ${appState.selectedLeadId ? "Envía respuesta manual al lead seleccionado." : "Aún no hay conversación seleccionada."}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        `
+        }
+      </div>
+    `;
+  }
+
+  function renderMobileChatHeaderHtml() {
+    return `
+      <div class="ub-chat-user">
+        <button class="ub-back-btn ub-mobile-only" id="mobileBackBtn">← Volver</button>
+        ${
+          appState.selectedLead
+            ? `
+          <div class="ub-avatar">${escapeHtml(getInitials(appState.selectedLead.name))}</div>
+          <div>
+            <h3>${escapeHtml(appState.selectedLead.name || "Sin nombre")}</h3>
+            <p>${escapeHtml(appState.selectedLead.phone || "")}</p>
           </div>
-        </section>
+        `
+            : `
+          <div>
+            <h3>Sin lead</h3>
+            <p>Selecciona un lead</p>
+          </div>
+        `
+        }
+      </div>
+
+      <div class="ub-chat-meta">
+        ${
+          appState.selectedLead
+            ? `
+          <div class="ub-pill ${statusClass(appState.selectedLead.status)}">${escapeHtml(formatStatusLabel(appState.selectedLead.status))}</div>
+        `
+            : ""
+        }
       </div>
     `;
   }
@@ -1774,7 +1963,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="ub-empty">
           <div>
             <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:6px;">Workspace operativo</div>
-            <div>Selecciona un lead a la izquierda para abrir el chat y responder desde aquí.</div>
+            <div>Selecciona un lead para abrir el chat y responder desde aquí.</div>
           </div>
         </div>
       `;
@@ -1813,7 +2002,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }).join(" ");
 
     return `
-      <svg class="ub-line-svg" viewBox="0 0="100 100" preserveAspectRatio="none">
+      <svg class="ub-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
         <polyline
           fill="none"
           stroke="url(#goldLine)"
@@ -1879,6 +2068,7 @@ document.addEventListener("DOMContentLoaded", () => {
             appState.businessName = business;
             appState.whatsappConnected = true;
             appState.currentView = "dashboard";
+            persistSession();
             renderCurrentView();
           } else {
             alert("No se pudo conectar.");
@@ -1916,6 +2106,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-filter]").forEach((btn) => {
       btn.onclick = () => {
         appState.activeStatusFilter = btn.getAttribute("data-filter") || "all";
+        persistSession();
         applyLeadFilter();
         rerenderLeadsArea();
       };
@@ -1943,6 +2134,19 @@ document.addEventListener("DOMContentLoaded", () => {
           e.preventDefault();
           await sendCurrentMessage();
         }
+      };
+
+      chatInput.onfocus = () => {
+        setTimeout(scrollChatToBottom, 280);
+      };
+    }
+
+    const mobileBackBtn = document.getElementById("mobileBackBtn");
+    if (mobileBackBtn) {
+      mobileBackBtn.onclick = () => {
+        appState.mobileLeadsScreen = true;
+        renderLeadsView();
+        bindCommonViewEvents();
       };
     }
   }
@@ -2015,6 +2219,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function selectLead(leadId) {
     if (!leadId) return;
     appState.selectedLeadId = leadId;
+    appState.mobileLeadsScreen = false;
     rerenderLeadsArea();
     await loadLeadMessages(leadId, false);
   }
@@ -2071,7 +2276,11 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      if (input) input.value = "";
+      if (input) {
+        input.value = "";
+        input.style.height = "58px";
+      }
+
       await loadLeads(true);
       await loadLeadMessages(appState.selectedLeadId, true);
     } catch (err) {
@@ -2080,6 +2289,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       appState.sending = false;
       rerenderComposerOnly();
+      setTimeout(scrollChatToBottom, 120);
     }
   }
 
@@ -2099,7 +2309,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatHeader = document.getElementById("chatHeader");
     const chatMessages = document.getElementById("chatMessages");
 
-    if (chatHeader) chatHeader.innerHTML = renderChatHeaderHtml();
+    if (chatHeader) {
+      chatHeader.innerHTML = appState.mobileMode ? renderMobileChatHeaderHtml() : renderChatHeaderHtml();
+    }
     if (chatMessages) chatMessages.innerHTML = renderMessagesHtml();
 
     rerenderComposerOnly();
@@ -2120,12 +2332,21 @@ document.addEventListener("DOMContentLoaded", () => {
       chatInput.placeholder = appState.selectedLeadId
         ? "Escribe una respuesta manual..."
         : "Selecciona un lead para responder...";
+
+      chatInput.addEventListener("input", () => {
+        chatInput.style.height = "58px";
+        chatInput.style.height = `${Math.min(chatInput.scrollHeight, 140)}px`;
+      }, { once: true });
     }
   }
 
   function scrollChatToBottom() {
     const chat = document.getElementById("chatMessages");
-    if (chat) chat.scrollTop = chat.scrollHeight;
+    if (chat) {
+      setTimeout(() => {
+        chat.scrollTop = chat.scrollHeight;
+      }, 80);
+    }
   }
 
   function updateLeadsLoadingLabel(text) {
