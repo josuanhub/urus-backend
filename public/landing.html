@@ -2,160 +2,259 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>URUS Blueprint</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>URUS Blueprint — Convierte WhatsApp en un sistema de ventas</title>
 
   <style>
-    body {
-      margin:0;
-      font-family: system-ui;
-      background:#050505;
-      color:white;
+    :root{
+      --bg:#050505;
+      --panel:#0f0f0f;
+      --border:rgba(255,255,255,.08);
+      --text:#f5f5f5;
+      --muted:#9b9b9b;
+      --gold:#f6b300;
+      --gold2:#ffcc47;
     }
 
-    .container {
+    *{
+      box-sizing:border-box;
+      margin:0;
+      padding:0;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body{
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.5;
+    }
+
+    .container{
       max-width:1100px;
       margin:auto;
-      padding:40px 20px;
+      padding:80px 20px;
     }
 
-    h1 {
-      font-size:52px;
-      line-height:1;
+    h1{
+      font-size:56px;
+      line-height:1.05;
+      margin-bottom:20px;
+      letter-spacing:-.03em;
+    }
+
+    h2{
+      font-size:34px;
       margin-bottom:20px;
     }
 
-    p {
-      color:#aaa;
+    p{
+      color:var(--muted);
       font-size:18px;
     }
 
-    .gold {
-      background:linear-gradient(90deg,#f6b300,#ffcc47);
-      -webkit-background-clip:text;
-      -webkit-text-fill-color:transparent;
-    }
-
-    .btn {
+    .btn{
       display:inline-block;
-      margin-top:20px;
+      margin-top:30px;
       padding:16px 28px;
-      border-radius:12px;
-      background:#f6b300;
-      color:black;
-      font-weight:bold;
+      border-radius:14px;
+      background:linear-gradient(180deg,var(--gold2),var(--gold));
+      color:#111;
+      font-weight:800;
       text-decoration:none;
+      box-shadow:0 10px 30px rgba(246,179,0,.3);
     }
 
-    .section {
-      margin-top:80px;
+    .hero{
+      text-align:center;
+      padding-top:120px;
     }
 
-    .card {
-      background:#111;
-      padding:20px;
-      border-radius:16px;
-      border:1px solid #222;
+    .hero p{
+      max-width:600px;
+      margin:auto;
     }
 
-    .grid {
+    .section{
+      margin-top:120px;
+    }
+
+    .grid{
       display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+      grid-template-columns:repeat(3,1fr);
       gap:20px;
+      margin-top:40px;
     }
 
-    img {
-      width:100%;
-      border-radius:16px;
-      border:1px solid #222;
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:20px;
+      padding:24px;
     }
 
+    .card h3{
+      margin-bottom:10px;
+    }
+
+    .flow{
+      display:grid;
+      gap:20px;
+      margin-top:40px;
+    }
+
+    .flow-step{
+      padding:20px;
+      border-left:3px solid var(--gold);
+      background:#0b0b0b;
+    }
+
+    .cta{
+      text-align:center;
+      padding:120px 20px;
+    }
+
+    .cta h2{
+      font-size:42px;
+    }
+
+    footer{
+      text-align:center;
+      padding:40px;
+      color:#777;
+      font-size:14px;
+    }
+
+    @media(max-width:900px){
+      h1{font-size:40px;}
+      .grid{grid-template-columns:1fr;}
+    }
   </style>
 </head>
 
 <body>
 
-<div class="container">
-
-  <!-- HERO -->
+<!-- HERO -->
+<section class="hero container">
   <h1>
-    Deja de perder clientes en <span class="gold">WhatsApp</span>
+    Convierte tu WhatsApp<br>
+    en un sistema de ventas automático
   </h1>
 
   <p>
-    URUS convierte cada mensaje en una oportunidad real de venta automáticamente.
+    Deja de perder clientes por responder tarde.  
+    URUS Blueprint organiza, responde y convierte tus mensajes en oportunidades reales.
   </p>
 
-  <a class="btn" href="https://wa.me/19395851479">
-    Activar sistema
+  <a href="https://wa.me/19395551234" class="btn">
+    Activar mi sistema
   </a>
+</section>
 
-  <!-- DEMO -->
-  <div class="section">
-    <h2>Así se ve tu negocio con URUS</h2>
-    <img src="/blueprint-preview.png"/>
-  </div>
+<!-- PROBLEMA -->
+<section class="section container">
+  <h2>La mayoría pierde dinero aquí</h2>
 
-  <!-- BENEFICIOS -->
-  <div class="section">
-    <h2>¿Qué hace URUS?</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Respuestas tardías</h3>
+      <p>Los leads se enfrían en minutos y nadie les da seguimiento.</p>
+    </div>
 
-    <div class="grid">
-      <div class="card">
-        <h3>Responde automático</h3>
-        <p>No pierdes leads por no contestar</p>
-      </div>
+    <div class="card">
+      <h3>Desorganización</h3>
+      <p>Mensajes mezclados, clientes perdidos y cero control.</p>
+    </div>
 
-      <div class="card">
-        <h3>Organiza clientes</h3>
-        <p>Todos tus chats en un dashboard</p>
-      </div>
-
-      <div class="card">
-        <h3>Seguimiento automático</h3>
-        <p>Convierte más sin esfuerzo</p>
-      </div>
+    <div class="card">
+      <h3>Falta de sistema</h3>
+      <p>No tienes un flujo que convierta conversaciones en ventas.</p>
     </div>
   </div>
+</section>
 
-  <!-- COMO FUNCIONA -->
-  <div class="section">
-    <h2>Cómo funciona</h2>
+<!-- SOLUCIÓN -->
+<section class="section container">
+  <h2>Esto no es un chatbot</h2>
 
-    <div class="grid">
-      <div class="card">
-        <h3>1. Te escriben</h3>
-      </div>
+  <p style="max-width:700px;">
+    Es un sistema operativo de ventas para WhatsApp.  
+    Captura, responde, organiza y te muestra exactamente quién está listo para cerrar.
+  </p>
 
-      <div class="card">
-        <h3>2. URUS responde</h3>
-      </div>
+  <div class="grid">
+    <div class="card">
+      <h3>Automatización inteligente</h3>
+      <p>Responde al instante y filtra prospectos automáticamente.</p>
+    </div>
 
-      <div class="card">
-        <h3>3. Tú cierras</h3>
-      </div>
+    <div class="card">
+      <h3>Dashboard en tiempo real</h3>
+      <p>Ve todos tus leads organizados con status y prioridad.</p>
+    </div>
+
+    <div class="card">
+      <h3>Seguimiento automático</h3>
+      <p>Nunca pierdes un cliente por falta de seguimiento.</p>
     </div>
   </div>
+</section>
 
-  <!-- PRUEBA -->
-  <div class="section">
-    <h2>Prueba real</h2>
+<!-- CÓMO FUNCIONA -->
+<section class="section container">
+  <h2>Cómo funciona</h2>
 
-    <p>
-      Este sistema es el mismo que estoy usando ahora mismo para convertir leads en clientes.
-    </p>
+  <div class="flow">
+    <div class="flow-step">
+      1. El cliente escribe a tu WhatsApp
+    </div>
+
+    <div class="flow-step">
+      2. URUS responde, filtra y organiza el lead
+    </div>
+
+    <div class="flow-step">
+      3. Tú ves quién está listo para cerrar
+    </div>
   </div>
+</section>
 
-  <!-- CTA FINAL -->
-  <div class="section">
-    <h2>Activa tu sistema hoy</h2>
+<!-- BENEFICIO -->
+<section class="section container">
+  <h2>Resultado</h2>
 
-    <a class="btn" href="https://wa.me/19395851479">
-      Escríbeme ahora
-    </a>
+  <div class="grid">
+    <div class="card">
+      <h3>Más cierres</h3>
+      <p>Respondes en segundos, no en horas.</p>
+    </div>
+
+    <div class="card">
+      <h3>Más control</h3>
+      <p>Sabes exactamente qué cliente está listo.</p>
+    </div>
+
+    <div class="card">
+      <h3>Menos trabajo manual</h3>
+      <p>El sistema trabaja por ti.</p>
+    </div>
   </div>
+</section>
 
-</div>
+<!-- CTA FINAL -->
+<section class="cta">
+  <h2>
+    Si estás usando WhatsApp para vender,<br>
+    necesitas esto
+  </h2>
+
+  <a href="https://wa.me/19395551234" class="btn">
+    Quiero activar mi sistema
+  </a>
+</section>
+
+<footer>
+  URUS Blueprint © 2026
+</footer>
 
 </body>
 </html>
