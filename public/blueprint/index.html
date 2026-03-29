@@ -1,13 +1,94 @@
-Index. Html 
-
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <title>URUS Blueprint</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- CSS -->
   <link rel="stylesheet" href="/blueprint/styles.css" />
+
+  <!-- Fuente opcional (mejora visual) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui;
+      background: #0b0b0b;
+      color: #fff;
+    }
+
+    .app-shell {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 240px;
+      background: #111;
+      border-right: 1px solid #222;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    .brand-mark {
+      width: 10px;
+      height: 10px;
+      background: #c9a24d;
+      border-radius: 50%;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav-item {
+      background: transparent;
+      border: none;
+      color: #aaa;
+      text-align: left;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .nav-item.active {
+      background: #1a1a1a;
+      color: #fff;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .status {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .status span {
+      color: #00ff88;
+    }
+  </style>
 </head>
 
 <body>
@@ -19,8 +100,8 @@ Index. Html
       <div class="brand">
         <div class="brand-mark"></div>
         <div>
-          <h1>URUS Blueprint</h1>
-          <p>WhatsApp Growth OS</p>
+          <h1 style="margin:0; font-size:18px;">URUS Blueprint</h1>
+          <p style="margin:0; font-size:12px; color:#777;">WhatsApp Growth OS</p>
         </div>
       </div>
 
@@ -34,13 +115,67 @@ Index. Html
       </nav>
     </aside>
 
-    <!-- MAIN APP -->
-    <main id="app" class="main-content"></main>
+    <!-- MAIN -->
+    <main class="main-content">
+
+      <!-- TOP BAR -->
+      <div class="top-bar">
+        <h2 style="margin:0;">Dashboard</h2>
+        <div class="status">
+          Estado: <span id="connectionStatus">Conectando...</span>
+        </div>
+      </div>
+
+      <!-- APP ROOT -->
+      <div id="app"></div>
+
+    </main>
 
   </div>
 
-  <!-- JS -->
+  <!-- JS PRINCIPAL -->
   <script src="/blueprint/app.js"></script>
+
+  <!-- 🔥 AUTO REFRESH GLOBAL (CRÍTICO) -->
+  <script>
+    // indicador visual
+    function setStatus(text, ok = true) {
+      const el = document.getElementById("connectionStatus");
+      if (!el) return;
+      el.textContent = text;
+      el.style.color = ok ? "#00ff88" : "#ff4d4d";
+    }
+
+    // prueba conexión backend
+    async function checkConnection() {
+      try {
+        const res = await fetch("/health");
+        if (res.ok) {
+          setStatus("Conectado", true);
+        } else {
+          setStatus("Error", false);
+        }
+      } catch {
+        setStatus("Offline", false);
+      }
+    }
+
+    // 🔄 REFRESH GLOBAL CADA 3s
+    setInterval(() => {
+      if (window.loadLeads) {
+        window.loadLeads();
+      }
+
+      if (window.currentLeadId && window.loadMessages) {
+        window.loadMessages(window.currentLeadId);
+      }
+
+      checkConnection();
+    }, 3000);
+
+    // primera carga
+    checkConnection();
+  </script>
 
 </body>
 </html>
