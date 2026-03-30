@@ -868,16 +868,12 @@ app.post("/v1/twilio/wa/webhook", async (req, res) => {
       [finalLead.id, reply]
     );
 
-    const sent = await sendWhatsAppTextTwilio({ to: phone, text: reply });
 
-    console.log("TWILIO_WA_REPLY_SENT", {
-      ok: sent.ok,
-      to: phone,
-      lead_id: finalLead.id,
-      details: sent
-    });
+    const twiml = new MessagingResponse();
+twiml.message(reply);
 
-    return res.status(200).send("ok");
+return res.type("text/xml").send(twiml.toString());
+    
   } catch (e) {
     console.error("TWILIO_WA_WEBHOOK_ERROR", e);
     return res.status(200).send("ok");
