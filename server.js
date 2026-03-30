@@ -756,6 +756,34 @@ app.post("/v1/twilio/wa/webhook", async (req, res) => {
   try {
     const fromRaw = String(req.body?.From || "");
     const body = String(req.body?.Body || "").trim();
+    let text = body;
+
+// ==============================
+// 🎤 TWILIO VOICE → TEXT
+// ==============================
+if (!text && req.body.MediaUrl0) {
+  try {
+    console.log("🎤 TWILIO VOICE DETECTED");
+
+    const mediaUrl = req.body.MediaUrl0;
+
+    const audioRes = await fetch(mediaUrl);
+    const audioBuffer = await audioRes.arrayBuffer();
+
+    const transcription = await openai.audio.transcriptions.create({
+      file: Buffer.from(audioBuffer),
+      model: "gpt-4o-mini-transcribe"
+    });
+
+    text = transcription.text || "";
+
+    console.log("🧠 TWILIO TRANSCRIBED:", text);
+
+  } catch (err) {
+    console.error("❌ TWILIO VOICE ERROR:", err);
+    text = "No pude escuchar bien el audio, ¿me lo puedes escribir?";
+  }
+}
     const profileName = String(req.body?.ProfileName || "").trim() || null;
 
     console.log("TWILIO_WA_INBOUND", {
