@@ -544,7 +544,53 @@ app.post("/v1/wa/webhook", async (req, res) => {
     if (!msg) return;
 
     const from = msg.from; // número del cliente (sin + normalmente)
-    const text = msg?.text?.body || "";
+    
+    let text = msg?.text?.body || "";
+let message_type = msg.type || "text";
+
+// ==============================
+// 🎤 VOICE → TEXT
+// ==============================
+if (message_type === "audio") {
+  try {
+    console.log("🎤 VOICE DETECTED");
+
+    const mediaId = msg.audio.id;
+
+    const mediaRes = await fetch(
+      `https://graph.facebook.com/v22.0/${mediaId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${WA_TOKEN}`
+        }
+      }
+    );
+
+    const mediaData = await mediaRes.json();
+    const mediaUrl = mediaData.url;
+
+    const audioRes = await fetch(mediaUrl, {
+      headers: {
+        Authorization: `Bearer ${WA_TOKEN}`
+      }
+    });
+
+    const audioBuffer = await audioRes.arrayBuffer();
+
+    const transcription = await openai.audio.transcriptions.create({
+      file: Buffer.from(audioBuffer),
+      model: "gpt-4o-mini-transcribe"
+    });
+
+    text = transcription.text || "";
+
+    console.log("🧠 TRANSCRIBED:", text);
+
+  } catch (err) {
+    console.error("❌ VOICE ERROR:", err);
+    text = "No pude escuchar bien el audio, ¿me lo puedes escribir?";
+  }
+}
     const name = value?.contacts?.[0]?.profile?.name || null;
 
     // SOLO texto por ahora
