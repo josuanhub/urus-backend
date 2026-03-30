@@ -697,6 +697,14 @@ app.post("/v1/voice/verify", (req, res) => {
 // GET LEADS (PARA DASHBOARD)
 // ==============================
 
+app.post("/v1/twilio/sms", (req, res) => {
+  const msg = req.body.Body;
+
+  console.log("📩 META SMS:", msg);
+
+  res.send("<Response></Response>");
+});
+
 app.post("/v1/twilio/wa/webhook", async (req, res) => {
   try {
     const fromRaw = String(req.body?.From || "");
