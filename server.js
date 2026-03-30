@@ -680,6 +680,23 @@ const reply = await buildLeadReplyAI({
   }
 });
 
+// ==============================
+// VOICE WEBHOOK (TWILIO CALL)
+// ==============================
+
+app.post("/v1/voice/verify", (req, res) => {
+  console.log("📞 CALL INCOMING");
+
+  res.type("text/xml");
+  res.send(`
+    <Response>
+      <Say voice="alice">
+        Hello. This is a verification call from URUS system.
+      </Say>
+    </Response>
+  `);
+});
+
   // ==============================
 // GET LEADS (PARA DASHBOARD)
 // ==============================
