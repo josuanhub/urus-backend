@@ -685,13 +685,15 @@ const reply = await buildLeadReplyAI({
 // ==============================
 
 app.post("/v1/voice/verify", (req, res) => {
-  console.log("📞 CALL INCOMING");
+  const code = Math.floor(100000 + Math.random() * 900000);
 
-  res.type("text/xml");
+  console.log("📞 CODE:", code);
+
+  res.set("Content-Type", "text/xml");
   res.send(`
     <Response>
       <Say voice="alice">
-        Hello. This is a verification call from URUS system.
+        Your verification code is ${code}
       </Say>
     </Response>
   `);
