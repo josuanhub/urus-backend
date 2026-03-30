@@ -787,12 +787,12 @@ if (!text && req.body.MediaUrl0) {
     const profileName = String(req.body?.ProfileName || "").trim() || null;
 
     console.log("TWILIO_WA_INBOUND", {
-      fromRaw,
-      body,
-      profileName
-    });
+  fromRaw,
+  text,
+  profileName
+});
 
-    if (!fromRaw || !body) {
+    if (!fromRaw || !text) {
       return res.status(200).send("ok");
     }
 
@@ -821,7 +821,7 @@ if (!text && req.body.MediaUrl0) {
         VALUES ($1, $2, 'twilio_whatsapp', 'NEW', 0, $3, now())
         RETURNING *
         `,
-        [phone, profileName, body]
+        [phone, profileName, text]
       );
 
       lead = insertResult.rows[0];
@@ -836,7 +836,7 @@ if (!text && req.body.MediaUrl0) {
         WHERE id = $1
         RETURNING *
         `,
-        [lead.id, profileName, body]
+        [lead.id, profileName, text]
       );
 
       lead = updateExisting.rows[0];
