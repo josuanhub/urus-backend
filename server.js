@@ -685,16 +685,10 @@ const reply = await buildLeadReplyAI({
 // ==============================
 
 app.post("/v1/voice/verify", (req, res) => {
-  const code = Math.floor(100000 + Math.random() * 900000);
-
-  console.log("📞 META CODE:", code);
-
   res.set("Content-Type", "text/xml");
   res.send(`
     <Response>
-      <Say voice="alice">
-        ${code}
-      </Say>
+      <Record maxLength="10" />
     </Response>
   `);
 });
