@@ -594,7 +594,7 @@ if (message_type === "audio") {
     const name = value?.contacts?.[0]?.profile?.name || null;
 
     // SOLO texto por ahora
-    const message_type = msg.type || "text";
+
     if (message_type !== "text") {
       // puedes extender luego (image/document/audio)
       console.log("WA_INBOUND_NON_TEXT", { type: message_type });
