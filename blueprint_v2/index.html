@@ -1,1 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URUS OS | Cognitive Sales Intelligence</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body class="urus-dark-theme">
+    <div id="app-container">
+        <section id="login-screen" class="screen active">
+            <div class="glass-card auth-card">
+                <div class="logo-area">
+                    <h1 class="glow-text">URUS <span>OS</span></h1>
+                    <p class="subtitle">SISTEMA OPERATIVO COGNITIVO</p>
+                </div>
+                <form id="login-form">
+                    <div class="input-group">
+                        <label>Credenciales de Acceso</label>
+                        <input type="email" id="email" placeholder="email@urus.ai" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="password" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn-primary">INICIAR SECUENCIA</button>
+                </form>
+                <div class="footer-note">Acceso Restringido - Founder Edition v2030</div>
+            </div>
+        </section>
 
+        <section id="connect-screen" class="screen">
+            <div class="glass-card connect-card">
+                <h2>VINCULACIÓN NEURAL</h2>
+                <p>Escanea el código para sincronizar URUS con tu flujo de ventas real.</p>
+                <div id="qr-container" class="qr-box">
+                    <div class="qr-placeholder">
+                        <span class="scanner-line"></span>
+                        <p>GENERANDO QR...</p>
+                    </div>
+                </div>
+                <div class="status-info">
+                    <span class="dot pulse"></span> Esperando señal de WhatsApp...
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboard-screen" class="screen">
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <span class="logo-small">U</span>
+                    <span class="status-online">SINC</span>
+                </div>
+                <nav class="nav-menu">
+                    <button class="nav-item active" data-view="leads">LEADS</button>
+                    <button class="nav-item" data-view="insights">MÉTRICAS</button>
+                    <button class="nav-item" data-view="settings">SISTEMA</button>
+                </nav>
+                <div class="user-profile">
+                    <div class="avatar">JB</div>
+                </div>
+            </aside>
+
+            <main class="main-content">
+                <header class="content-header">
+                    <div class="search-bar">
+                        <input type="text" id="lead-search" placeholder="Filtrar por nombre o intención...">
+                    </div>
+                    <div class="system-stats">
+                        <div class="stat"><small>PHONE:</small> <span id="wa-number">+1 260 300 6906</span></div>
+                    </div>
+                </header>
+
+                <div class="dashboard-layout">
+                    <section class="leads-panel">
+                        <div class="panel-header">
+                            <h3>FLUJO DE ENTRADA</h3>
+                            <span class="badge" id="leads-count">0</span>
+                        </div>
+                        <div id="leads-container" class="scrollable">
+                            </div>
+                    </section>
+
+                    <section class="chat-panel" id="chat-panel">
+                        <div id="no-selection" class="empty-state">
+                            <p>SELECCIONA UN LEAD PARA DESPLEGAR ANÁLISIS COGNITIVO</p>
+                        </div>
+                        <div id="active-chat" class="chat-container hidden">
+                            <div class="chat-header">
+                                <div class="lead-info">
+                                    <h4 id="active-lead-name">---</h4>
+                                    <span id="active-lead-status" class="status-tag">Analizando...</span>
+                                </div>
+                            </div>
+                            <div id="chat-messages" class="messages-area scrollable"></div>
+                            <div class="composer-area">
+                                <textarea id="chat-input" placeholder="Respuesta manual o comando de IA..."></textarea>
+                                <button id="send-btn" class="btn-icon">▲</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </section>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
