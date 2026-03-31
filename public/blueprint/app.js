@@ -1,300 +1,428 @@
+//
+// URUS WA OS — FULL SaaS FRONTEND
+// Compatible con:
+// - /v1/wa/leads
+// - /v1/wa/leads/:id/messages
+// - /v1/wa/leads/:id/send
+// - /v1/twilio/wa/webhook (ya conectado backend)
+//
+// UI: Premium + Mobile-first + Real-time
+//
+
+const API = "";
+
+// ==============================
+// STATE CENTRAL
+// ==============================
+const appState = {
+  leads: [],
+  filteredLeads: [],
+  activeLead: null,
+  messages: [],
+  search: "",
+  status: "all",
+  loadingLeads: false,
+  loadingMessages: false,
+  sending: false,
+  typing: false,
+  notifications: [],
+};
+
+window.currentLeadId = null;
+
+// ==============================
+// INIT
+// ==============================
 document.addEventListener("DOMContentLoaded", () => {
+  mountApp();
+  bindEvents();
+  loadLeads();
+  startRealtime();
+});
 
-  const appRoot = document.querySelector(".main-content");
-  if (!appRoot) return;
+// ==============================
+// UI ROOT
+// ==============================
+function mountApp() {
+  const root = document.getElementById("app");
 
-  // =========================
-  // STATE (MEJORADO)
-  // =========================
-  let appState = {
-    whatsappConnected: false,
-    businessName: "URUS Elite Motors",
-    phoneNumber: "+12603006906",
-    leads: [],
-    selectedLead: null,
-    messages: [],
-    loading: false,
-    sending: false,
-    search: "",
-    filter: "ALL"
-  };
+  root.innerHTML = `
+  <div class="ub-wrap">
 
-  // detectar si ya conectó
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get("connected") === "1") {
-    appState.whatsappConnected = true;
-    window.history.replaceState({}, document.title, "/blueprint/index.html");
-  }
+    <!-- METRICS -->
+    <div class="ub-grid ub-stats">
 
-  // =========================
-  // RENDER ROOT
-  // =========================
-  function render() {
-    if (!appState.whatsappConnected) {
-      renderConnectScreen();
-    } else {
-      renderDashboard();
-      loadLeads();
-    }
-
-    bindEvents();
-  }
-
-  // =========================
-  // CONNECT SCREEN
-  // =========================
-  function renderConnectScreen() {
-    appRoot.innerHTML = `
-      <div class="main-inner">
-
-        <header class="topbar">
-          <div>
-            <h2>Bienvenido</h2>
-            <p>Conecta tu WhatsApp para empezar</p>
-          </div>
-          <div class="status-pill">
-            <span class="dot" style="background:#f6b300;"></span>
-            No conectado
-          </div>
-        </header>
-
-        <section class="hero-connect">
-          <div class="connect-card">
-            <div class="connect-icon">🟢</div>
-            <h2>Conecta tu WhatsApp Business</h2>
-            <p>Activa tu sistema de leads automático en minutos.</p>
-            <button class="connect-btn" id="openMetaConnect">Conectar WhatsApp</button>
-          </div>
-        </section>
-
+      <div class="ub-card ub-stat gold">
+        <div class="ub-stat-label">Leads</div>
+        <div class="ub-stat-value" id="metricLeads">0</div>
+        <div class="ub-stat-sub">Activos</div>
       </div>
 
-      <div class="meta-modal-backdrop" id="metaModal">
-        <div class="meta-modal">
-          <h3>Conectar WhatsApp</h3>
-          <input id="metaPhoneInput" value="${appState.phoneNumber}" />
-          <input id="metaBusinessInput" value="${appState.businessName}" />
-          <div class="meta-actions">
-            <button id="closeMetaModal">Cancelar</button>
-            <button id="confirmMetaConnect">Conectar</button>
-          </div>
+      <div class="ub-card ub-stat green">
+        <div class="ub-stat-label">Conversión</div>
+        <div class="ub-stat-value" id="metricConversion">0%</div>
+        <div class="ub-stat-sub">Cierre</div>
+      </div>
+
+      <div class="ub-card ub-stat blue">
+        <div class="ub-stat-label">Revenue</div>
+        <div class="ub-stat-value" id="metricRevenue">$0</div>
+        <div class="ub-stat-sub">Estimado</div>
+      </div>
+
+      <div class="ub-card ub-stat purple">
+        <div class="ub-stat-label">Hot Leads</div>
+        <div class="ub-stat-value" id="metricHot">0</div>
+        <div class="ub-stat-sub">Alta intención</div>
+      </div>
+
+    </div>
+
+    <!-- MAIN -->
+    <div class="ub-main">
+
+      <!-- LEADS -->
+      <div class="ub-panel">
+
+        <div class="ub-panel-head">
+          <h3 class="ub-panel-title">Pipeline</h3>
         </div>
+
+        <div class="ub-search-wrap">
+          <input id="searchInput" class="ub-search" placeholder="Buscar..." />
+        </div>
+
+        <div class="ub-status-filters">
+          ${renderFilters()}
+        </div>
+
+        <div id="leadsList" class="ub-leads"></div>
+
       </div>
-    `;
-  }
 
-  // =========================
-  // DASHBOARD COMPLETO (UPGRADE)
-  // =========================
-  function renderDashboard() {
-    appRoot.innerHTML = `
-      <div class="app-shell">
+      <!-- CHAT -->
+      <div class="ub-panel">
 
-        <aside class="sidebar">
-          <div class="logo">URUS</div>
-
-          <input class="search" placeholder="Buscar..." id="searchInput"/>
-
-          <div class="filters">
-            <button data-filter="ALL">Todos</button>
-            <button data-filter="NEW">Nuevos</button>
-            <button data-filter="CONTACTED">Contactados</button>
-          </div>
-
-          <div class="leads" id="leadsList"></div>
-        </aside>
-
-        <main class="chat-area">
-
-          <div class="chat-header">
+        <div id="chatHeader" class="ub-chat-head">
+          <div class="ub-chat-user">
+            <div class="ub-avatar">--</div>
             <div>
-              <strong id="chatName">Selecciona un lead</strong>
-              <div id="chatStatus">-</div>
+              <h3>Selecciona lead</h3>
+              <p>Sin conversación</p>
             </div>
           </div>
+        </div>
 
-          <div class="chat-messages" id="chatMessages"></div>
+        <div id="messages" class="ub-chat-body"></div>
 
-          <div class="chat-input">
-            <textarea id="chatInput" placeholder="Escribe mensaje..."></textarea>
-            <button id="sendBtn">Enviar</button>
+        <div id="typingIndicator" class="ub-muted-note" style="display:none;">
+          escribiendo...
+        </div>
+
+        <div class="ub-compose">
+          <div class="ub-compose-row">
+            <textarea id="messageInput" class="ub-textarea" placeholder="Escribe mensaje..."></textarea>
+            <button id="sendBtn" class="ub-primary-btn">Enviar</button>
           </div>
+        </div>
 
-        </main>
+      </div>
 
+    </div>
+
+  </div>
+  `;
+}
+
+// ==============================
+// FILTERS
+// ==============================
+function renderFilters() {
+  const statuses = ["all", "NEW", "INFO_RECEIVED", "READY_TO_CALL"];
+
+  return statuses.map(s => `
+    <button class="ub-chip ${appState.status === s ? "active" : ""}" onclick="setStatusFilter('${s}')">
+      ${s}
+    </button>
+  `).join("");
+}
+
+window.setStatusFilter = function (s) {
+  appState.status = s;
+  filterLeads();
+  mountApp();
+  bindEvents();
+  renderLeads();
+};
+
+// ==============================
+// EVENTS
+// ==============================
+function bindEvents() {
+  document.getElementById("searchInput").addEventListener("input", e => {
+    appState.search = e.target.value.toLowerCase();
+    filterLeads();
+  });
+
+  document.getElementById("sendBtn").addEventListener("click", sendMessage);
+
+  document.getElementById("messageInput").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+}
+
+// ==============================
+// LOAD LEADS
+// ==============================
+async function loadLeads() {
+  try {
+    const res = await fetch(API + "/v1/wa/leads");
+    const data = await res.json();
+
+    const prevIds = new Set(appState.leads.map(l => l.id));
+
+    appState.leads = data.leads || [];
+
+    // detectar nuevos leads (notificación)
+    appState.leads.forEach(l => {
+      if (!prevIds.has(l.id)) {
+        notify("Nuevo lead", l.name || l.phone);
+      }
+    });
+
+    filterLeads();
+    renderMetrics();
+
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ==============================
+// FILTER
+// ==============================
+function filterLeads() {
+  appState.filteredLeads = appState.leads.filter(l => {
+
+    const matchSearch =
+      !appState.search ||
+      (l.name || "").toLowerCase().includes(appState.search) ||
+      (l.phone || "").includes(appState.search);
+
+    const matchStatus =
+      appState.status === "all" || l.status === appState.status;
+
+    return matchSearch && matchStatus;
+  });
+
+  renderLeads();
+}
+
+// ==============================
+// RENDER LEADS
+// ==============================
+function renderLeads() {
+  const el = document.getElementById("leadsList");
+  if (!el) return;
+
+  el.innerHTML = "";
+
+  appState.filteredLeads.forEach(l => {
+
+    const isHot = l.score >= 70;
+
+    const div = document.createElement("div");
+    div.className = "ub-lead " + (appState.activeLead?.id === l.id ? "active" : "");
+
+    div.innerHTML = `
+      <div class="ub-avatar">${(l.name || "?")[0]}</div>
+
+      <div>
+        <div class="ub-lead-name">${l.name || l.phone}</div>
+        <div class="ub-lead-snippet">${l.last_message || ""}</div>
+      </div>
+
+      <div>
+        <div class="ub-pill ${isHot ? "ready" : ""}">${l.status}</div>
+        ${isHot ? `<div class="ub-badge">🔥</div>` : ""}
       </div>
     `;
 
-    renderLeads();
-  }
+    div.onclick = () => selectLead(l);
+    el.appendChild(div);
+  });
+}
 
-  // =========================
-  // EVENTS
-  // =========================
-  function bindEvents() {
+// ==============================
+// SELECT LEAD
+// ==============================
+async function selectLead(l) {
+  appState.activeLead = l;
+  window.currentLeadId = l.id;
 
-    // connect modal
-    const openBtn = document.getElementById("openMetaConnect");
-    const modal = document.getElementById("metaModal");
-    const closeBtn = document.getElementById("closeMetaModal");
-    const confirmBtn = document.getElementById("confirmMetaConnect");
+  updateHeader();
+  renderLeads();
+  await loadMessages(l.id);
+}
 
-    if (openBtn) openBtn.onclick = () => modal.classList.add("show");
-    if (closeBtn) closeBtn.onclick = () => modal.classList.remove("show");
+// ==============================
+// HEADER
+// ==============================
+function updateHeader() {
+  const el = document.getElementById("chatHeader");
 
-    if (confirmBtn) {
-      confirmBtn.onclick = async () => {
-        const phone = document.getElementById("metaPhoneInput").value;
-        const business = document.getElementById("metaBusinessInput").value;
+  if (!appState.activeLead) return;
 
-        const res = await fetch("/v1/wa/connect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, business })
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-          window.location.href = "/blueprint/index.html?connected=1";
-        }
-      };
-    }
-
-    // search
-    const search = document.getElementById("searchInput");
-    if (search) {
-      search.oninput = (e) => {
-        appState.search = e.target.value;
-        renderLeads();
-      };
-    }
-
-    // send
-    const sendBtn = document.getElementById("sendBtn");
-    if (sendBtn) {
-      sendBtn.onclick = sendMessage;
-    }
-  }
-
-  // =========================
-  // LOAD LEADS
-  // =========================
-  async function loadLeads() {
-    try {
-      const res = await fetch("/v1/wa/leads");
-      const data = await res.json();
-      if (!data.success) return;
-
-      appState.leads = data.leads || [];
-
-      renderLeads();
-
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  // =========================
-  // RENDER LEADS
-  // =========================
-  function renderLeads() {
-    const container = document.getElementById("leadsList");
-    if (!container) return;
-
-    let leads = appState.leads;
-
-    if (appState.search) {
-      leads = leads.filter(l =>
-        (l.name || "").toLowerCase().includes(appState.search.toLowerCase())
-      );
-    }
-
-    container.innerHTML = leads.map(l => `
-      <div class="lead ${appState.selectedLead?.id === l.id ? "active" : ""}" data-id="${l.id}">
-        <strong>${l.name || "Lead"}</strong>
-        <p>${l.last_message || ""}</p>
+  el.innerHTML = `
+    <div class="ub-chat-user">
+      <div class="ub-avatar">${(appState.activeLead.name || "?")[0]}</div>
+      <div>
+        <h3>${appState.activeLead.name || appState.activeLead.phone}</h3>
+        <p>${appState.activeLead.status}</p>
       </div>
-    `).join("");
+    </div>
+  `;
+}
 
-    container.querySelectorAll(".lead").forEach(el => {
-      el.onclick = () => selectLead(el.dataset.id);
-    });
-  }
+// ==============================
+// LOAD MESSAGES
+// ==============================
+async function loadMessages(id) {
+  try {
+    appState.loadingMessages = true;
 
-  // =========================
-  // SELECT LEAD
-  // =========================
-  async function selectLead(id) {
-    appState.selectedLead = appState.leads.find(l => l.id == id);
-
-    const res = await fetch(`/v1/wa/leads/${id}/messages`);
+    const res = await fetch(API + `/v1/wa/leads/${id}/messages`);
     const data = await res.json();
 
     appState.messages = data.messages || [];
-
-    document.getElementById("chatName").innerText = appState.selectedLead.name || "Lead";
-    document.getElementById("chatStatus").innerText = appState.selectedLead.status;
-
     renderMessages();
+
+  } catch (e) {
+    console.error(e);
+  } finally {
+    appState.loadingMessages = false;
+  }
+}
+
+// ==============================
+// RENDER MESSAGES
+// ==============================
+function renderMessages() {
+  const el = document.getElementById("messages");
+  el.innerHTML = "";
+
+  if (!appState.activeLead) {
+    el.innerHTML = `<div class="ub-empty">Selecciona lead</div>`;
+    return;
   }
 
-  // =========================
-  // RENDER MESSAGES
-  // =========================
-  function renderMessages() {
-    const container = document.getElementById("chatMessages");
+  appState.messages.forEach(m => {
 
-    if (!appState.messages.length) {
-      container.innerHTML = "<p>No messages</p>";
-      return;
-    }
+    const row = document.createElement("div");
+    row.className = "ub-msg-row " + (m.direction === "outbound" ? "outbound" : "");
 
-    container.innerHTML = appState.messages.map(m => `
-      <div class="msg ${m.direction === "outbound" ? "out" : "in"}">
-        ${m.body}
+    row.innerHTML = `
+      <div class="ub-msg ${m.direction === "outbound" ? "outbound" : ""}">
+        <div class="ub-msg-body">${escapeHTML(m.body)}</div>
+        <div class="ub-msg-meta">${formatTime(m.created_at)}</div>
       </div>
-    `).join("");
+    `;
 
-    container.scrollTop = container.scrollHeight;
-  }
+    el.appendChild(row);
+  });
 
-  // =========================
-  // SEND MESSAGE
-  // =========================
-  async function sendMessage() {
-    if (!appState.selectedLead) return;
+  el.scrollTop = el.scrollHeight;
+}
 
-    const input = document.getElementById("chatInput");
-    const text = input.value.trim();
-    if (!text) return;
+// ==============================
+// SEND MESSAGE
+// ==============================
+async function sendMessage() {
+  if (!appState.activeLead || appState.sending) return;
 
-    input.value = "";
+  const input = document.getElementById("messageInput");
+  const text = input.value.trim();
 
-    await fetch(`/v1/wa/leads/${appState.selectedLead.id}/send`, {
+  if (!text) return;
+
+  appState.sending = true;
+
+  try {
+    await fetch(API + `/v1/wa/leads/${appState.activeLead.id}/send`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ message: text })
     });
 
-    await selectLead(appState.selectedLead.id);
+    input.value = "";
+
+    await loadMessages(appState.activeLead.id);
+    await loadLeads();
+
+  } catch (e) {
+    console.error(e);
+  } finally {
+    appState.sending = false;
   }
+}
 
-  // =========================
-  // AUTO REFRESH
-  // =========================
-  setInterval(() => {
-    if (appState.whatsappConnected) {
-      loadLeads();
-      if (appState.selectedLead) {
-        selectLead(appState.selectedLead.id);
-      }
+// ==============================
+// METRICS
+// ==============================
+function renderMetrics() {
+  const total = appState.leads.length;
+  const closed = appState.leads.filter(l => l.status === "READY_TO_CALL").length;
+  const hot = appState.leads.filter(l => l.score >= 70).length;
+
+  document.getElementById("metricLeads").innerText = total;
+  document.getElementById("metricHot").innerText = hot;
+  document.getElementById("metricRevenue").innerText = "$" + (closed * 150);
+  document.getElementById("metricConversion").innerText =
+    total ? Math.round((closed / total) * 100) + "%" : "0%";
+}
+
+// ==============================
+// NOTIFICATIONS
+// ==============================
+function notify(title, body) {
+  console.log("🔔", title, body);
+}
+
+// ==============================
+// REALTIME LOOP
+// ==============================
+function startRealtime() {
+  setInterval(async () => {
+    await loadLeads();
+
+    if (appState.activeLead) {
+      await loadMessages(appState.activeLead.id);
     }
-  }, 4000);
+  }, 5000);
+}
 
-  // =========================
-  // INIT
-  // =========================
-  render();
+// ==============================
+// HELPERS
+// ==============================
+function formatTime(ts) {
+  if (!ts) return "";
+  return new Date(ts).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
 
-});
+function escapeHTML(str) {
+  return (str || "").replace(/[&<>"']/g, m => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  }[m]));
+}
