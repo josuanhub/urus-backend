@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const appState = {
     whatsappConnected: false,
     businessName: "URUS WA OS",
-    phoneNumber: "+1 415 523 8886",
+    phoneNumber: "+1 260 300 6906",
     currentView: "dashboard",
     leads: [],
     filteredLeads: [],
