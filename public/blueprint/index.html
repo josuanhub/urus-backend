@@ -2,102 +2,180 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>URUS Blueprint OS</title>
+  <title>URUS Blueprint</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link rel="stylesheet" href="/blueprint/styles.css"/>
+  <!-- CSS -->
+  <link rel="stylesheet" href="/blueprint/styles.css" />
 
-  <!-- FONT -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <!-- Fuente opcional (mejora visual) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui;
+      background: #0b0b0b;
+      color: #fff;
+    }
+
+    .app-shell {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 240px;
+      background: #111;
+      border-right: 1px solid #222;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    .brand-mark {
+      width: 10px;
+      height: 10px;
+      background: #c9a24d;
+      border-radius: 50%;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav-item {
+      background: transparent;
+      border: none;
+      color: #aaa;
+      text-align: left;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .nav-item.active {
+      background: #1a1a1a;
+      color: #fff;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .status {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .status span {
+      color: #00ff88;
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="app">
-
-  <!-- ========================= -->
-  <!-- SIDEBAR -->
-  <!-- ========================= -->
-  <aside class="sidebar">
-
-    <div class="logo">
-      <span class="logo-icon">⚡</span>
-      <span>URUS OS</span>
-    </div>
-
-    <div class="nav">
-
-      <div class="nav-item active" data-view="dashboard">
-        <span>📊</span> Dashboard
+  <div class="app-shell">
+    
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <h1 style="margin:0; font-size:18px;">URUS Blueprint</h1>
+          <p style="margin:0; font-size:12px; color:#777;">WhatsApp Growth OS</p>
+        </div>
       </div>
 
-      <div class="nav-item" data-view="leads">
-        <span>💬</span> Conversaciones
+      <nav class="nav">
+        <button class="nav-item active">Dashboard</button>
+        <button class="nav-item">Leads</button>
+        <button class="nav-item">Follow-ups</button>
+        <button class="nav-item">Calendario</button>
+        <button class="nav-item">Plantillas</button>
+        <button class="nav-item">Analytics</button>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main-content">
+
+      <!-- TOP BAR -->
+      <div class="top-bar">
+        <h2 style="margin:0;">Dashboard</h2>
+        <div class="status">
+          Estado: <span id="connectionStatus">Conectando...</span>
+        </div>
       </div>
 
-      <div class="nav-item" data-view="followups">
-        <span>🎯</span> Follow-ups
-      </div>
+      <!-- APP ROOT -->
+      <div id="app"></div>
 
-      <div class="nav-item" data-view="calendar">
-        <span>📅</span> Agenda
-      </div>
+    </main>
 
-      <div class="nav-item" data-view="analytics">
-        <span>💰</span> Pipeline
-      </div>
+  </div>
 
-    </div>
+  <!-- JS PRINCIPAL -->
+  <script src="/blueprint/app.js"></script>
 
-    <div class="sidebar-footer">
-      <div class="status">
-        🟢 WhatsApp conectado
-      </div>
+  <!-- 🔥 AUTO REFRESH GLOBAL (CRÍTICO) -->
+  <script>
+    // indicador visual
+    function setStatus(text, ok = true) {
+      const el = document.getElementById("connectionStatus");
+      if (!el) return;
+      el.textContent = text;
+      el.style.color = ok ? "#00ff88" : "#ff4d4d";
+    }
 
-      <div class="phone">
-        +1 260 300 6906
-      </div>
-    </div>
+    // prueba conexión backend
+    async function checkConnection() {
+      try {
+        const res = await fetch("/health");
+        if (res.ok) {
+          setStatus("Conectado", true);
+        } else {
+          setStatus("Error", false);
+        }
+      } catch {
+        setStatus("Offline", false);
+      }
+    }
 
-  </aside>
+    // 🔄 REFRESH GLOBAL CADA 3s
+    setInterval(() => {
+      if (window.loadLeads) {
+        window.loadLeads();
+      }
 
-  <!-- ========================= -->
-  <!-- MAIN -->
-  <!-- ========================= -->
-  <main class="main">
+      if (window.currentLeadId && window.loadMessages) {
+        window.loadMessages(window.currentLeadId);
+      }
 
-    <!-- TOPBAR -->
-    <div class="topbar">
+      checkConnection();
+    }, 3000);
 
-      <div>
-        <h1 id="viewTitle">Dashboard</h1>
-        <p id="viewSubtitle">Sistema de conversión en tiempo real</p>
-      </div>
-
-      <div class="top-actions">
-        <button id="refreshBtn">Actualizar</button>
-      </div>
-
-    </div>
-
-    <!-- CONTENT -->
-    <div id="appContent" class="content"></div>
-
-  </main>
-
-</div>
-
-<!-- MOBILE NAV -->
-<div class="mobile-nav">
-
-  <button data-view="dashboard">📊</button>
-  <button data-view="leads">💬</button>
-  <button data-view="followups">🎯</button>
-  <button data-view="calendar">📅</button>
-
-</div>
-
-<script src="/blueprint/app.js"></script>
+    // primera carga
+    checkConnection();
+  </script>
 
 </body>
 </html>
