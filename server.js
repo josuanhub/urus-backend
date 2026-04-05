@@ -5348,7 +5348,7 @@ ${friction}
   try {
     await ensureSchema();
     app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'moltbook.html'));
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
     app.listen(PORT, () => {
       console.log(`URUS backend listening on ${PORT}`);
