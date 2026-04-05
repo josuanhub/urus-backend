@@ -1,26 +1,35 @@
 /**
  * URUS Trust API — v1
- *
- * GET /v1/agent/:name/trust
- *
- * Devuelve las 3 capas de confianza de un agente:
- *   1. Identity     — quién es (verificado en URUS backend)
- *   2. Reputation   — cómo se comporta (AgentVerse / scout_memory)
- *   3. Authorization — qué puede hacer (billing + plan limits)
- *
- * Este es el endpoint que ningún competidor tiene:
- * MolTrust tiene identity pero no reputation ni authorization real.
- * Sumsub tiene compliance pero no behavioral scoring.
- * AgentVerse tiene reputation pero no identity ni authorization.
- * URUS tiene las 3 capas en una sola llamada.
- *
- * Montar en server.js:
- *   const trustRoutes = require("./routes/trust.routes");
- *   app.use("/v1/agent", trustRoutes);
+ * CORS fix: headers added directly to router for Vercel compatibility
  */
 
 const express = require("express");
 const router = express.Router();
+
+// ─── CORS MIDDLEWARE (aplicado a TODAS las rutas de este router) ──────────────
+const ALLOWED = [
+  "https://agentverse-pi.vercel.app",
+  "https://urusverify.com",
+  "https://www.urusverify.com",
+  "https://urusa33.com",
+  "https://urus-orion-ui.vercel.app",
+  "https://urus-a33-chat-web-ap-1x5y.bolt.host",
+  "https://urus-ai.base44.app",
+];
+
+router.use(function(req, res, next) {
+  const origin = req.headers.origin;
+  if (!origin || ALLOWED.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -30,7 +39,6 @@ function getPool() {
   return pool;
 }
 
-// Clasificación de status basada en dominance_score
 function classifyStatus(dominanceScore) {
   if (dominanceScore >= 30) return "DOMINANT";
   if (dominanceScore >= 25) return "HIGH_SIGNAL";
@@ -40,8 +48,6 @@ function classifyStatus(dominanceScore) {
 }
 
 // ─── CAPA 1: IDENTITY ────────────────────────────────────────────────────────
-// Busca al agente en la tabla users del URUS backend.
-// Devuelve si existe, si tiene membresía activa, su plan y fecha de registro.
 async function getIdentityLayer(pool, agentName) {
   try {
     const r = await pool.query(
@@ -52,15 +58,9 @@ async function getIdentityLayer(pool, agentName) {
        LIMIT 1`,
       [`%${agentName}%`]
     );
-
     if (!r.rows.length) {
-      return {
-        verified: false,
-        source: "urus_backend",
-        note: "No user record found for this agent name"
-      };
+      return { verified: false, source: "urus_backend", note: "No user record found for this agent name" };
     }
-
     const u = r.rows[0];
     return {
       verified: true,
@@ -75,8 +75,6 @@ async function getIdentityLayer(pool, agentName) {
 }
 
 // ─── CAPA 2: REPUTATION ──────────────────────────────────────────────────────
-// Busca en scout_memory del urus-scout-agent via HTTP.
-// Si no puede alcanzarlo, devuelve null scores con nota.
 async function getReputationLayer(agentName) {
   try {
     const SCOUT_API = process.env.SCOUT_AGENT_URL ||
@@ -85,7 +83,7 @@ async function getReputationLayer(agentName) {
     const res = await fetch(`${SCOUT_API}/v1/scout/leaderboard`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(5000) // 5s timeout
+      signal: AbortSignal.timeout(5000)
     });
 
     if (!res.ok) throw new Error(`scout_api_${res.status}`);
@@ -98,11 +96,7 @@ async function getReputationLayer(agentName) {
     );
 
     if (!entry) {
-      return {
-        found: false,
-        source: "agentverse_leaderboard",
-        note: "Agent has no tracked interactions yet"
-      };
+      return { found: false, source: "agentverse_leaderboard", note: "Agent has no tracked interactions yet" };
     }
 
     const dominance = Number(entry.dominance_score || entry.avg_score || 0);
@@ -119,21 +113,13 @@ async function getReputationLayer(agentName) {
       last_seen: entry.last_seen || null
     };
   } catch (err) {
-    return {
-      found: false,
-      source: "agentverse_leaderboard",
-      error: "reputation_lookup_failed",
-      detail: err.message
-    };
+    return { found: false, source: "agentverse_leaderboard", error: "reputation_lookup_failed", detail: err.message };
   }
 }
 
 // ─── CAPA 3: AUTHORIZATION ───────────────────────────────────────────────────
-// Busca en cognitive_profiles + billing del URUS backend.
-// Devuelve el perfil cognitivo y los límites del agente.
 async function getAuthorizationLayer(pool, agentName) {
   try {
-    // Buscar por nombre de usuario o email que contenga el nombre del agente
     const userRes = await pool.query(
       `SELECT u.id, u.plan, u.membership, u.monthly_usage, u.monthly_limit,
               u.usage_reset_at, cp.dominant_pattern, cp.loop_intensity,
@@ -146,7 +132,6 @@ async function getAuthorizationLayer(pool, agentName) {
       [`%${agentName}%`]
     );
 
-    // También intentar buscar en moltbook_messages como actor
     const activityRes = await pool.query(
       `SELECT COUNT(*) as total_actions,
               MAX(created_at) as last_action,
@@ -160,7 +145,6 @@ async function getAuthorizationLayer(pool, agentName) {
     const activity = activityRes.rows[0] || {};
 
     if (!userRes.rows.length) {
-      // No hay user record pero sí puede tener actividad en moltbook
       return {
         source: "urus_backend",
         plan: null,
@@ -203,74 +187,39 @@ async function getAuthorizationLayer(pool, agentName) {
       } : null
     };
   } catch (err) {
-    return {
-      source: "urus_backend",
-      error: "authorization_lookup_failed",
-      detail: err.message
-    };
+    return { source: "urus_backend", error: "authorization_lookup_failed", detail: err.message };
   }
 }
 
-// ─── TRUST SCORE COMPUESTO ────────────────────────────────────────────────────
-// Calcula un score 0-100 combinando las 3 capas.
-// Fórmula: identity(30%) + reputation(50%) + authorization(20%)
+// ─── TRUST SCORE ─────────────────────────────────────────────────────────────
 function computeTrustScore({ identity, reputation, authorization }) {
   let score = 0;
-
-  // Identity (max 30 puntos)
   if (identity.verified) score += 20;
   if (identity.membership === "active") score += 10;
-
-  // Reputation (max 50 puntos)
   if (reputation.found) {
     const repScore = Number(reputation.scout_score || 0);
-    // scout_score máximo teórico ~50. Normalizar a 50 puntos
     score += Math.min(50, Math.round((repScore / 50) * 50));
   }
-
-  // Authorization (max 20 puntos)
   const activity = authorization.moltbook_activity || {};
   const totalActions = Number(activity.total_actions || 0);
   const blockedActions = Number(activity.blocked_actions || 0);
-  const approvalRate = totalActions > 0
-    ? (totalActions - blockedActions) / totalActions
-    : 0;
-
-  if (totalActions > 0) {
-    score += Math.round(approvalRate * 15);
-  }
+  const approvalRate = totalActions > 0 ? (totalActions - blockedActions) / totalActions : 0;
+  if (totalActions > 0) score += Math.round(approvalRate * 15);
   if (authorization.membership === "active") score += 5;
-
   return Math.min(100, Math.max(0, score));
 }
 
 // ─── ENDPOINT PRINCIPAL ───────────────────────────────────────────────────────
-
-/**
- * GET /v1/agent/:name/trust
- *
- * Respuesta completa de confianza para un agente dado.
- *
- * Ejemplo:
- *   GET /v1/agent/concordiumagent/trust
- *   GET /v1/agent/urus-scout/trust
- */
 router.get("/:name/trust", async (req, res) => {
   const agentName = String(req.params.name || "").trim().toLowerCase();
-
   if (!agentName || agentName.length < 2) {
-    return res.status(400).json({
-      ok: false,
-      error: "invalid_agent_name",
-      message: "Agent name must be at least 2 characters"
-    });
+    return res.status(400).json({ ok: false, error: "invalid_agent_name", message: "Agent name must be at least 2 characters" });
   }
 
   const pool = getPool();
   const requestedAt = new Date().toISOString();
 
   try {
-    // Las 3 capas en paralelo para máxima velocidad
     const [identity, reputation, authorization] = await Promise.all([
       getIdentityLayer(pool, agentName),
       getReputationLayer(agentName),
@@ -278,8 +227,6 @@ router.get("/:name/trust", async (req, res) => {
     ]);
 
     const trust_score = computeTrustScore({ identity, reputation, authorization });
-
-    // Clasificación final del agente
     let trust_level;
     if (trust_score >= 80)      trust_level = "TRUSTED";
     else if (trust_score >= 60) trust_level = "VERIFIED";
@@ -293,43 +240,20 @@ router.get("/:name/trust", async (req, res) => {
       trust_score,
       trust_level,
       requested_at: requestedAt,
-      layers: {
-        identity,
-        reputation,
-        authorization
-      },
+      layers: { identity, reputation, authorization },
       powered_by: "URUS Blueprint System · Urus Trust Stack v1"
     });
-
   } catch (err) {
     console.error("TRUST_API_ERROR", agentName, err?.message || err);
-    return res.status(500).json({
-      ok: false,
-      error: "trust_lookup_failed",
-      message: err.message
-    });
+    return res.status(500).json({ ok: false, error: "trust_lookup_failed", message: err.message });
   }
 });
 
-// ─── ENDPOINT BATCH (verificar varios agentes a la vez) ───────────────────────
-
-/**
- * POST /v1/agent/trust/batch
- * Body: { "agents": ["concordiumagent", "urus-scout", "FailSafe-ARGUS"] }
- *
- * Útil para plataformas que necesitan verificar múltiples agentes.
- */
+// ─── ENDPOINT BATCH ───────────────────────────────────────────────────────────
 router.post("/trust/batch", async (req, res) => {
-  const agents = Array.isArray(req.body?.agents)
-    ? req.body.agents.slice(0, 20) // máx 20 por batch
-    : [];
-
+  const agents = Array.isArray(req.body?.agents) ? req.body.agents.slice(0, 20) : [];
   if (!agents.length) {
-    return res.status(400).json({
-      ok: false,
-      error: "missing_agents",
-      message: "Provide an array of agent names in body.agents (max 20)"
-    });
+    return res.status(400).json({ ok: false, error: "missing_agents", message: "Provide an array of agent names in body.agents (max 20)" });
   }
 
   const pool = getPool();
@@ -351,7 +275,6 @@ router.post("/trust/batch", async (req, res) => {
         else if (trust_score >= 40) trust_level = "EMERGING";
         else if (trust_score >= 20) trust_level = "UNVERIFIED";
         else                         trust_level = "UNKNOWN";
-
         return { agent: agentName, trust_score, trust_level, layers: { identity, reputation, authorization } };
       } catch (err) {
         return { agent: agentName, error: "lookup_failed", detail: err.message };
@@ -368,14 +291,7 @@ router.post("/trust/batch", async (req, res) => {
   });
 });
 
-// ─── ENDPOINT PÚBLICO SIN AUTH (free tier — solo reputation) ──────────────────
-
-/**
- * GET /v1/agent/:name/trust/public
- *
- * Versión pública gratuita — solo devuelve reputation layer.
- * No requiere API key. Ideal para que otros developers prueben la API.
- */
+// ─── ENDPOINT PÚBLICO (free tier) ────────────────────────────────────────────
 router.get("/:name/trust/public", async (req, res) => {
   const agentName = String(req.params.name || "").trim().toLowerCase();
   if (!agentName || agentName.length < 2) {
