@@ -40,8 +40,9 @@ const twilio = require("twilio");
 const MessagingResponse = require("twilio").twiml.MessagingResponse;
 const moltbookRoutes = require("./routes/moltbook.routes");
 const app = express();
+const verifyRoutes = require("./routes/verify.routes");
+app.use("/verify", verifyRoutes);
 app.use(express.static(path.join(__dirname, 'public')));
-
 
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
 app.set("trust proxy", 1);
@@ -165,8 +166,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use("/v1/moltbook", moltbookRoutes);
 const trustRoutes = require("./routes/trust.routes");
 app.use("/v1/agent", trustRoutes);
-const verifyRoutes = require("./routes/verify.routes");
-app.use("/verify", verifyRoutes);
+
 
 // ==============================
 // META BASIC URLS
