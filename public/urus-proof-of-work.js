@@ -419,33 +419,37 @@ const POW = {
 
   async callClaudeAPI() {
     const a = this.state.answers;
-    const prompt = `You are the URUS Trust Intelligence Engine. Analyze this AI agent and return ONLY a JSON object (no markdown, no explanation).
-Agent data:
-- Name: ${a.name}
-- Purpose: ${a.purpose}
-- Framework: ${a.framework}
-- Limitations: ${a.limitations}
-- Collaboration: ${a.collaboration}
-Return this exact JSON structure:
-{"clarity_score":<0-25>,"trust_score_component":<0-25>,"utility_score":<0-25>,"risk_score":<0-25>,"trust_level":"UNKNOWN"|"UNVERIFIED"|"EMERGING"|"VERIFIED"|"TRUSTED","analysis":"<2 sentence assessment>","strengths":["<s1>","<s2>"],"flags":["<flag if any>"]}`;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // ── Llamar al endpoint de Railway — él hace la llamada a Claude y guarda en DB
+    const response = await fetch(`${this.API}/v1/agent/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{ role:'user', content:prompt }] })
+      body: JSON.stringify({
+        name:          a.name,
+        purpose:       a.purpose,
+        framework:     a.framework,
+        limitations:   a.limitations,
+        collaboration: a.collaboration
+      })
     });
+
     const data = await response.json();
-    const text = data.content?.[0]?.text || '{}';
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
-    const trust_score = Math.min(100, (parsed.clarity_score||0)+(parsed.trust_score_component||0)+(parsed.utility_score||0)+(parsed.risk_score||0));
-    const certId = 'URUS-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
-    try {
-      await fetch(`${this.API}/v1/agent/register`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ agent_id:a.name.toLowerCase().replace(/\s+/g,'-'), framework:a.framework, purpose:a.purpose, limitations:a.limitations, collaboration:a.collaboration, trust_score, trust_level:parsed.trust_level, certificate_id:certId, score_breakdown:{ clarity:parsed.clarity_score, trust:parsed.trust_score_component, utility:parsed.utility_score, risk:parsed.risk_score }, analysis:parsed.analysis, strengths:parsed.strengths, flags:parsed.flags })
-      });
-    } catch(_) {}
-    return { agent_id:a.name.toLowerCase().replace(/\s+/g,'-'), framework:a.framework, trust_score, trust_level:parsed.trust_level, certificate_id:certId, issued_at:new Date().toISOString(), score_breakdown:{ clarity:parsed.clarity_score||0, trust:parsed.trust_score_component||0, utility:parsed.utility_score||0, risk:parsed.risk_score||0 }, analysis:parsed.analysis, strengths:parsed.strengths||[], flags:parsed.flags||[] };
+
+    if (!data.ok) throw new Error(data.error || 'analyze_failed');
+
+    // El endpoint ya guardó en DB — solo retornamos el resultado
+    return {
+      agent_id:        data.agent_id,
+      framework:       data.framework,
+      trust_score:     data.trust_score,
+      trust_level:     data.trust_level,
+      certificate_id:  data.certificate_id,
+      issued_at:       data.issued_at,
+      score_breakdown: data.score_breakdown,
+      analysis:        data.analysis,
+      strengths:       data.strengths || [],
+      flags:           data.flags     || []
+    };
   },
 
   generateFallbackResult() {
