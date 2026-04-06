@@ -421,7 +421,7 @@ const POW = {
     const a = this.state.answers;
 
     // ── Llamar al endpoint de Railway — él hace la llamada a Claude y guarda en DB
-    const response = await fetch(`${this.API}/v1/agent/analyze`, {
+    const response = await fetch(`https://urus-backend-production.up.railway.app/v1/agent/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
