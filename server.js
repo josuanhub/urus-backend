@@ -112,7 +112,7 @@ app.use(helmet({
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      connectSrc: ["'self'", "https://urus-backend-production.up.railway.app"],
+      connectSrc: ["'self'", "https://urus-backend-production.up.railway.app", "https://urusverify.com", "https://www.urusverify.com", "https://agentverse-pi.vercel.app"],
       imgSrc: ["'self'", "data:"],
     }
   }
