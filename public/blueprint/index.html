@@ -1,181 +1,1531 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>URUS Blueprint</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>URUS — WhatsApp Growth OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════
+   URUS SAAS — DESIGN SYSTEM
+═══════════════════════════════════════════ */
+:root {
+  --bg:          #060606;
+  --surface:     #0c0c0c;
+  --surface2:    #111111;
+  --surface3:    #161616;
+  --border:      rgba(255,255,255,0.06);
+  --border2:     rgba(255,255,255,0.10);
+  --border3:     rgba(255,255,255,0.16);
+  --gold:        #c8a84b;
+  --gold-bright: #e8c86a;
+  --gold-dim:    rgba(200,168,75,0.10);
+  --gold-glow:   rgba(200,168,75,0.20);
+  --green:       #22c55e;
+  --green-dim:   rgba(34,197,94,0.10);
+  --blue:        #38bdf8;
+  --blue-dim:    rgba(56,189,248,0.10);
+  --red:         #ef4444;
+  --red-dim:     rgba(239,68,68,0.10);
+  --amber:       #f59e0b;
+  --amber-dim:   rgba(245,158,11,0.10);
+  --text:        #f0ede6;
+  --text2:       #a8a49e;
+  --text3:       #5a5650;
+  --sidebar-w:   240px;
+  --topbar-h:    58px;
+  --radius:      12px;
+  --radius-lg:   18px;
+  --shadow:      0 20px 60px rgba(0,0,0,0.5);
+  --shadow-sm:   0 4px 20px rgba(0,0,0,0.3);
+}
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="/blueprint/styles.css" />
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { font-size:16px; -webkit-text-size-adjust:100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  height: 100dvh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
 
-  <!-- Fuente opcional (mejora visual) -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+/* ─── SCROLLBARS ─── */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:99px; }
 
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Inter', system-ui;
-      background: #0b0b0b;
-      color: #fff;
-    }
+/* ═══════════════════════════════════════════
+   LOGIN SCREEN
+═══════════════════════════════════════════ */
+#loginScreen {
+  position:fixed; inset:0; z-index:9999;
+  display:flex; align-items:center; justify-content:center;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(200,168,75,0.06) 0%, transparent 60%),
+              var(--bg);
+}
+#loginScreen.hidden { display:none; }
 
-    .app-shell {
-      display: flex;
-      height: 100vh;
-    }
+.login-wrap {
+  width: min(420px, 90vw);
+  animation: fadeUp 0.4s ease;
+}
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
 
-    .sidebar {
-      width: 240px;
-      background: #111;
-      border-right: 1px solid #222;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-    }
+.login-logo-row {
+  display:flex; align-items:center; gap:10px;
+  margin-bottom:40px;
+}
+.login-logo-mark {
+  width:36px; height:36px; border-radius:10px;
+  background:linear-gradient(135deg, var(--gold), var(--gold-bright));
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:800; color:#000;
+}
+.login-logo-text {
+  font-size:22px; font-weight:800; letter-spacing:.08em;
+  color:var(--text); text-transform:uppercase;
+}
+.login-logo-sub {
+  font-family:'DM Mono',monospace; font-size:10px;
+  color:var(--text3); letter-spacing:.2em; text-transform:uppercase;
+  margin-left:2px;
+}
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 30px;
-    }
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow);
+}
+.login-card h2 {
+  font-size:24px; font-weight:800; margin-bottom:4px; letter-spacing:-.02em;
+}
+.login-card p { font-size:13px; color:var(--text2); margin-bottom:28px; }
 
-    .brand-mark {
-      width: 10px;
-      height: 10px;
-      background: #c9a24d;
-      border-radius: 50%;
-    }
+.field { margin-bottom:16px; }
+.field label {
+  display:block; font-size:11px; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text3); margin-bottom:8px;
+}
+.field input {
+  width:100%; height:48px;
+  background:var(--surface2); border:1px solid var(--border2);
+  border-radius:var(--radius); color:var(--text);
+  padding:0 16px; font-family:'Syne',sans-serif; font-size:14px;
+  outline:none; transition:border-color .2s, box-shadow .2s;
+}
+.field input:focus {
+  border-color:var(--gold);
+  box-shadow:0 0 0 3px rgba(200,168,75,0.12);
+}
 
-    .nav {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+.btn-primary {
+  width:100%; height:50px;
+  background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+  color:#000; border:none; border-radius:var(--radius);
+  font-family:'Syne',sans-serif; font-size:14px; font-weight:800;
+  letter-spacing:.06em; text-transform:uppercase;
+  cursor:pointer; transition:all .2s;
+  box-shadow:0 8px 24px rgba(200,168,75,0.25);
+}
+.btn-primary:hover { filter:brightness(1.06); transform:translateY(-1px); }
+.btn-primary:active { transform:translateY(0); }
+.btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
 
-    .nav-item {
-      background: transparent;
-      border: none;
-      color: #aaa;
-      text-align: left;
-      padding: 10px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
+.login-error {
+  margin-top:14px; padding:10px 14px;
+  background:var(--red-dim); border:1px solid rgba(239,68,68,0.2);
+  border-radius:8px; font-size:13px; color:var(--red);
+  display:none;
+}
+.login-error.show { display:block; }
 
-    .nav-item.active {
-      background: #1a1a1a;
-      color: #fff;
-    }
+/* ═══════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════ */
+#app {
+  display:grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: 1fr;
+  height:100dvh;
+  opacity:0; transition:opacity .3s;
+}
+#app.ready { opacity:1; }
 
-    .main-content {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-    }
+/* ═══════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════ */
+.sidebar {
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  overflow:hidden; position:relative; z-index:10;
+}
 
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
+.sidebar-brand {
+  padding:20px 18px 16px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.brand-logo {
+  display:flex; align-items:center; gap:9px; margin-bottom:1px;
+}
+.brand-mark {
+  width:28px; height:28px; border-radius:8px;
+  background:linear-gradient(135deg, var(--gold), var(--gold-bright));
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:800; color:#000;
+}
+.brand-name {
+  font-size:17px; font-weight:800; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--text);
+}
+.brand-version {
+  font-family:'DM Mono',monospace; font-size:9px;
+  color:var(--text3); letter-spacing:.2em; margin-left:37px;
+}
 
-    .status {
-      font-size: 12px;
-      color: #888;
-    }
+.sidebar-client-badge {
+  margin:10px 18px 0;
+  padding:8px 12px;
+  background:var(--gold-dim);
+  border:1px solid rgba(200,168,75,0.15);
+  border-radius:8px;
+}
+.scb-label {
+  font-family:'DM Mono',monospace; font-size:9px;
+  color:var(--gold); letter-spacing:.2em; text-transform:uppercase;
+  margin-bottom:3px;
+}
+.scb-name {
+  font-size:13px; font-weight:700; color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 
-    .status span {
-      color: #00ff88;
-    }
-  </style>
+.sidebar-nav {
+  flex:1; overflow-y:auto; padding:8px;
+}
+.nav-section {
+  font-family:'DM Mono',monospace; font-size:9px;
+  color:var(--text3); letter-spacing:.2em; text-transform:uppercase;
+  padding:14px 10px 6px;
+}
+.nav-link {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 12px; border-radius:8px;
+  font-size:13px; font-weight:600; color:var(--text2);
+  cursor:pointer; transition:all .15s;
+  border:1px solid transparent; background:none;
+  width:100%; text-align:left; position:relative;
+  letter-spacing:.01em; margin-bottom:1px;
+}
+.nav-link:hover { color:var(--text); background:rgba(255,255,255,0.04); }
+.nav-link.active {
+  color:var(--gold); background:var(--gold-dim);
+  border-color:rgba(200,168,75,0.14);
+}
+.nav-icon { font-size:15px; width:20px; text-align:center; flex-shrink:0; }
+.nav-badge {
+  margin-left:auto; min-width:18px; height:18px;
+  padding:0 5px; border-radius:99px;
+  background:var(--red); color:#fff;
+  font-size:10px; font-weight:800;
+  display:flex; align-items:center; justify-content:center;
+}
+
+.sidebar-bottom {
+  padding:8px; border-top:1px solid var(--border); flex-shrink:0;
+}
+.sidebar-user {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:8px;
+  cursor:pointer; transition:all .15s;
+}
+.sidebar-user:hover { background:rgba(255,255,255,0.04); }
+.user-avatar {
+  width:30px; height:30px; border-radius:8px;
+  background:var(--gold-dim); border:1px solid rgba(200,168,75,0.2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:800; color:var(--gold); flex-shrink:0;
+}
+.user-info { flex:1; min-width:0; }
+.user-name { font-size:12px; font-weight:700; color:var(--text); }
+.user-role { font-size:11px; color:var(--text3); margin-top:1px; }
+.user-logout {
+  font-size:12px; color:var(--text3); cursor:pointer;
+  padding:4px; border-radius:4px; flex-shrink:0;
+  border:none; background:none;
+  transition:color .15s;
+}
+.user-logout:hover { color:var(--red); }
+
+/* ═══════════════════════════════════════════
+   MAIN AREA
+═══════════════════════════════════════════ */
+.main-area {
+  display:flex; flex-direction:column; overflow:hidden;
+  background:var(--bg);
+}
+
+/* TOPBAR */
+.topbar {
+  height:var(--topbar-h); flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  gap:16px;
+}
+.topbar-left { display:flex; align-items:center; gap:14px; }
+.topbar-title { font-size:17px; font-weight:800; letter-spacing:-.01em; }
+.topbar-sub { font-size:12px; color:var(--text3); }
+.topbar-right { display:flex; align-items:center; gap:10px; }
+
+.status-pill {
+  display:flex; align-items:center; gap:7px;
+  padding:5px 12px; border-radius:99px;
+  font-family:'DM Mono',monospace; font-size:10px; font-weight:700;
+  letter-spacing:.08em;
+  border:1px solid var(--border2);
+  color:var(--text2); background:var(--surface2);
+  transition:all .3s;
+}
+.status-pill.online {
+  border-color:rgba(34,197,94,0.25);
+  color:var(--green); background:var(--green-dim);
+}
+.status-pill.offline {
+  border-color:rgba(239,68,68,0.2);
+  color:var(--red); background:var(--red-dim);
+}
+.status-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:currentColor;
+}
+.status-pill.online .status-dot { animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+/* PAGE CONTENT */
+.page-content {
+  flex:1; overflow:hidden; position:relative;
+}
+.page {
+  display:none; height:100%; overflow-y:auto;
+  padding:24px;
+  animation:fadeIn .2s ease;
+}
+.page.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+/* ═══════════════════════════════════════════
+   SHARED COMPONENTS
+═══════════════════════════════════════════ */
+
+/* Buttons */
+.btn {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:8px 16px; border-radius:8px;
+  font-family:'Syne',sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; border:none; transition:all .15s;
+  letter-spacing:.02em; white-space:nowrap;
+}
+.btn-gold { background:var(--gold); color:#000; }
+.btn-gold:hover { background:var(--gold-bright); transform:translateY(-1px); }
+.btn-outline { background:transparent; color:var(--text2); border:1px solid var(--border2); }
+.btn-outline:hover { color:var(--text); border-color:var(--border3); }
+.btn-ghost { background:transparent; color:var(--text3); border:1px solid transparent; }
+.btn-ghost:hover { background:rgba(255,255,255,0.05); color:var(--text); }
+.btn-danger { background:var(--red-dim); color:var(--red); border:1px solid rgba(239,68,68,0.2); }
+.btn-danger:hover { background:rgba(239,68,68,0.2); }
+.btn-green { background:var(--green); color:#000; }
+.btn-green:hover { opacity:.9; }
+.btn:disabled { opacity:.4; cursor:not-allowed; transform:none !important; }
+
+/* Cards */
+.card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+}
+
+/* Pill badges */
+.pill {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 10px; border-radius:99px;
+  font-family:'DM Mono',monospace; font-size:10px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.06em;
+  border:1px solid transparent;
+}
+.pill-gold { background:var(--gold-dim); color:var(--gold); border-color:rgba(200,168,75,0.2); }
+.pill-green { background:var(--green-dim); color:var(--green); border-color:rgba(34,197,94,0.2); }
+.pill-blue { background:var(--blue-dim); color:var(--blue); border-color:rgba(56,189,248,0.2); }
+.pill-red { background:var(--red-dim); color:var(--red); border-color:rgba(239,68,68,0.2); }
+.pill-amber { background:var(--amber-dim); color:var(--amber); border-color:rgba(245,158,11,0.2); }
+.pill-muted { background:rgba(255,255,255,0.05); color:var(--text3); border-color:var(--border); }
+
+/* Empty state */
+.empty-state {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; padding:48px 24px; text-align:center;
+  color:var(--text3);
+}
+.empty-icon { font-size:32px; margin-bottom:14px; opacity:.5; }
+.empty-title { font-size:15px; font-weight:700; color:var(--text2); margin-bottom:6px; }
+.empty-desc { font-size:13px; line-height:1.6; }
+
+/* Loading spinner */
+.spinner {
+  width:18px; height:18px; border-radius:50%;
+  border:2px solid var(--border2);
+  border-top-color:var(--gold);
+  animation:spin .7s linear infinite;
+  flex-shrink:0;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Section header */
+.sec-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:16px;
+}
+.sec-title { font-size:15px; font-weight:800; letter-spacing:-.01em; }
+.sec-sub { font-size:12px; color:var(--text3); margin-top:2px; }
+
+/* Form inputs */
+.input {
+  width:100%; height:44px;
+  background:var(--surface2); border:1px solid var(--border2);
+  border-radius:8px; color:var(--text);
+  padding:0 14px; font-family:'Syne',sans-serif; font-size:14px;
+  outline:none; transition:border-color .2s;
+}
+.input:focus { border-color:var(--gold); }
+.textarea {
+  width:100%; background:var(--surface2); border:1px solid var(--border2);
+  border-radius:8px; color:var(--text);
+  padding:12px 14px; font-family:'Syne',sans-serif; font-size:14px;
+  outline:none; resize:vertical; min-height:80px;
+  transition:border-color .2s;
+}
+.textarea:focus { border-color:var(--gold); }
+.label {
+  display:block; font-size:11px; font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase;
+  color:var(--text3); margin-bottom:7px;
+}
+
+/* ═══════════════════════════════════════════
+   STATS ROW
+═══════════════════════════════════════════ */
+.stats-grid {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-bottom:20px;
+}
+.stat-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px;
+  position:relative; overflow:hidden;
+  transition:border-color .2s;
+}
+.stat-card:hover { border-color:var(--border2); }
+.stat-card::after {
+  content:''; position:absolute;
+  bottom:0; left:0; right:0; height:2px;
+  opacity:.8;
+}
+.stat-gold::after { background:var(--gold); }
+.stat-green::after { background:var(--green); }
+.stat-blue::after { background:var(--blue); }
+.stat-amber::after { background:var(--amber); }
+.stat-label {
+  font-family:'DM Mono',monospace; font-size:10px;
+  color:var(--text3); letter-spacing:.12em; text-transform:uppercase;
+  margin-bottom:10px;
+}
+.stat-value {
+  font-size:32px; font-weight:800; letter-spacing:-.04em;
+  line-height:1; margin-bottom:5px;
+}
+.sv-gold { color:var(--gold); }
+.sv-green { color:var(--green); }
+.sv-blue { color:var(--blue); }
+.sv-amber { color:var(--amber); }
+.stat-change {
+  font-size:12px; color:var(--text3);
+  display:flex; align-items:center; gap:4px;
+}
+
+/* ═══════════════════════════════════════════
+   DASHBOARD PAGE
+═══════════════════════════════════════════ */
+.dashboard-grid {
+  display:grid;
+  grid-template-columns:1fr 340px;
+  gap:16px;
+}
+.pipeline-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px;
+}
+.pipeline-title {
+  font-size:14px; font-weight:800; margin-bottom:4px;
+}
+.pipeline-sub { font-size:12px; color:var(--text3); margin-bottom:18px; }
+.pipeline-stage {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 0;
+  border-bottom:1px solid var(--border);
+}
+.pipeline-stage:last-child { border-bottom:none; }
+.ps-dot {
+  width:10px; height:10px; border-radius:50%; flex-shrink:0;
+}
+.ps-info { flex:1; }
+.ps-name { font-size:13px; font-weight:700; margin-bottom:2px; }
+.ps-count { font-size:12px; color:var(--text3); }
+.ps-bar-wrap {
+  width:100px; height:4px; border-radius:99px;
+  background:var(--border); position:relative; flex-shrink:0;
+}
+.ps-bar {
+  position:absolute; top:0; left:0; height:100%;
+  border-radius:99px; transition:width .5s ease;
+}
+.ps-value { font-size:13px; font-weight:800; width:40px; text-align:right; flex-shrink:0; }
+
+.activity-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+.activity-head {
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.activity-head h4 { font-size:13px; font-weight:800; }
+.activity-list { overflow-y:auto; max-height:320px; }
+.activity-item {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  transition:background .15s;
+}
+.activity-item:last-child { border-bottom:none; }
+.activity-item:hover { background:rgba(255,255,255,0.02); }
+.activity-dot {
+  width:8px; height:8px; border-radius:50%;
+  margin-top:5px; flex-shrink:0;
+}
+.activity-body { flex:1; min-width:0; }
+.activity-name { font-size:13px; font-weight:700; margin-bottom:3px; }
+.activity-msg {
+  font-size:12px; color:var(--text3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.activity-time {
+  font-family:'DM Mono',monospace; font-size:10px;
+  color:var(--text3); flex-shrink:0; margin-top:3px;
+}
+
+/* ═══════════════════════════════════════════
+   LEADS + CHAT PAGE
+═══════════════════════════════════════════ */
+.leads-layout {
+  display:grid;
+  grid-template-columns:320px 1fr;
+  gap:0;
+  height:calc(100dvh - var(--topbar-h) - 48px);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+
+/* LEADS PANEL */
+.leads-panel {
+  display:flex; flex-direction:column;
+  border-right:1px solid var(--border);
+  overflow:hidden;
+}
+.leads-head {
+  padding:14px 14px 0;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.leads-head-top {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:10px;
+}
+.leads-head-title { font-size:14px; font-weight:800; }
+.leads-count {
+  font-family:'DM Mono',monospace; font-size:10px;
+  color:var(--text3); letter-spacing:.08em;
+}
+.leads-search-wrap {
+  padding:10px 0 12px;
+  position:relative;
+}
+.leads-search-icon {
+  position:absolute; left:12px; top:50%;
+  transform:translateY(-50%); font-size:13px;
+  color:var(--text3); pointer-events:none; margin-top:5px;
+}
+.leads-search {
+  width:100%; height:36px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; color:var(--text);
+  padding:0 12px 0 34px; font-family:'Syne',sans-serif; font-size:13px;
+  outline:none; transition:border-color .2s;
+}
+.leads-search:focus { border-color:var(--gold); }
+
+/* Filter tabs */
+.filter-tabs {
+  display:flex; gap:2px;
+  padding:0 14px 12px;
+  flex-shrink:0;
+}
+.filter-tab {
+  padding:5px 10px; border-radius:6px;
+  font-size:11px; font-weight:700; letter-spacing:.04em;
+  color:var(--text3); cursor:pointer;
+  border:1px solid transparent; background:none;
+  transition:all .15s;
+}
+.filter-tab:hover { color:var(--text2); }
+.filter-tab.active {
+  background:var(--gold-dim); color:var(--gold);
+  border-color:rgba(200,168,75,0.2);
+}
+
+/* Lead list */
+.leads-list {
+  flex:1; overflow-y:auto; padding:6px;
+}
+.lead-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 10px; border-radius:10px;
+  cursor:pointer; border:1px solid transparent;
+  transition:all .15s; margin-bottom:2px;
+  position:relative;
+}
+.lead-item:hover { background:rgba(255,255,255,0.03); }
+.lead-item.active {
+  background:var(--gold-dim);
+  border-color:rgba(200,168,75,0.18);
+}
+.lead-unread::before {
+  content:''; position:absolute;
+  left:4px; top:50%; transform:translateY(-50%);
+  width:4px; height:4px; border-radius:50%;
+  background:var(--gold);
+}
+.la {
+  width:38px; height:38px; border-radius:10px;
+  background:var(--surface3); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:800; flex-shrink:0;
+  color:var(--text2);
+}
+.lead-item.active .la { background:var(--gold-dim); color:var(--gold); border-color:rgba(200,168,75,0.2); }
+.li-body { flex:1; min-width:0; }
+.li-top { display:flex; align-items:center; justify-content:space-between; gap:4px; margin-bottom:3px; }
+.li-name { font-size:13px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.li-time { font-family:'DM Mono',monospace; font-size:10px; color:var(--text3); flex-shrink:0; }
+.li-preview { font-size:12px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Score indicator */
+.score-ring {
+  width:32px; height:32px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'DM Mono',monospace; font-size:10px; font-weight:700;
+  flex-shrink:0;
+  border:2px solid var(--border);
+}
+.score-high { border-color:var(--green); color:var(--green); background:var(--green-dim); }
+.score-med { border-color:var(--amber); color:var(--amber); background:var(--amber-dim); }
+.score-low { border-color:var(--text3); color:var(--text3); background:rgba(255,255,255,0.03); }
+
+/* ═══════════════════════════════════════════
+   CHAT PANEL
+═══════════════════════════════════════════ */
+.chat-panel {
+  display:flex; flex-direction:column; overflow:hidden;
+  background:var(--bg);
+}
+
+/* Chat header */
+.chat-head {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:12px 16px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.chat-head-user { display:flex; align-items:center; gap:12px; min-width:0; }
+.chat-head-avatar {
+  width:36px; height:36px; border-radius:10px;
+  background:var(--gold-dim); border:1px solid rgba(200,168,75,0.2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:800; color:var(--gold); flex-shrink:0;
+}
+.chat-head-name { font-size:14px; font-weight:800; }
+.chat-head-meta { font-size:11px; color:var(--text3); margin-top:1px; }
+.chat-head-actions { display:flex; gap:8px; align-items:center; }
+
+/* Chat messages */
+.chat-messages {
+  flex:1; overflow-y:auto;
+  padding:16px; display:flex; flex-direction:column; gap:8px;
+  scroll-behavior:smooth;
+}
+
+/* Date divider */
+.date-divider {
+  display:flex; align-items:center; gap:10px;
+  margin:8px 0;
+}
+.date-divider span {
+  font-family:'DM Mono',monospace; font-size:10px;
+  color:var(--text3); letter-spacing:.08em; text-transform:uppercase;
+  white-space:nowrap;
+}
+.date-divider::before, .date-divider::after {
+  content:''; flex:1; height:1px; background:var(--border);
+}
+
+/* Message bubbles */
+.msg-row { display:flex; align-items:flex-end; gap:6px; }
+.msg-row.out { flex-direction:row-reverse; }
+
+.msg-bubble {
+  max-width:68%; padding:10px 13px;
+  border-radius:16px; line-height:1.55;
+  position:relative;
+}
+.msg-bubble.in {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-bottom-left-radius:4px;
+}
+.msg-bubble.out {
+  background:linear-gradient(135deg, rgba(200,168,75,0.18), rgba(200,168,75,0.10));
+  border:1px solid rgba(200,168,75,0.2);
+  border-bottom-right-radius:4px;
+  color:var(--text);
+}
+.msg-text { font-size:13px; white-space:pre-wrap; word-break:break-word; }
+.msg-footer {
+  display:flex; align-items:center; justify-content:flex-end; gap:6px;
+  margin-top:5px;
+}
+.msg-time-label {
+  font-family:'DM Mono',monospace; font-size:10px;
+  color:var(--text3);
+}
+.msg-channel {
+  font-family:'DM Mono',monospace; font-size:9px;
+  color:var(--text3); letter-spacing:.06em; text-transform:uppercase;
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display:none; align-items:center; gap:5px;
+  padding:10px 14px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px; border-bottom-left-radius:4px;
+  width:fit-content;
+}
+.typing-indicator.show { display:flex; }
+.typing-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--text3); animation:typingAnim 1.2s ease infinite;
+}
+.typing-dot:nth-child(2) { animation-delay:.2s; }
+.typing-dot:nth-child(3) { animation-delay:.4s; }
+@keyframes typingAnim {
+  0%,80%,100% { opacity:.3; transform:scale(.8); }
+  40% { opacity:1; transform:scale(1); }
+}
+
+/* Chat empty */
+.chat-empty-state {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:40px; text-align:center; color:var(--text3);
+}
+.ces-icon { font-size:40px; margin-bottom:16px; opacity:.3; }
+.ces-title { font-size:16px; font-weight:800; color:var(--text2); margin-bottom:8px; }
+.ces-desc { font-size:13px; line-height:1.6; }
+
+/* Compose */
+.chat-compose {
+  flex-shrink:0;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  padding:12px 14px;
+  padding-bottom:max(12px, env(safe-area-inset-bottom));
+}
+.compose-row { display:flex; gap:10px; align-items:flex-end; }
+.compose-textarea {
+  flex:1; background:var(--surface2);
+  border:1px solid var(--border2); border-radius:10px;
+  color:var(--text); padding:10px 14px;
+  font-family:'Syne',sans-serif; font-size:14px;
+  outline:none; resize:none;
+  min-height:42px; max-height:120px;
+  transition:border-color .2s; line-height:1.5;
+}
+.compose-textarea:focus { border-color:var(--gold); }
+.compose-textarea:disabled { opacity:.4; }
+.compose-send {
+  width:42px; height:42px; border-radius:10px;
+  background:var(--gold); border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:17px; transition:all .15s; flex-shrink:0;
+  color:#000;
+}
+.compose-send:hover { background:var(--gold-bright); transform:scale(1.05); }
+.compose-send:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+.compose-hint {
+  font-size:11px; color:var(--text3); margin-top:7px;
+  display:flex; align-items:center; gap:6px;
+}
+.ai-indicator {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 8px; border-radius:99px;
+  background:var(--gold-dim); color:var(--gold);
+  font-family:'DM Mono',monospace; font-size:9px; font-weight:700;
+  letter-spacing:.08em; border:1px solid rgba(200,168,75,0.2);
+}
+
+/* ═══════════════════════════════════════════
+   BLAST PAGE
+═══════════════════════════════════════════ */
+.blast-layout {
+  display:grid;
+  grid-template-columns:1fr 380px;
+  gap:16px;
+  align-items:start;
+}
+.upload-zone {
+  border:2px dashed var(--border2); border-radius:var(--radius);
+  padding:40px 24px; text-align:center;
+  cursor:pointer; transition:all .2s;
+  background:var(--surface2); position:relative;
+}
+.upload-zone:hover, .upload-zone.drag {
+  border-color:var(--gold);
+  background:var(--gold-dim);
+}
+.upload-icon { font-size:36px; margin-bottom:14px; }
+.upload-title { font-size:15px; font-weight:800; margin-bottom:6px; }
+.upload-desc { font-size:13px; color:var(--text3); line-height:1.6; }
+.upload-formats {
+  margin-top:16px;
+  display:flex; justify-content:center; gap:8px; flex-wrap:wrap;
+}
+.format-pill {
+  font-family:'DM Mono',monospace; font-size:10px;
+  padding:3px 10px; border-radius:99px;
+  background:var(--surface); border:1px solid var(--border2);
+  color:var(--text3);
+}
+
+.leads-table-wrap {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); overflow:hidden; margin-top:14px;
+}
+.leads-table {
+  width:100%; border-collapse:collapse;
+}
+.leads-table th {
+  padding:10px 14px;
+  font-family:'DM Mono',monospace; font-size:10px;
+  color:var(--text3); letter-spacing:.1em; text-transform:uppercase;
+  background:var(--surface2); border-bottom:1px solid var(--border);
+  text-align:left; font-weight:400;
+}
+.leads-table td {
+  padding:10px 14px; font-size:13px;
+  border-bottom:1px solid var(--border);
+  color:var(--text2);
+}
+.leads-table tr:last-child td { border-bottom:none; }
+.leads-table tr:hover td { background:rgba(255,255,255,0.02); }
+.td-phone { font-family:'DM Mono',monospace; font-size:12px; color:var(--green); }
+.td-name { font-weight:700; color:var(--text); }
+
+/* Blast sidebar */
+.blast-sidebar { display:flex; flex-direction:column; gap:12px; }
+.blast-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:18px;
+}
+.blast-card h4 { font-size:13px; font-weight:800; margin-bottom:4px; }
+.blast-card p { font-size:12px; color:var(--text3); margin-bottom:14px; line-height:1.6; }
+
+.template-tokens {
+  display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;
+}
+.token-pill {
+  font-family:'DM Mono',monospace; font-size:11px;
+  padding:4px 10px; border-radius:6px;
+  background:var(--gold-dim); color:var(--gold);
+  border:1px solid rgba(200,168,75,0.2);
+  cursor:pointer; transition:all .15s;
+}
+.token-pill:hover { background:var(--gold-glow); }
+
+/* Progress */
+.blast-progress {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:18px; display:none;
+}
+.blast-progress.show { display:block; }
+.progress-bar-bg {
+  height:6px; background:var(--border); border-radius:99px;
+  margin:10px 0; overflow:hidden;
+}
+.progress-bar-fill {
+  height:100%; background:var(--gold); border-radius:99px;
+  transition:width .4s ease; width:0%;
+}
+.blast-log {
+  max-height:180px; overflow-y:auto;
+  margin-top:10px; display:flex; flex-direction:column; gap:3px;
+}
+.log-line {
+  font-family:'DM Mono',monospace; font-size:11px;
+  padding:4px 0; color:var(--text3);
+  border-bottom:1px solid var(--border);
+}
+.log-line.ok { color:var(--green); }
+.log-line.err { color:var(--red); }
+
+/* ═══════════════════════════════════════════
+   FOLLOW-UPS PAGE
+═══════════════════════════════════════════ */
+.followup-tabs {
+  display:flex; gap:6px; margin-bottom:16px;
+}
+.fu-tab {
+  padding:7px 14px; border-radius:8px;
+  font-size:12px; font-weight:700; letter-spacing:.04em;
+  cursor:pointer; border:1px solid transparent;
+  background:none; color:var(--text3);
+  transition:all .15s;
+}
+.fu-tab:hover { color:var(--text2); }
+.fu-tab.active {
+  background:var(--gold-dim); color:var(--gold);
+  border-color:rgba(200,168,75,0.2);
+}
+
+.fu-list { display:flex; flex-direction:column; gap:8px; }
+.fu-item {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:14px 16px;
+  display:flex; align-items:center; gap:14px;
+  transition:border-color .15s;
+}
+.fu-item:hover { border-color:var(--border2); }
+.fu-avatar {
+  width:38px; height:38px; border-radius:10px;
+  background:var(--gold-dim); border:1px solid rgba(200,168,75,0.2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:800; color:var(--gold); flex-shrink:0;
+}
+.fu-info { flex:1; min-width:0; }
+.fu-name { font-size:14px; font-weight:700; margin-bottom:3px; }
+.fu-msg {
+  font-size:12px; color:var(--text3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  margin-bottom:4px;
+}
+.fu-when {
+  font-family:'DM Mono',monospace; font-size:10px; color:var(--gold);
+  display:flex; align-items:center; gap:4px;
+}
+.fu-actions { display:flex; gap:6px; flex-shrink:0; }
+
+/* ═══════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════ */
+.modal-overlay {
+  position:fixed; inset:0; z-index:8888;
+  background:rgba(0,0,0,0.75);
+  backdrop-filter:blur(8px);
+  display:none; align-items:center; justify-content:center;
+  padding:20px;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:var(--radius-lg);
+  padding:28px;
+  width:min(480px, 100%);
+  box-shadow:var(--shadow);
+  animation:fadeUp .25s ease;
+}
+.modal h3 { font-size:20px; font-weight:800; letter-spacing:-.02em; margin-bottom:6px; }
+.modal p { font-size:13px; color:var(--text3); margin-bottom:22px; line-height:1.6; }
+.modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; }
+.form-row { margin-bottom:14px; }
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+#toastContainer {
+  position:fixed; bottom:20px; right:20px;
+  z-index:9999; display:flex; flex-direction:column;
+  gap:8px; pointer-events:none;
+}
+.toast {
+  padding:12px 16px; border-radius:10px;
+  background:var(--surface2); border:1px solid var(--border2);
+  box-shadow:var(--shadow-sm);
+  font-size:13px; font-weight:600; color:var(--text);
+  display:flex; align-items:center; gap:10px;
+  animation:toastIn .3s ease;
+  pointer-events:all; min-width:240px;
+}
+.toast.success { border-color:rgba(34,197,94,0.3); }
+.toast.error { border-color:rgba(239,68,68,0.3); }
+.toast.info { border-color:rgba(56,189,248,0.2); }
+.toast-icon { font-size:16px; flex-shrink:0; }
+.toast-out { animation:toastOut .3s ease forwards; }
+@keyframes toastIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:none} }
+@keyframes toastOut { to{opacity:0;transform:translateX(20px)} }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE — MOBILE
+═══════════════════════════════════════════ */
+@media (max-width:1100px) {
+  :root { --sidebar-w:64px; }
+  .sidebar-brand .brand-name,
+  .sidebar-brand .brand-version,
+  .sidebar-client-badge,
+  .nav-section,
+  .nav-link span:not(.nav-icon),
+  .user-info, .sidebar-bottom .user-logout { display:none; }
+  .nav-link { justify-content:center; padding:10px; }
+  .sidebar-user { justify-content:center; padding:10px; }
+  .sidebar-bottom { padding:8px 4px; }
+  .stats-grid { grid-template-columns:repeat(2,1fr); }
+  .dashboard-grid { grid-template-columns:1fr; }
+  .blast-layout { grid-template-columns:1fr; }
+}
+
+@media (max-width:768px) {
+  :root { --sidebar-w:0px; }
+  .sidebar { display:none; }
+  #app { grid-template-columns:1fr; }
+  .leads-layout { grid-template-columns:1fr; height:auto; }
+  .chat-panel { height:60dvh; }
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .page { padding:14px; }
+}
+</style>
 </head>
-
 <body>
 
-  <div class="app-shell">
-    
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark"></div>
-        <div>
-          <h1 style="margin:0; font-size:18px;">URUS Blueprint</h1>
-          <p style="margin:0; font-size:12px; color:#777;">WhatsApp Growth OS</p>
-        </div>
+<!-- ═══════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-wrap">
+    <div class="login-logo-row">
+      <div class="login-logo-mark">U</div>
+      <div>
+        <div class="login-logo-text">URUS</div>
+        <div class="login-logo-sub">WhatsApp Growth OS</div>
       </div>
-
-      <nav class="nav">
-        <button class="nav-item active">Dashboard</button>
-        <button class="nav-item">Leads</button>
-        <button class="nav-item">Follow-ups</button>
-        <button class="nav-item">Calendario</button>
-        <button class="nav-item">Plantillas</button>
-        <button class="nav-item">Analytics</button>
-      </nav>
-    </aside>
-
-    <!-- MAIN -->
-    <main class="main-content">
-
-      <!-- TOP BAR -->
-      <div class="top-bar">
-        <h2 style="margin:0;">Dashboard</h2>
-        <div class="status">
-          Estado: <span id="connectionStatus">Conectando...</span>
-        </div>
+    </div>
+    <div class="login-card">
+      <h2>Accede al panel</h2>
+      <p>Gestiona leads, conversaciones y seguimientos desde un solo lugar.</p>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="admin@tuempresa.com" autocomplete="email"/>
       </div>
-
-      <!-- APP ROOT -->
-      <div id="app"></div>
-
-    </main>
-
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button class="btn-primary" id="loginBtn" onclick="Auth.login()">Entrar al sistema →</button>
+      <div class="login-error" id="loginError"></div>
+    </div>
   </div>
+</div>
 
-  <!-- JS PRINCIPAL -->
-  <script src="/blueprint/app.js"></script>
+<!-- ═══════════════════════════════════════════
+     APP SHELL
+═══════════════════════════════════════════ -->
+<div id="app">
 
-  <!-- 🔥 AUTO REFRESH GLOBAL (CRÍTICO) -->
-  <script>
-    // indicador visual
-    function setStatus(text, ok = true) {
-      const el = document.getElementById("connectionStatus");
-      if (!el) return;
-      el.textContent = text;
-      el.style.color = ok ? "#00ff88" : "#ff4d4d";
-    }
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <div class="brand-mark">U</div>
+        <div class="brand-name">URUS</div>
+      </div>
+      <div class="brand-version">WhatsApp OS · v2.0</div>
+    </div>
 
-    // prueba conexión backend
-    async function checkConnection() {
-      try {
-        const res = await fetch("/health");
-        if (res.ok) {
-          setStatus("Conectado", true);
-        } else {
-          setStatus("Error", false);
-        }
-      } catch {
-        setStatus("Offline", false);
-      }
-    }
+    <div class="sidebar-client-badge">
+      <div class="scb-label">Sistema activo</div>
+      <div class="scb-name" id="sidebarPhone">+1 260 300 6906</div>
+    </div>
 
-    // 🔄 REFRESH GLOBAL CADA 3s
-    setInterval(() => {
-      if (window.loadLeads) {
-        window.loadLeads();
-      }
+    <nav class="sidebar-nav">
+      <div class="nav-section">Principal</div>
+      <button class="nav-link active" data-page="dashboard" onclick="Nav.go('dashboard',this)">
+        <span class="nav-icon">⬡</span>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-link" data-page="leads" onclick="Nav.go('leads',this)">
+        <span class="nav-icon">💬</span>
+        <span>Leads & Chat</span>
+        <span class="nav-badge" id="unreadBadge" style="display:none">0</span>
+      </button>
+      <button class="nav-link" data-page="blast" onclick="Nav.go('blast',this)">
+        <span class="nav-icon">🚀</span>
+        <span>Blast Masivo</span>
+      </button>
+      <button class="nav-link" data-page="followups" onclick="Nav.go('followups',this)">
+        <span class="nav-icon">🔁</span>
+        <span>Follow-ups</span>
+        <span class="nav-badge" id="fuBadge" style="display:none">0</span>
+      </button>
 
-      if (window.currentLeadId && window.loadMessages) {
-        window.loadMessages(window.currentLeadId);
-      }
+      <div class="nav-section">Configuración</div>
+      <button class="nav-link" data-page="settings" onclick="Nav.go('settings',this)">
+        <span class="nav-icon">⚙</span>
+        <span>Ajustes</span>
+      </button>
+    </nav>
 
-      checkConnection();
-    }, 3000);
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Admin</div>
+          <div class="user-role">Operador</div>
+        </div>
+        <button class="user-logout" onclick="Auth.logout()" title="Cerrar sesión">✕</button>
+      </div>
+    </div>
+  </aside>
 
-    // primera carga
-    checkConnection();
-  </script>
+  <!-- MAIN AREA -->
+  <div class="main-area">
 
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <div>
+          <div class="topbar-title" id="pageTitle">Dashboard</div>
+          <div class="topbar-sub" id="pageSubtitle">Resumen operativo en tiempo real</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="status-pill" id="connectionPill">
+          <div class="status-dot"></div>
+          <span id="connectionText">Conectando...</span>
+        </div>
+        <button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="App.refresh()">
+          ⟳ Actualizar
+        </button>
+      </div>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card stat-gold">
+            <div class="stat-label">Total Leads</div>
+            <div class="stat-value sv-gold" id="stat-total">—</div>
+            <div class="stat-change" id="stat-total-sub">Cargando...</div>
+          </div>
+          <div class="stat-card stat-green">
+            <div class="stat-label">Ready to Call</div>
+            <div class="stat-value sv-green" id="stat-ready">—</div>
+            <div class="stat-change">Listos para cierre</div>
+          </div>
+          <div class="stat-card stat-blue">
+            <div class="stat-label">Pipeline $</div>
+            <div class="stat-value sv-blue" id="stat-pipeline">$0</div>
+            <div class="stat-change">Valor estimado activo</div>
+          </div>
+          <div class="stat-card stat-amber">
+            <div class="stat-label">Follow-ups Hoy</div>
+            <div class="stat-value sv-amber" id="stat-fu">—</div>
+            <div class="stat-change">Pendientes de envío</div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Pipeline -->
+          <div>
+            <div class="pipeline-card" style="margin-bottom:16px;">
+              <div class="pipeline-title">Pipeline de conversión</div>
+              <div class="pipeline-sub">Distribución actual de leads por etapa</div>
+              <div id="pipelineStages">
+                <div class="empty-state" style="padding:24px;">
+                  <div class="spinner"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="sec-hd">
+              <div>
+                <div class="sec-title">Leads recientes</div>
+                <div class="sec-sub">Última actividad en el sistema</div>
+              </div>
+              <button class="btn btn-ghost" style="font-size:12px;" onclick="Nav.go('leads')">Ver todos →</button>
+            </div>
+            <div id="recentLeads">
+              <div class="empty-state">
+                <div class="spinner"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity feed -->
+          <div>
+            <div class="activity-card">
+              <div class="activity-head">
+                <h4>Actividad reciente</h4>
+                <div class="spinner" id="activitySpinner" style="display:none;width:14px;height:14px;"></div>
+              </div>
+              <div class="activity-list" id="activityList">
+                <div class="empty-state" style="padding:30px;">
+                  <div class="spinner"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LEADS & CHAT ── -->
+      <div class="page" id="page-leads">
+        <div class="leads-layout">
+
+          <!-- Leads panel -->
+          <div class="leads-panel">
+            <div class="leads-head">
+              <div class="leads-head-top">
+                <div class="leads-head-title">Leads</div>
+                <div class="leads-count" id="leadsCount">0 leads</div>
+              </div>
+              <div class="leads-search-wrap">
+                <span class="leads-search-icon">🔍</span>
+                <input class="leads-search" type="text" id="leadSearch"
+                  placeholder="Buscar por nombre o número..."
+                  oninput="Leads.filter(this.value)"/>
+              </div>
+            </div>
+
+            <div class="filter-tabs" id="filterTabs">
+              <button class="filter-tab active" onclick="Leads.setFilter('all',this)">Todos</button>
+              <button class="filter-tab" onclick="Leads.setFilter('READY_TO_CALL',this)">🔥 Ready</button>
+              <button class="filter-tab" onclick="Leads.setFilter('INFO_RECEIVED',this)">✅ Info</button>
+              <button class="filter-tab" onclick="Leads.setFilter('WAITING_INFO',this)">⏳ Waiting</button>
+              <button class="filter-tab" onclick="Leads.setFilter('NEW',this)">🆕 New</button>
+            </div>
+
+            <div class="leads-list" id="leadsList">
+              <div class="empty-state">
+                <div class="spinner"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat panel -->
+          <div class="chat-panel" id="chatPanel">
+            <!-- Default empty state -->
+            <div class="chat-head" id="chatHead">
+              <div class="chat-head-user">
+                <div class="chat-head-avatar">?</div>
+                <div>
+                  <div class="chat-head-name">Selecciona un lead</div>
+                  <div class="chat-head-meta">Haz clic para abrir la conversación</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+              <div class="chat-empty-state">
+                <div class="ces-icon">💬</div>
+                <div class="ces-title">Ningún lead seleccionado</div>
+                <div class="ces-desc">Selecciona un lead de la lista para ver el historial de conversación y responder.</div>
+              </div>
+            </div>
+
+            <div class="chat-compose">
+              <div class="compose-row">
+                <textarea class="compose-textarea" id="composeInput"
+                  placeholder="Selecciona un lead para responder..."
+                  rows="1" disabled></textarea>
+                <button class="compose-send" id="composeSend" disabled onclick="Chat.send()">↑</button>
+              </div>
+              <div class="compose-hint">
+                <span>Enter para enviar · Shift+Enter nueva línea</span>
+                <span class="ai-indicator">⚡ IA activa</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── BLAST MASIVO ── -->
+      <div class="page" id="page-blast">
+        <div class="blast-layout">
+
+          <!-- Left: Upload + preview -->
+          <div>
+            <div class="card" style="padding:18px;margin-bottom:16px;">
+              <div class="sec-hd" style="margin-bottom:14px;">
+                <div>
+                  <div class="sec-title">🚀 Blast Masivo WhatsApp</div>
+                  <div class="sec-sub">Sube tu lista y lanza mensajes personalizados a todos los leads</div>
+                </div>
+              </div>
+
+              <div class="upload-zone" id="uploadZone"
+                onclick="document.getElementById('fileInput').click()"
+                ondragover="event.preventDefault();this.classList.add('drag')"
+                ondragleave="this.classList.remove('drag')"
+                ondrop="Blast.handleDrop(event)">
+                <div class="upload-icon">📎</div>
+                <div class="upload-title" id="uploadTitle">Arrastra tu archivo aquí</div>
+                <div class="upload-desc">o haz clic para seleccionar</div>
+                <div class="upload-formats">
+                  <span class="format-pill">CSV</span>
+                  <span class="format-pill">columnas: nombre, telefono, email</span>
+                </div>
+              </div>
+              <input type="file" id="fileInput" accept=".csv" style="display:none"
+                onchange="Blast.handleFile(this)"/>
+            </div>
+
+            <div id="leadsTableWrap" style="display:none;">
+              <div class="sec-hd">
+                <div>
+                  <div class="sec-title" id="tableTitle">0 leads cargados</div>
+                  <div class="sec-sub">Verifica que los datos estén correctos</div>
+                </div>
+                <button class="btn btn-ghost" style="font-size:12px;" onclick="Blast.clear()">✕ Limpiar</button>
+              </div>
+              <div class="leads-table-wrap">
+                <table class="leads-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Nombre</th>
+                      <th>Teléfono</th>
+                      <th>Email</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody id="leadsTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="blast-progress" id="blastProgress">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-size:13px;font-weight:800;" id="progressLabel">Iniciando...</div>
+                <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);" id="progressCount">0/0</div>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressFill"></div>
+              </div>
+              <div class="blast-log" id="blastLog"></div>
+            </div>
+          </div>
+
+          <!-- Right: Message config -->
+          <div class="blast-sidebar">
+            <div class="blast-card">
+              <h4>✍️ Mensaje</h4>
+              <p>Personaliza con tokens. Cada lead recibe un mensaje único.</p>
+
+              <div class="template-tokens">
+                <span class="token-pill" onclick="Blast.insertToken('{{nombre}}')">{{nombre}}</span>
+                <span class="token-pill" onclick="Blast.insertToken('{{telefono}}')">{{telefono}}</span>
+              </div>
+
+              <label class="label">Mensaje inicial</label>
+              <textarea class="textarea" id="blastMsg" style="min-height:140px;"
+                placeholder="Hola {{nombre}}, te escribo desde URUS. Tengo algo que te puede interesar..."></textarea>
+
+              <div style="margin-top:6px;font-size:11px;color:var(--text3);" id="charCount">0 / 1024 caracteres</div>
+            </div>
+
+            <div class="blast-card">
+              <h4>⚙️ Configuración</h4>
+              <p>Ajusta el comportamiento del envío masivo.</p>
+
+              <label class="label">Delay entre mensajes (ms)</label>
+              <input class="input" type="number" id="blastDelay" value="600" min="200" max="3000" style="margin-bottom:12px;"/>
+
+              <label class="label">Follow-up automático</label>
+              <select class="input" id="blastFollowup" style="margin-bottom:12px;cursor:pointer;">
+                <option value="24">24 horas después</option>
+                <option value="48">48 horas después</option>
+                <option value="72">72 horas después</option>
+                <option value="0">Sin follow-up</option>
+              </select>
+
+              <button class="btn btn-gold" style="width:100%;justify-content:center;height:46px;"
+                id="blastBtn" disabled onclick="Blast.start()">
+                🚀 Iniciar Blast
+              </button>
+              <div style="margin-top:8px;font-size:11px;color:var(--text3);text-align:center;" id="blastStatusText">
+                Carga un archivo primero
+              </div>
+            </div>
+
+            <div class="blast-card">
+              <h4>📊 Último blast</h4>
+              <div id="lastBlastStats">
+                <div style="font-size:12px;color:var(--text3);">Sin datos aún. Lanza tu primer blast para ver estadísticas.</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── FOLLOW-UPS ── -->
+      <div class="page" id="page-followups">
+        <div class="followup-tabs">
+          <button class="fu-tab active" onclick="FollowUps.setTab('pending',this)">Pendientes</button>
+          <button class="fu-tab" onclick="FollowUps.setTab('sent',this)">Enviados</button>
+          <button class="fu-tab" onclick="FollowUps.setTab('all',this)">Todos</button>
+        </div>
+
+        <div class="sec-hd">
+          <div>
+            <div class="sec-title" id="fuTitle">Follow-ups pendientes</div>
+            <div class="sec-sub">URUS los envía automáticamente en el horario programado</div>
+          </div>
+          <button class="btn btn-gold" style="font-size:12px;" onclick="FollowUps.runPending()">
+            ▶ Enviar pendientes
+          </button>
+        </div>
+
+        <div class="fu-list" id="fuList">
+          <div class="empty-state">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS ── -->
+      <div class="page" id="page-settings">
+        <div style="max-width:600px;">
+          <div class="card" style="padding:24px;margin-bottom:16px;">
+            <h3 style="font-size:16px;font-weight:800;margin-bottom:4px;">Configuración del sistema</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:24px;">Número WhatsApp activo y parámetros del asistente.</p>
+
+            <div class="form-row">
+              <label class="label">Número WhatsApp (Twilio)</label>
+              <input class="input" id="settingPhone" value="+1 260 300 6906" readonly style="color:var(--green);font-family:'DM Mono',monospace;"/>
+            </div>
+            <div class="form-row">
+              <label class="label">Nombre del negocio</label>
+              <input class="input" id="settingBusiness" placeholder="URUS WhatsApp OS"/>
+            </div>
+            <div class="form-row">
+              <label class="label">Industria</label>
+              <input class="input" id="settingIndustry" placeholder="Automatización WhatsApp"/>
+            </div>
+            <div class="form-row">
+              <label class="label">Precio por servicio (para pipeline $)</label>
+              <input class="input" type="number" id="settingPrice" value="297" placeholder="297"/>
+            </div>
+            <div class="form-row">
+              <label class="label">Probabilidad de cierre estimada (%)</label>
+              <input class="input" type="number" id="settingCloseRate" value="30" placeholder="30"/>
+            </div>
+            <button class="btn btn-gold" onclick="Settings.save()">Guardar cambios</button>
+          </div>
+
+          <div class="card" style="padding:24px;">
+            <h3 style="font-size:16px;font-weight:800;margin-bottom:4px;">Estado del backend</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:20px;">Railway · Node.js · PostgreSQL · Twilio</p>
+            <div id="backendStatus">
+              <div style="display:flex;align-items:center;gap:10px;font-size:13px;">
+                <div class="spinner" style="width:14px;height:14px;"></div>
+                Verificando conexión...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Follow-up -->
+<div class="modal-overlay" id="fuModal">
+  <div class="modal">
+    <h3>Programar Follow-up</h3>
+    <p>Envía un seguimiento manual a este lead en el horario que indiques.</p>
+    <div class="form-row">
+      <label class="label">Mensaje</label>
+      <textarea class="textarea" id="fuModalMsg" placeholder="Hola {{nombre}}, solo quería dar seguimiento a tu consulta..." style="min-height:100px;"></textarea>
+    </div>
+    <div class="form-row">
+      <label class="label">Enviar en</label>
+      <select class="input" id="fuModalDelay">
+        <option value="30">30 minutos</option>
+        <option value="60">1 hora</option>
+        <option value="120">2 horas</option>
+        <option value="1440" selected>24 horas</option>
+        <option value="2880">48 horas</option>
+        <option value="10080">1 semana</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="Modal.close('fuModal')">Cancelar</button>
+      <button class="btn btn-gold" onclick="FollowUps.schedule()">Programar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toastContainer"></div>
+
+<!-- SCRIPTS -->
+<script src="/blueprint/app.js"></script>
 </body>
 </html>
