@@ -236,7 +236,7 @@ Return this exact JSON:
       strengths:      parsed.strengths||[],
       flags:          parsed.flags||[],
       saved_to_db:    !!savedCert,
-      verify_url:     `https://urusverify.com/verify/${certId}`,
+      verify_url:     `https://www.urusverify.com/verify/${certId}`,
       powered_by:     "URUS Blueprint System · Trust Stack v1"
     });
 
@@ -291,7 +291,7 @@ router.post("/register", async (req, res) => {
       agent_id:cleanId, certificate_id:cleanCert,
       trust_score:cleanScore, trust_level:cleanLevel,
       issued_at:cert.issued_at,
-      verify_url:`https://urusverify.com/verify/${cleanCert}`,
+      verify_url:`https://www.urusverify.com/verify/${cleanCert}`,
       powered_by:"URUS Blueprint System · Trust Stack v1"
     });
   } catch (err) {
@@ -330,7 +330,7 @@ router.get("/:name/trust/public", async (req, res) => {
     return res.json({
       ok:true, agent:name, trust_score, trust_level,
       reputation:{ found:true, scout_score:scoutScore, dominance_score:dominance, interactions, status, classification:classificationFromScore(trust_score), source:"urus_scout" },
-      certificate: certData ? { certificate_id:certData.certificate_id, issued_at:certData.issued_at, framework:certData.framework, verify_url:`https://urusverify.com/verify/${certData.certificate_id}` } : null,
+      certificate: certData ? { certificate_id:certData.certificate_id, issued_at:certData.issued_at, framework:certData.framework, verify_url:`https://www.urusverify.com/verify/${certData.certificate_id}` } : null,
       note:"Public tier — identity and authorization layers require API key",
       powered_by:"URUS Blueprint System · Urus Trust Stack v1"
     });
@@ -388,7 +388,7 @@ router.get("/certificates", async (req, res) => {
       params
     );
     const countResult=await db.query(`SELECT COUNT(*)::int AS total FROM agent_certificates ${whereSql}`,where.length?[level]:[]);
-    return res.json({ ok:true, total:countResult.rows[0]?.total||0, limit, offset, certificates:result.rows.map(c=>({...c,verify_url:`https://urusverify.com/verify/${c.certificate_id}`})) });
+    return res.json({ ok:true, total:countResult.rows[0]?.total||0, limit, offset, certificates:result.rows.map(c=>({...c,verify_url:`https://www.urusverify.com/verify/${c.certificate_id}`})) });
   } catch(err){ console.error("CERTIFICATES_LIST_ERROR",err.message); return res.status(500).json({ok:false,error:"certificates_list_failed"}); }
 });
 
@@ -402,7 +402,7 @@ router.get("/:name/certificate", async (req, res) => {
     const result=await db.query(`SELECT * FROM agent_certificates WHERE LOWER(agent_id)=$1 ORDER BY issued_at DESC LIMIT 1`,[name]);
     if(!result.rows[0]) return res.json({ok:true,found:false,agent:name,message:"No certificate found."});
     const cert=result.rows[0];
-    return res.json({ok:true,found:true,agent_id:cert.agent_id,certificate_id:cert.certificate_id,framework:cert.framework,trust_score:cert.trust_score,trust_level:cert.trust_level,score_breakdown:cert.score_breakdown,analysis:cert.analysis,strengths:cert.strengths,flags:cert.flags,issued_at:cert.issued_at,updated_at:cert.updated_at,verify_url:`https://urusverify.com/verify/${cert.certificate_id}`,powered_by:"URUS Blueprint System · Urus Trust Stack v1"});
+    return res.json({ok:true,found:true,agent_id:cert.agent_id,certificate_id:cert.certificate_id,framework:cert.framework,trust_score:cert.trust_score,trust_level:cert.trust_level,score_breakdown:cert.score_breakdown,analysis:cert.analysis,strengths:cert.strengths,flags:cert.flags,issued_at:cert.issued_at,updated_at:cert.updated_at,verify_url:`https://www.urusverify.com/verify/${cert.certificate_id}`,powered_by:"URUS Blueprint System · Urus Trust Stack v1"});
   } catch(err){ console.error("CERTIFICATE_GET_ERROR",err.message); return res.status(500).json({ok:false,error:"certificate_get_failed"}); }
 });
 
