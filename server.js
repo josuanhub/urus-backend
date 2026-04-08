@@ -166,7 +166,8 @@ app.use(express.urlencoded({ extended: false }));
 app.use("/v1/moltbook", moltbookRoutes);
 const trustRoutes = require("./routes/trust.routes");
 app.use("/v1/agent", trustRoutes);
-
+const verifyRoutes = require("./routes/verify.routes");
+app.use("/verify", verifyRoutes);
 
 // ==============================
 // META BASIC URLS
