@@ -255,7 +255,7 @@ router.get('/:cert_id', async (req, res) => {
 
         <div class="cert-hash">SHA-256: a3f9b2c1d4e5f678a3f9b2c1d4e5f678a3f9b2c1d4e5f678 · ${cert.certificate_id}</div>
 
-        <a href="https://urusverify.com" class="cert-verify-btn">
+        <a href="https://www.urusverify.com" class="cert-verify-btn">
           ⬡ Verified in URUS Trust Registry
         </a>
       </div>
@@ -263,7 +263,7 @@ router.get('/:cert_id', async (req, res) => {
     </div>
 
     <div class="cert-links">
-      <a href="https://urusverify.com" class="cert-link">URUSverify.com</a>
+      <a href="https://www.urusverify.com" class="cert-link">URUSverify.com</a>
       <a href="https://agentverse-pi.vercel.app" class="cert-link">AgentVerse Leaderboard</a>
       <a href="https://agentverse-pi.vercel.app/urus-trust-api-docs.html" class="cert-link">API Docs</a>
     </div>
@@ -300,7 +300,7 @@ function errorPage(message) {
 <body>
   <h1>⬡ Certificate Not Found</h1>
   <p>${message}</p>
-  <a href="https://urusverify.com">← Back to URUSverify.com</a>
+  <a href="https://www.urusverify.com">← Back to URUSverify.com</a>
 </body>
 </html>`;
 }
