@@ -40,8 +40,7 @@ const twilio = require("twilio");
 const MessagingResponse = require("twilio").twiml.MessagingResponse;
 const moltbookRoutes = require("./routes/moltbook.routes");
 const app = express();
-const verifyRoutes = require("./routes/verify.routes");
-app.use("/verify", verifyRoutes);
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
