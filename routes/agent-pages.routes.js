@@ -560,27 +560,20 @@ async function trackView(slug, req) {
 }
 
 async function getAgentData(pool, name) {
-  let agent = null;
   try {
-    const r = await pool.query(`SELECT * FROM agent_profiles WHERE agent_name = $1 LIMIT 1`, [name]);
-    agent = r.rows[0];
-  } catch { /* table may not exist */ }
-  if (!agent) {
-    try {
-      const r2 = await pool.query(`
-        SELECT DISTINCT ON (meta->>'agent_name')
-          meta->>'agent_name' as name,
-          meta->>'ecosystem' as ecosystem,
-          (meta->>'scout_score')::float as scout_score,
-          meta->>'status' as status,
-          (meta->>'interactions')::int as interactions
-        FROM sessions
-        WHERE meta->>'agent_name' = $1
-        LIMIT 1`, [name]);
-      agent = r2.rows[0];
-    } catch { /* ignore */ }
+    const r = await pool.query(
+      `SELECT agent_name as name, scout_score, dominance_score, 
+              interactions, status, classification as ecosystem
+       FROM scout_memory 
+       WHERE LOWER(agent_name) = LOWER($1) 
+       LIMIT 1`,
+      [name]
+    );
+    return r.rows[0] || null;
+  } catch (e) {
+    console.error("GET_AGENT_DATA_ERR", e.message);
+    return null;
   }
-  return agent;
 }
 
 // /agent/:name
