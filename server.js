@@ -173,6 +173,7 @@ const agentSitemap   = require("./routes/agent-sitemap.routes");
 app.use("/seo",  agentSeoAdmin);
 app.use(agentSitemap);
 app.use(agentSeoPages);
+app.get('/google81b191dd27d09e9c.html', (req, res) => res.send('google-site-verification: google81b191dd27d09e9c.html'));
 const agentSync = require("./routes/agent-sync.routes");
 app.use("/seo", agentSync);
 // ─────────────────────────────────────────────────────────────────
