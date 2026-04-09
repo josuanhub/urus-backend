@@ -173,6 +173,8 @@ const agentSitemap   = require("./routes/agent-sitemap.routes");
 app.use("/seo",  agentSeoAdmin);
 app.use(agentSitemap);
 app.use(agentSeoPages);
+const agentSync = require("./routes/agent-sync.routes");
+app.use("/seo", agentSync);
 // ─────────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
