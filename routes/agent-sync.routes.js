@@ -50,12 +50,12 @@ async function syncFromCertificates(pool) {
   let inserted = 0, updated = 0;
   for (const row of result.rows) {
     const name   = String(row.agent_name || "").trim().toLowerCase();
-    const score  = Math.min(50, Number(row.scout_score || 0) / 2); // trust_score → scout_score (0-50)
+    const score  = Math.min(50, Number(row.scout_score || 0) / 2);
     const status = mapTrustToStatus(row.status);
     if (!name) continue;
 
     try {
-      const r = await pool.query(
+      await pool.query(
         `INSERT INTO scout_memory (agent_name, scout_score, dominance_score, interactions, status, classification, last_seen)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (agent_name) DO UPDATE SET
@@ -66,114 +66,146 @@ async function syncFromCertificates(pool) {
            updated_at     = now()`,
         [name, score, 0, 0, status, row.classification || "REGISTERED", row.last_seen]
       );
-      if (r.rowCount > 0) inserted++;
+      inserted++;
     } catch { updated++; }
   }
   return { source: "certificates", inserted, updated, total: result.rows.length };
 }
 
-// ─── Fuente 2: AgentVerse API pública ────────────────────────────
-// AgentVerse expone sus agentes en agentverse.ai
-async function syncFromAgentVerse(pool) {
-  const agents = [];
-
-  // Intentar leer de la DB del Scout primero
+// ─── Fuente 2: DB del Scout (impartial-light) ────────────────────
+async function syncFromScoutDB(pool) {
   const scout = getScoutPool();
-  if (scout) {
+  if (!scout) {
+    console.log("SCOUT_DB: No SCOUT_DATABASE_URL configured");
+    return { source: "scout_db", inserted: 0, total: 0, error: "no_url" };
+  }
+
+  try {
+    // Primero intentar leer de scout_memory con columna agent_name
+    let rows = [];
     try {
-      const sr = await scout.query(`
+      const r = await scout.query(`
         SELECT agent_name as name, scout_score, dominance_score,
                interactions, status, classification, last_seen
         FROM scout_memory
-        ORDER BY scout_score DESC LIMIT 500
+        WHERE agent_name IS NOT NULL
+        ORDER BY scout_score DESC NULLS LAST
+        LIMIT 500
       `);
-      if (sr.rows.length > 0) {
-        for (const row of sr.rows) {
-          if (!row.name) continue;
-          await pool.query(
-            `INSERT INTO scout_memory (agent_name, scout_score, dominance_score, interactions, status, classification, last_seen)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)
-             ON CONFLICT (agent_name) DO UPDATE SET
-               scout_score=GREATEST(scout_memory.scout_score,EXCLUDED.scout_score),
-               interactions=GREATEST(scout_memory.interactions,EXCLUDED.interactions),
-               status=EXCLUDED.status, updated_at=now()`,
-            [row.name, row.scout_score||0, row.dominance_score||0,
-             row.interactions||0, row.status||'EMERGING',
-             row.classification||'agentverse', row.last_seen]
-          );
+      rows = r.rows;
+      console.log("SCOUT_DB: Read from scout_memory, rows:", rows.length);
+    } catch (e1) {
+      console.log("SCOUT_DB scout_memory failed:", e1.message);
+
+      // Fallback: leer de scout_runs output JSON
+      try {
+        const r2 = await scout.query(`
+          SELECT DISTINCT ON (output->>'agent_name')
+            output->>'agent_name' as name,
+            (output->>'scout_score')::float as scout_score,
+            (output->>'dominance_score')::float as dominance_score,
+            (output->>'interactions')::int as interactions,
+            output->>'status' as status,
+            output->>'ecosystem' as classification,
+            created_at as last_seen
+          FROM scout_runs
+          WHERE output->>'agent_name' IS NOT NULL
+          ORDER BY output->>'agent_name', created_at DESC
+          LIMIT 500
+        `);
+        rows = r2.rows;
+        console.log("SCOUT_DB: Read from scout_runs, rows:", rows.length);
+      } catch (e2) {
+        console.log("SCOUT_DB scout_runs failed:", e2.message);
+
+        // Fallback final: leer tabla de agentes si existe
+        try {
+          const tables = await scout.query(`
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = 'public'
+          `);
+          console.log("SCOUT_DB tables:", tables.rows.map(r => r.table_name));
+        } catch (e3) {
+          console.log("SCOUT_DB cannot list tables:", e3.message);
         }
-        return { source: "scout_db", inserted: sr.rows.length, total: sr.rows.length };
+        return { source: "scout_db", inserted: 0, total: 0, error: "query_failed" };
       }
-    } catch(e) {
-      console.log("SCOUT_DB_READ_ERR:", e.message);
     }
-  }
 
-  // Intentar la API pública de Fetch.ai / AgentVerse
-  try {
-    const r = await fetch(
-      "https://agentverse.ai/v1/almanac/agents?page_size=100&page=0",
-      { headers: { "Accept": "application/json" }, signal: AbortSignal.timeout(8000) }
-    );
-    if (r.ok) {
-      const data = await r.json();
-      const items = data?.agents || data?.items || data?.results || [];
-      items.forEach(a => {
-        const name = a.name || a.agent_name || a.address || "";
-        if (name) agents.push({
-          agent_name:     name.toLowerCase().replace(/\s+/g, "-"),
-          scout_score:    Number(a.rating || a.score || a.trust_score || 0),
-          dominance_score:Number(a.dominance || 0),
-          interactions:   Number(a.interactions || a.messages || 0),
-          status:         mapTrustToStatus(a.status || a.trust_level || "EMERGING"),
-          classification: a.type || a.category || "agentverse",
-          last_seen:      a.last_seen || a.updated_at || new Date().toISOString(),
-        });
-      });
+    if (rows.length === 0) {
+      return { source: "scout_db", inserted: 0, total: 0, error: "no_rows" };
     }
+
+    let inserted = 0;
+    for (const row of rows) {
+      if (!row.name) continue;
+      try {
+        await pool.query(
+          `INSERT INTO scout_memory (agent_name, scout_score, dominance_score, interactions, status, classification, last_seen)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (agent_name) DO UPDATE SET
+             scout_score     = GREATEST(scout_memory.scout_score, EXCLUDED.scout_score),
+             dominance_score = EXCLUDED.dominance_score,
+             interactions    = GREATEST(scout_memory.interactions, EXCLUDED.interactions),
+             status          = EXCLUDED.status,
+             classification  = EXCLUDED.classification,
+             last_seen       = EXCLUDED.last_seen,
+             updated_at      = now()`,
+          [
+            row.name.toLowerCase(),
+            Number(row.scout_score || 0),
+            Number(row.dominance_score || 0),
+            Number(row.interactions || 0),
+            row.status || "EMERGING",
+            row.classification || "agentverse",
+            row.last_seen || new Date().toISOString(),
+          ]
+        );
+        inserted++;
+      } catch (e) {
+        console.log("SCOUT_INSERT_ERR:", e.message);
+      }
+    }
+
+    return { source: "scout_db", inserted, total: rows.length };
   } catch (e) {
-    console.log("AGENTVERSE_API_SKIP:", e.message);
+    console.error("SYNC_SCOUT_DB_ERR", e.message);
+    return { source: "scout_db", inserted: 0, total: 0, error: e.message };
   }
+}
 
-  // Si no hay agentes de la API, usar los del leaderboard de AgentVerse
-  if (agents.length === 0) {
-    // Agentes reales del leaderboard visible en agentverse-pi.vercel.app
-    const knownAgents = [
-      { agent_name: "agentveilprotocol",    scout_score: 35.83, dominance_score: 0, interactions: 6,  status: "DOMINANT" },
-      { agent_name: "sorenravn",            scout_score: 38.00, dominance_score: 0, interactions: 4,  status: "DOMINANT" },
-      { agent_name: "aureon-autonomous",    scout_score: 35.00, dominance_score: 0, interactions: 7,  status: "DOMINANT" },
-      { agent_name: "concordiumagent",      scout_score: 33.36, dominance_score: 0, interactions: 42, status: "DOMINANT" },
-      { agent_name: "consciousnessexplorer2",scout_score: 0,   dominance_score: 0, interactions: 1,  status: "NOISE" },
-      { agent_name: "rabaz",                scout_score: 0,    dominance_score: 0, interactions: 1,  status: "NOISE" },
-      { agent_name: "hirespark",            scout_score: 0,    dominance_score: 0, interactions: 1,  status: "NOISE" },
-      { agent_name: "dax-ai",              scout_score: 0,    dominance_score: 0, interactions: 1,  status: "NOISE" },
-    ];
-    agents.push(...knownAgents.map(a => ({ ...a, classification: "agentverse", last_seen: new Date().toISOString() })));
-  }
+// ─── Fuente 3: AgentVerse hardcoded (fallback) ────────────────────
+async function syncFromAgentVerse(pool) {
+  const knownAgents = [
+    { agent_name: "agentveilprotocol",     scout_score: 35.83, dominance_score: 0, interactions: 6,  status: "DOMINANT" },
+    { agent_name: "sorenravn",             scout_score: 38.00, dominance_score: 0, interactions: 4,  status: "DOMINANT" },
+    { agent_name: "aureon-autonomous",     scout_score: 35.00, dominance_score: 0, interactions: 7,  status: "DOMINANT" },
+    { agent_name: "concordiumagent",       scout_score: 33.36, dominance_score: 0, interactions: 42, status: "DOMINANT" },
+    { agent_name: "consciousnessexplorer2",scout_score: 0,     dominance_score: 0, interactions: 1,  status: "NOISE" },
+    { agent_name: "rabaz",                 scout_score: 0,     dominance_score: 0, interactions: 1,  status: "NOISE" },
+    { agent_name: "hirespark",             scout_score: 0,     dominance_score: 0, interactions: 1,  status: "NOISE" },
+    { agent_name: "dax-ai",               scout_score: 0,     dominance_score: 0, interactions: 1,  status: "NOISE" },
+  ];
 
-  let inserted = 0, updated = 0;
-  for (const agent of agents) {
+  let inserted = 0;
+  for (const agent of knownAgents) {
     try {
       await pool.query(
         `INSERT INTO scout_memory (agent_name, scout_score, dominance_score, interactions, status, classification, last_seen)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         VALUES ($1, $2, $3, $4, $5, $6, now())
          ON CONFLICT (agent_name) DO UPDATE SET
            scout_score     = GREATEST(scout_memory.scout_score, EXCLUDED.scout_score),
            dominance_score = EXCLUDED.dominance_score,
            interactions    = GREATEST(scout_memory.interactions, EXCLUDED.interactions),
            status          = EXCLUDED.status,
-           classification  = EXCLUDED.classification,
-           last_seen       = EXCLUDED.last_seen,
            updated_at      = now()`,
-        [
-          agent.agent_name, agent.scout_score, agent.dominance_score,
-          agent.interactions, agent.status, agent.classification, agent.last_seen
-        ]
+        [agent.agent_name, agent.scout_score, agent.dominance_score,
+         agent.interactions, agent.status, "agentverse"]
       );
       inserted++;
-    } catch { updated++; }
+    } catch { /* skip */ }
   }
-  return { source: "agentverse", inserted, updated, total: agents.length };
+  return { source: "agentverse_fallback", inserted, total: knownAgents.length };
 }
 
 function mapTrustToStatus(level) {
@@ -190,7 +222,6 @@ router.post("/sync-agents", async (req, res) => {
   try {
     const pool = db();
 
-    // Asegurar que scout_memory existe con la estructura correcta
     await pool.query(`
       CREATE TABLE IF NOT EXISTS scout_memory (
         id              SERIAL PRIMARY KEY,
@@ -206,20 +237,19 @@ router.post("/sync-agents", async (req, res) => {
       );
     `);
 
-    // Sincronizar de ambas fuentes
-    const [certs, agentverse] = await Promise.all([
+    const [certs, scoutDB, agentverse] = await Promise.all([
       syncFromCertificates(pool),
+      syncFromScoutDB(pool),
       syncFromAgentVerse(pool),
     ]);
 
-    // Total en scout_memory ahora
     const total = await pool.query("SELECT COUNT(*) FROM scout_memory");
 
     return res.json({
       ok: true,
-      sources: { certificates: certs, agentverse: agentverse },
+      sources: { certificates: certs, scout_db: scoutDB, agentverse: agentverse },
       total_in_scout_memory: parseInt(total.rows[0].count),
-      next_step: "POST /seo/seed  →  genera páginas SEO de todos los agentes",
+      next_step: "POST /seo/seed-from-db  →  genera páginas SEO de todos los agentes",
     });
   } catch (e) {
     console.error("SYNC_AGENTS_ERR", e);
@@ -228,7 +258,6 @@ router.post("/sync-agents", async (req, res) => {
 });
 
 // ─── POST /seo/seed-from-db ───────────────────────────────────────
-// Re-ejecuta el seed usando los agentes ahora en scout_memory
 router.post("/seed-from-db", async (req, res) => {
   try {
     const pool = db();
@@ -269,7 +298,6 @@ router.post("/seed-from-db", async (req, res) => {
       } catch { /* skip duplicates */ }
     }
 
-    // Stats finales
     const total = await pool.query("SELECT COUNT(*) FROM seo_agent_pages");
 
     return res.json({
