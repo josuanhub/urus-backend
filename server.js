@@ -166,6 +166,14 @@ const trustRoutes = require("./routes/trust.routes");
 app.use("/v1/agent", trustRoutes);
 const verifyRoutes = require("./routes/verify.routes");
 app.use("/verify", verifyRoutes);
+// ── Agent Economy SEO Engine ─────────────────────────────────────
+const agentSeoAdmin  = require("./routes/agent-seo.routes");
+const agentSeoPages  = require("./routes/agent-pages.routes");
+const agentSitemap   = require("./routes/agent-sitemap.routes");
+app.use("/seo",  agentSeoAdmin);
+app.use(agentSitemap);
+app.use(agentSeoPages);
+// ─────────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==============================
