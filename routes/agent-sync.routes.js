@@ -20,6 +20,20 @@ function db() {
   throw new Error("DB pool not initialized");
 }
 
+// Pool separado para la DB del Scout
+let scoutPool = null;
+function getScoutPool() {
+  if (scoutPool) return scoutPool;
+  const url = process.env.SCOUT_DATABASE_URL;
+  if (!url) return null;
+  const { Pool } = require("pg");
+  scoutPool = new Pool({
+    connectionString: url,
+    ssl: { rejectUnauthorized: false },
+  });
+  return scoutPool;
+}
+
 // ─── Fuente 1: agent_certificates (ya en tu DB) ───────────────────
 async function syncFromCertificates(pool) {
   const result = await pool.query(`
@@ -62,6 +76,38 @@ async function syncFromCertificates(pool) {
 // AgentVerse expone sus agentes en agentverse.ai
 async function syncFromAgentVerse(pool) {
   const agents = [];
+
+  // Intentar leer de la DB del Scout primero
+  const scout = getScoutPool();
+  if (scout) {
+    try {
+      const sr = await scout.query(`
+        SELECT agent_name as name, scout_score, dominance_score,
+               interactions, status, classification, last_seen
+        FROM scout_memory
+        ORDER BY scout_score DESC LIMIT 500
+      `);
+      if (sr.rows.length > 0) {
+        for (const row of sr.rows) {
+          if (!row.name) continue;
+          await pool.query(
+            `INSERT INTO scout_memory (agent_name, scout_score, dominance_score, interactions, status, classification, last_seen)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)
+             ON CONFLICT (agent_name) DO UPDATE SET
+               scout_score=GREATEST(scout_memory.scout_score,EXCLUDED.scout_score),
+               interactions=GREATEST(scout_memory.interactions,EXCLUDED.interactions),
+               status=EXCLUDED.status, updated_at=now()`,
+            [row.name, row.scout_score||0, row.dominance_score||0,
+             row.interactions||0, row.status||'EMERGING',
+             row.classification||'agentverse', row.last_seen]
+          );
+        }
+        return { source: "scout_db", inserted: sr.rows.length, total: sr.rows.length };
+      }
+    } catch(e) {
+      console.log("SCOUT_DB_READ_ERR:", e.message);
+    }
+  }
 
   // Intentar la API pública de Fetch.ai / AgentVerse
   try {
