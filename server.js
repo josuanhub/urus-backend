@@ -4006,6 +4006,100 @@ Respond:
   }
 });
 
+
+// ===============================
+// 🧠 JARVIS DAY CONTROL
+// ===============================
+
+app.post('/v1/jarvis/day', async (req, res) => {
+  try {
+    // 1. Memoria reciente
+    const memoryResult = await pool.query(`
+      SELECT content
+      FROM jarvis_memory
+      ORDER BY created_at DESC
+      LIMIT 20
+    `);
+
+    const memory = memoryResult.rows.map(r => r.content).join('\n');
+
+    // 2. Prompt DAY (arquitectura + dirección)
+    const prompt = `
+You are JARVIS — daily command intelligence.
+
+Your role is to stabilize, align, and direct the user.
+
+You combine:
+- Strategic thinking (elite level)
+- Energy management
+- Execution clarity
+- Psychological control
+
+User memory:
+${memory}
+
+Your job now:
+Scan the user's situation and generate a DAILY CONTROL STRUCTURE.
+
+You must output:
+
+1. CURRENT STATE
+- Where he is mentally, energetically, strategically
+
+2. TODAY FOCUS
+- 1 money move
+- 1 structure move
+- 1 personal stabilization move
+
+3. EXECUTION PLAN (blocks)
+- What to do first
+- What to do after
+- What to avoid
+
+4. CORRECTIONS
+- What he is doing wrong right now
+- What must stop
+
+5. POWER FRAME
+- Short directive to lock him in for the day
+
+Rules:
+- No generic advice
+- Be precise
+- Be structured
+- Speak like a strategist + operator
+- Guide, don't overwhelm
+
+Respond now:
+`;
+
+    // 3. IA
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are JARVIS." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7
+    });
+
+    const output = completion.choices[0].message.content;
+
+    // 4. Guardar memoria
+    await pool.query(`
+      INSERT INTO jarvis_memory (content)
+      VALUES ($1)
+    `, [`JARVIS DAY:\n${output}`]);
+
+    res.json({ output });
+
+  } catch (err) {
+    console.error('JARVIS DAY ERROR:', err);
+    res.status(500).json({ error: 'Jarvis day failed' });
+  }
+});
+
+
 app.get('/v1/blueprint/connect/meta', async (req, res) => {
   try {
     const redirectUri = `${req.protocol}://${req.get('host')}/v1/blueprint/connect/meta/callback`;
