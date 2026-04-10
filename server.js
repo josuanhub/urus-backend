@@ -4404,6 +4404,34 @@ Respond now:
   }
 });
 
+// ===============================
+// 🧬 JARVIS MEMORY STORE
+// ===============================
+
+app.post('/v1/jarvis/memory', async (req, res) => {
+  try {
+    const { content } = req.body || {};
+
+    if (!content) {
+      return res.status(400).json({ error: 'content is required' });
+    }
+
+    await pool.query(`
+      INSERT INTO jarvis_memory (content)
+      VALUES ($1)
+    `, [content]);
+
+    res.json({
+      ok: true,
+      message: "Memory stored"
+    });
+
+  } catch (err) {
+    console.error('JARVIS MEMORY ERROR:', err);
+    res.status(500).json({ error: 'Jarvis memory failed' });
+  }
+});
+
 
 app.get('/v1/blueprint/connect/meta', async (req, res) => {
   try {
