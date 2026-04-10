@@ -3922,6 +3922,8 @@ app.get("/v1/blueprint/status", authRequired, async (req, res) => {
   }
 });
 
+
+
 app.get('/v1/blueprint/connect/meta', async (req, res) => {
   try {
     const redirectUri = `${req.protocol}://${req.get('host')}/v1/blueprint/connect/meta/callback`;
