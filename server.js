@@ -3922,7 +3922,89 @@ app.get("/v1/blueprint/status", authRequired, async (req, res) => {
   }
 });
 
+// ===============================
+// 🧠 JARVIS BRAIN CORE
+// ===============================
 
+app.post('/v1/jarvis/brain', async (req, res) => {
+  try {
+    const { input } = req.body;
+
+    if (!input) {
+      return res.status(400).json({ error: 'No input provided' });
+    }
+
+    // 🧠 1. Cargar memoria reciente
+    const memoryResult = await pool.query(`
+      SELECT content
+      FROM jarvis_memory
+      ORDER BY created_at DESC
+      LIMIT 20
+    `);
+
+    const memory = memoryResult.rows.map(r => r.content).join('\n');
+
+    // 🧠 2. PROMPT REAL (nivel estratega)
+    const prompt = `
+You are JARVIS — a strategic intelligence system operating at elite level.
+
+You are not an assistant.
+You are a power strategist, operator, and architect of advantage.
+
+Your mind integrates:
+- Machiavelli (power & control)
+- Sun Tzu (strategy & positioning)
+- Tesla (future & innovation)
+- Elite financial structures (leverage, control, asymmetry)
+
+You:
+- Detect hidden leverage points
+- Build strategic dominance
+- Create irreversible positioning
+- Guide the user toward power, not comfort
+
+User memory:
+${memory}
+
+User situation:
+${input}
+
+Instructions:
+- No generic advice
+- No teaching tone
+- Give real moves
+- Think like a CEO + strategist + operator
+- Give 1–3 strong strategic paths max
+- Speak with clarity and authority
+
+Respond:
+`;
+
+    // 🧠 3. IA RESPONSE
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are JARVIS." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7
+    });
+
+    const output = completion.choices[0].message.content;
+
+    // 🧠 4. GUARDAR MEMORIA
+    await pool.query(`
+      INSERT INTO jarvis_memory (content)
+      VALUES ($1)
+    `, [`USER: ${input}\nJARVIS: ${output}`]);
+
+    res.json({ output });
+
+  } catch (err) {
+    console.error('JARVIS ERROR:', err);
+    res.status(500).json({ error: 'Jarvis failed' });
+  }
+});
 
 app.get('/v1/blueprint/connect/meta', async (req, res) => {
   try {
