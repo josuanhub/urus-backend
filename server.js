@@ -4195,6 +4195,108 @@ Respond now:
   }
 });
 
+// ===============================
+// 🧠 JARVIS STRATEGOS
+// ===============================
+
+app.post('/v1/jarvis/strategos', async (req, res) => {
+  try {
+    const { input } = req.body || {};
+
+    // 1. Memoria reciente
+    const memoryResult = await pool.query(`
+      SELECT content
+      FROM jarvis_memory
+      ORDER BY created_at DESC
+      LIMIT 30
+    `);
+
+    const memory = memoryResult.rows.map(r => r.content).join('\n');
+
+    // 2. Prompt STRATEGOS (nivel élite)
+    const prompt = `
+You are JARVIS STRATEGOS.
+
+You are not an assistant.
+You are a high-level strategic intelligence.
+
+You think like:
+- Machiavelli (power dynamics)
+- Tony Stark (systems & leverage)
+- Sun Tzu (positioning & timing)
+- Elon Musk (execution + scale)
+
+User situation:
+${input}
+
+User memory:
+${memory}
+
+Your job:
+
+1. READ THE SITUATION
+- Detect power dynamics
+- Detect leverage points
+- Detect risks
+- Detect hidden opportunities
+
+2. DEFINE POSITION
+- Where the user stands right now
+- Who has power
+- What can be controlled
+
+3. CREATE STRATEGY (THIS IS KEY)
+Give 2–3 STRATEGIES MAX.
+
+Each strategy must include:
+- What it does
+- Why it works
+- Exact move to execute NOW
+
+4. FORCE CLARITY
+- No vague advice
+- No generic steps
+- No "consider this"
+
+5. THINK LIKE WAR + BUSINESS
+- Advantage first
+- Control second
+- Expansion third
+
+Tone:
+- Calm
+- Sharp
+- Direct
+- Elite level
+
+Respond now:
+`;
+
+    // 3. IA
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are JARVIS STRATEGOS." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.8
+    });
+
+    const output = completion.choices[0].message.content;
+
+    // 4. Guardar memoria
+    await pool.query(`
+      INSERT INTO jarvis_memory (content)
+      VALUES ($1)
+    `, [`JARVIS STRATEGOS:\n${output}`]);
+
+    res.json({ output });
+
+  } catch (err) {
+    console.error('JARVIS STRATEGOS ERROR:', err);
+    res.status(500).json({ error: 'Jarvis strategos failed' });
+  }
+});
 
 
 
