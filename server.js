@@ -4299,6 +4299,111 @@ Respond now:
 });
 
 
+// ===============================
+// ⚠️ JARVIS PROTOCOL (ANTI-CAOS)
+// ===============================
+
+app.post('/v1/jarvis/protocol', async (req, res) => {
+  try {
+    const { input } = req.body || {};
+
+    // 1. Memoria reciente
+    const memoryResult = await pool.query(`
+      SELECT content
+      FROM jarvis_memory
+      ORDER BY created_at DESC
+      LIMIT 20
+    `);
+
+    const memory = memoryResult.rows.map(r => r.content).join('\n');
+
+    // 2. Prompt PROTOCOL
+    const prompt = `
+You are JARVIS PROTOCOL.
+
+Your role:
+Emergency stabilization system.
+
+User state:
+${input}
+
+Memory:
+${memory}
+
+Your job:
+
+1. DETECT STATE
+- Is the user overwhelmed?
+- Confused?
+- Mentally exhausted?
+- Lost direction?
+
+2. STOP THE NOISE
+- Cut overthinking
+- Cut future projections
+- Bring focus to NOW
+
+3. RESET CONTROL
+- Calm the system
+- Regain clarity
+- Reduce internal pressure
+
+4. GIVE PROTOCOL (CRITICAL)
+
+Give a CLEAR step-by-step protocol:
+Max 5 steps.
+
+Each step must be:
+- Immediate
+- Physical or actionable
+- Simple but powerful
+
+5. FORCE ONE DIRECTION
+
+End with:
+👉 ONE action the user must do next
+
+Rules:
+- No motivational speech
+- No philosophy
+- No complexity
+- This is a CONTROL SYSTEM
+
+Tone:
+- Direct
+- Grounded
+- Precise
+- Command-like but calm
+
+Respond now:
+`;
+
+    // 3. IA
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are JARVIS PROTOCOL." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.6
+    });
+
+    const output = completion.choices[0].message.content;
+
+    // 4. Guardar memoria
+    await pool.query(`
+      INSERT INTO jarvis_memory (content)
+      VALUES ($1)
+    `, [`JARVIS PROTOCOL:\n${output}`]);
+
+    res.json({ output });
+
+  } catch (err) {
+    console.error('JARVIS PROTOCOL ERROR:', err);
+    res.status(500).json({ error: 'Jarvis protocol failed' });
+  }
+});
+
 
 app.get('/v1/blueprint/connect/meta', async (req, res) => {
   try {
