@@ -4432,6 +4432,72 @@ app.post('/v1/jarvis/memory', async (req, res) => {
   }
 });
 
+// ===============================
+// 🧠 JARVIS RECALL (MEMORY SEARCH)
+// ===============================
+
+app.post('/v1/jarvis/recall', async (req, res) => {
+  try {
+    const { query } = req.body || {};
+
+    if (!query) {
+      return res.status(400).json({ error: 'query is required' });
+    }
+
+    // 1. Buscar memoria relevante
+    const result = await pool.query(`
+      SELECT content
+      FROM jarvis_memory
+      WHERE content ILIKE $1
+      ORDER BY created_at DESC
+      LIMIT 20
+    `, [`%${query}%`]);
+
+    const memory = result.rows.map(r => r.content).join('\n');
+
+    // 2. Prompt inteligente
+    const prompt = `
+You are JARVIS RECALL.
+
+User question:
+${query}
+
+Relevant memory:
+${memory}
+
+Your job:
+- Extract ONLY what matters
+- Connect patterns
+- Show insights if possible
+
+Rules:
+- No filler
+- No repeating raw memory
+- Synthesize like intelligence
+
+Respond:
+`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are JARVIS RECALL." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7
+    });
+
+    const output = completion.choices[0].message.content;
+
+    res.json({ output });
+
+  } catch (err) {
+    console.error('JARVIS RECALL ERROR:', err);
+    res.status(500).json({ error: 'Jarvis recall failed' });
+  }
+});
+
+
 
 app.get('/v1/blueprint/connect/meta', async (req, res) => {
   try {
