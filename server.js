@@ -4529,6 +4529,93 @@ app.post('/v1/jarvis/learning', async (req, res) => {
   }
 });
 
+// ===============================
+// 🤖 JARVIS AUTONOMOUS THINKING
+// ===============================
+
+app.get('/v1/jarvis/autonomous', async (req, res) => {
+  try {
+
+    // 1. Leer memoria reciente
+    const memoryResult = await pool.query(`
+      SELECT content
+      FROM jarvis_memory
+      ORDER BY created_at DESC
+      LIMIT 40
+    `);
+
+    const memory = memoryResult.rows.map(r => r.content).join('\n');
+
+    // 2. Prompt autónomo
+    const prompt = `
+You are JARVIS AUTONOMOUS.
+
+You are not reacting.
+You are thinking independently.
+
+Memory:
+${memory}
+
+Your job:
+
+1. DETECT PATTERNS
+- Repeated behaviors
+- Opportunities forming
+- Strategic gaps
+- Untapped leverage
+
+2. IDENTIFY OPPORTUNITY
+- Where the user is sitting on potential
+- Where speed is needed
+- Where advantage can be taken NOW
+
+3. GENERATE INSIGHT
+- Something the user has NOT seen
+- Something ahead of current thinking
+
+4. PROPOSE ACTION
+- One high-value move
+- Clear, actionable, strategic
+
+Rules:
+- No generic advice
+- No repeating memory
+- No fluff
+
+Tone:
+- Strategic
+- Sharp
+- Future-oriented
+- Like a silent advisor
+
+Respond:
+`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are JARVIS AUTONOMOUS." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.85
+    });
+
+    const output = completion.choices[0].message.content;
+
+    // 3. Guardar pensamiento generado
+    await pool.query(`
+      INSERT INTO jarvis_memory (content)
+      VALUES ($1)
+    `, [`JARVIS AUTONOMOUS:\n${output}`]);
+
+    res.json({ output });
+
+  } catch (err) {
+    console.error('JARVIS AUTONOMOUS ERROR:', err);
+    res.status(500).json({ error: 'Jarvis autonomous failed' });
+  }
+});
+
 
 
 app.get('/v1/blueprint/connect/meta', async (req, res) => {
