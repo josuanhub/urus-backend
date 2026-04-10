@@ -4099,6 +4099,104 @@ Respond now:
   }
 });
 
+// ===============================
+// 🌅 JARVIS MORNING SCAN
+// ===============================
+
+app.post('/v1/jarvis/morning', async (req, res) => {
+  try {
+    const { input } = req.body || {};
+
+    // 1. Memoria reciente
+    const memoryResult = await pool.query(`
+      SELECT content
+      FROM jarvis_memory
+      ORDER BY created_at DESC
+      LIMIT 20
+    `);
+
+    const memory = memoryResult.rows.map(r => r.content).join('\n');
+
+    // 2. Prompt MORNING (alineación total)
+    const prompt = `
+You are JARVIS — morning alignment intelligence.
+
+Your role:
+Reset, scan, and align the user at the start of the day.
+
+You operate as:
+- Strategic mind
+- Psychological stabilizer
+- Energy regulator
+- Execution director
+
+User input:
+${input || "User just woke up."}
+
+User memory:
+${memory}
+
+Your job:
+
+1. SCAN
+- Detect mental state
+- Detect emotional state
+- Detect energy level
+- Detect confusion or misalignment
+
+2. CLEAR
+- Remove noise
+- Remove overthinking
+- Simplify everything
+
+3. ALIGN
+- What matters TODAY (not life)
+- What direction he must lock into
+
+4. ACTIVATE
+- Give him a strong internal state
+- Focus, clarity, control
+
+5. COMMAND
+- Clear directive for next 60–90 minutes
+
+Rules:
+- No generic motivation
+- No fluff
+- Be precise, calm, powerful
+- Speak like superior intelligence guiding operator
+
+Respond now:
+`;
+
+    // 3. IA
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are JARVIS." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7
+    });
+
+    const output = completion.choices[0].message.content;
+
+    // 4. Guardar memoria
+    await pool.query(`
+      INSERT INTO jarvis_memory (content)
+      VALUES ($1)
+    `, [`JARVIS MORNING:\n${output}`]);
+
+    res.json({ output });
+
+  } catch (err) {
+    console.error('JARVIS MORNING ERROR:', err);
+    res.status(500).json({ error: 'Jarvis morning failed' });
+  }
+});
+
+
+
 
 app.get('/v1/blueprint/connect/meta', async (req, res) => {
   try {
