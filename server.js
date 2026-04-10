@@ -4497,6 +4497,38 @@ Respond:
   }
 });
 
+// ===============================
+// 🧠 JARVIS LEARNING (KNOWLEDGE INGEST)
+// ===============================
+
+app.post('/v1/jarvis/learning', async (req, res) => {
+  try {
+    const { content, tag } = req.body || {};
+
+    if (!content) {
+      return res.status(400).json({ error: 'content is required' });
+    }
+
+    // 1. Guardar como conocimiento estructurado
+    await pool.query(`
+      INSERT INTO jarvis_memory (content, metadata)
+      VALUES ($1, $2)
+    `, [
+      `LEARNING:\n${content}`,
+      JSON.stringify({ tag: tag || "general", type: "learning" })
+    ]);
+
+    res.json({
+      ok: true,
+      message: "Learning stored"
+    });
+
+  } catch (err) {
+    console.error('JARVIS LEARNING ERROR:', err);
+    res.status(500).json({ error: 'Jarvis learning failed' });
+  }
+});
+
 
 
 app.get('/v1/blueprint/connect/meta', async (req, res) => {
