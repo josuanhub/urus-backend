@@ -3,517 +3,1152 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>JARVIS — URUS</title>
+<title>JARVIS — URUS Command</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg:        #05050e;
+  --surface:   #09091a;
+  --surface2:  #0d0d20;
+  --border:    #1a1a35;
+  --border2:   #252545;
+  --gold:      #c8a84b;
+  --gold2:     #e8c96a;
+  --golddim:   #c8a84b22;
+  --green:     #00e676;
+  --text:      #dde0f5;
+  --muted:     #6668aa;
+  --dim:       #2a2a55;
+  --red:       #ff4466;
+  --display:   'Syne', sans-serif;
+  --mono:      'JetBrains Mono', monospace;
+}
 
-  body {
-    background: #08080f;
-    color: #e8e6f0;
-    font-family: system-ui, -apple-system, sans-serif;
-    height: 100vh;
-    display: flex;
-    overflow: hidden;
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ── SIDEBAR ── */
-  .sidebar {
-    width: 220px;
-    background: #0f0f1a;
-    border-right: 1px solid #1e1e2e;
-    display: flex;
-    flex-direction: column;
-    padding: 24px 16px;
-    gap: 8px;
-    flex-shrink: 0;
-  }
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--display);
+  overflow: hidden;
+}
 
-  .logo {
-    font-size: 20px;
-    font-weight: 700;
-    color: #c8a84b;
-    letter-spacing: 0.1em;
-    margin-bottom: 8px;
-    padding: 0 8px;
-  }
+/* ─── SCAN LINE OVERLAY ─────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(200,168,75,.012) 2px,
+    rgba(200,168,75,.012) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
 
-  .status {
-    font-size: 11px;
-    color: #3ecf6a;
-    padding: 0 8px;
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+/* ─── LAYOUT ─────────────────────────────────────── */
+.app {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  height: 100vh;
+}
 
-  .status::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background: #3ecf6a;
-    border-radius: 50%;
-    display: inline-block;
-  }
+/* ─── SIDEBAR ────────────────────────────────────── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 0;
+  position: relative;
+  overflow: hidden;
+}
 
-  .nav-btn {
-    background: transparent;
-    border: none;
-    color: #8888aa;
-    font-size: 13px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.15s;
-    width: 100%;
-  }
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: -60px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(200,168,75,.12) 0%, transparent 70%);
+  pointer-events: none;
+}
 
-  .nav-btn:hover { background: #1a1a2e; color: #e8e6f0; }
-  .nav-btn.active { background: #1a1a2e; color: #c8a84b; }
+.brand {
+  padding: 0 20px 28px;
+  border-bottom: 1px solid var(--border);
+}
 
-  /* ── MAIN ── */
-  .main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+.brand-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: .12em;
+  line-height: 1;
+}
 
-  .topbar {
-    padding: 16px 24px;
-    border-bottom: 1px solid #1e1e2e;
-    font-size: 13px;
-    color: #5555770;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
+.brand-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: .14em;
+  margin-top: 5px;
+}
 
-  .topbar-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #c8a84b;
-  }
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--green);
+  margin-top: 10px;
+  letter-spacing: .08em;
+}
 
-  /* ── PANELS ── */
-  .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
-  .panel.active { display: flex; }
+.live-dot {
+  width: 5px; height: 5px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
 
-  /* ── CHAT ── */
-  .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,230,118,.4); }
+  50%       { opacity: .5; box-shadow: 0 0 0 4px rgba(0,230,118,0); }
+}
 
-  .msg {
-    max-width: 80%;
-    padding: 12px 16px;
-    border-radius: 12px;
-    font-size: 14px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-  }
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  gap: 2px;
+}
 
-  .msg.user {
-    background: #1a1a2e;
-    border: 1px solid #2a2a45;
-    align-self: flex-end;
-    color: #c8c8e8;
-  }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  border: 1px solid transparent;
+  transition: all .2s;
+  letter-spacing: .04em;
+  user-select: none;
+}
 
-  .msg.jarvis {
-    background: #110f1a;
-    border: 1px solid #c8a84b33;
-    align-self: flex-start;
-    color: #e8e6f0;
-    border-left: 2px solid #c8a84b;
-  }
+.nav-item:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
 
-  .msg.system {
-    background: transparent;
-    color: #555577;
-    font-size: 12px;
-    align-self: center;
-    font-style: italic;
-  }
+.nav-item.active {
+  color: var(--gold);
+  background: var(--golddim);
+  border-color: rgba(200,168,75,.2);
+}
 
-  .chat-input-area {
-    padding: 16px 24px;
-    border-top: 1px solid #1e1e2e;
-    display: flex;
-    gap: 10px;
-  }
+.nav-icon { font-size: 14px; width: 18px; text-align: center; }
 
-  .chat-input {
-    flex: 1;
-    background: #0f0f1a;
-    border: 1px solid #2a2a45;
-    border-radius: 10px;
-    padding: 12px 16px;
-    color: #e8e6f0;
-    font-size: 14px;
-    outline: none;
-    resize: none;
-    font-family: inherit;
-    line-height: 1.5;
-  }
+.sidebar-footer {
+  padding: 16px 20px 0;
+  border-top: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--dim);
+  line-height: 1.6;
+}
 
-  .chat-input:focus { border-color: #c8a84b55; }
+/* ─── MAIN ───────────────────────────────────────── */
+.main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
 
-  .send-btn {
-    background: #c8a84b;
-    border: none;
-    color: #08080f;
-    font-weight: 700;
-    font-size: 13px;
-    padding: 0 20px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: opacity 0.15s;
-    flex-shrink: 0;
-  }
+/* ─── TOPBAR ─────────────────────────────────────── */
+.topbar {
+  height: 54px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  flex-shrink: 0;
+}
 
-  .send-btn:hover { opacity: 0.85; }
-  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.topbar-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
 
-  /* ── MORNING / STRATEGOS PANELS ── */
-  .content-panel {
-    flex: 1;
-    overflow-y: auto;
-    padding: 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
+.topbar-sep { flex: 1; }
 
-  .panel-title {
-    font-size: 20px;
-    font-weight: 700;
-    color: #c8a84b;
-    margin-bottom: 8px;
-  }
+.topbar-chip {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: .06em;
+}
 
-  .panel-sub {
-    font-size: 13px;
-    color: #555577;
-    margin-bottom: 24px;
-  }
+/* ─── PANELS ─────────────────────────────────────── */
+.panel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel.active { display: flex; }
 
-  .big-btn {
-    background: #c8a84b;
-    border: none;
-    color: #08080f;
-    font-weight: 700;
-    font-size: 14px;
-    padding: 14px 28px;
-    border-radius: 10px;
-    cursor: pointer;
-    width: fit-content;
-    transition: opacity 0.15s;
-  }
+/* ─── CHAT PANEL ─────────────────────────────────── */
+.chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  scroll-behavior: smooth;
+}
 
-  .big-btn:hover { opacity: 0.85; }
-  .big-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.chat-body::-webkit-scrollbar { width: 3px; }
+.chat-body::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
 
-  .result-box {
-    background: #0f0f1a;
-    border: 1px solid #c8a84b33;
-    border-left: 2px solid #c8a84b;
-    border-radius: 10px;
-    padding: 20px;
-    font-size: 14px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    color: #e8e6f0;
-    display: none;
-  }
+.msg-wrap {
+  display: flex;
+  flex-direction: column;
+  animation: msgIn .25s ease;
+}
 
-  .strat-input {
-    background: #0f0f1a;
-    border: 1px solid #2a2a45;
-    border-radius: 10px;
-    padding: 14px 16px;
-    color: #e8e6f0;
-    font-size: 14px;
-    outline: none;
-    resize: vertical;
-    font-family: inherit;
-    line-height: 1.5;
-    width: 100%;
-    min-height: 100px;
-  }
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
-  .strat-input:focus { border-color: #c8a84b55; }
+.msg-wrap.user { align-items: flex-end; }
+.msg-wrap.jarvis { align-items: flex-start; }
+.msg-wrap.system { align-items: center; }
 
-  /* ── MEMORY PANEL ── */
-  .memory-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+.msg-meta {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  margin-bottom: 5px;
+  letter-spacing: .06em;
+}
 
-  .memory-item {
-    background: #0f0f1a;
-    border: 1px solid #1e1e2e;
-    border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 12px;
-    line-height: 1.5;
-  }
+.msg-bubble {
+  max-width: 80%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.75;
+}
 
-  .memory-item .mem-type {
-    font-size: 10px;
-    color: #c8a84b;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 4px;
-  }
+.msg-wrap.user .msg-bubble {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: #c8cae8;
+  border-radius: 12px 12px 2px 12px;
+}
 
-  .memory-item .mem-content {
-    color: #8888aa;
-    white-space: pre-wrap;
-    max-height: 80px;
-    overflow: hidden;
-  }
+.msg-wrap.jarvis .msg-bubble {
+  background: #0a091a;
+  border: 1px solid rgba(200,168,75,.25);
+  border-left: 2px solid var(--gold);
+  color: var(--text);
+  border-radius: 2px 12px 12px 12px;
+}
 
-  .memory-item .mem-date {
-    font-size: 10px;
-    color: #333355;
-    margin-top: 6px;
-  }
+.msg-wrap.system .msg-bubble {
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  border: 1px dashed var(--border2);
+  padding: 6px 14px;
+  border-radius: 6px;
+}
 
-  /* ── LOADER ── */
-  .typing {
-    display: none;
-    align-self: flex-start;
-    padding: 12px 16px;
-    background: #110f1a;
-    border: 1px solid #c8a84b33;
-    border-left: 2px solid #c8a84b;
-    border-radius: 12px;
-    color: #c8a84b;
-    font-size: 13px;
-  }
+/* markdown in jarvis messages */
+.msg-bubble h3 {
+  font-size: 12px;
+  color: var(--gold);
+  letter-spacing: .1em;
+  margin: 14px 0 6px;
+  font-weight: 700;
+}
+.msg-bubble h3:first-child { margin-top: 0; }
+.msg-bubble strong { color: var(--gold2); font-weight: 600; }
+.msg-bubble em { color: #aab0dd; font-style: italic; }
+.msg-bubble p { margin-bottom: 8px; }
+.msg-bubble p:last-child { margin-bottom: 0; }
 
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #2a2a45; border-radius: 2px; }
+/* ─── TYPING ─────────────────────────────────────── */
+.typing-indicator {
+  display: none;
+  align-items: flex-start;
+  gap: 12px;
+  animation: msgIn .2s ease;
+}
+.typing-indicator.visible { display: flex; }
+
+.typing-bubble {
+  background: #0a091a;
+  border: 1px solid rgba(200,168,75,.2);
+  border-left: 2px solid var(--gold);
+  border-radius: 2px 12px 12px 12px;
+  padding: 14px 18px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.typing-dot {
+  width: 5px; height: 5px;
+  background: var(--gold);
+  border-radius: 50%;
+  animation: tdot 1.2s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: .15s; }
+.typing-dot:nth-child(3) { animation-delay: .3s; }
+
+@keyframes tdot {
+  0%, 80%, 100% { transform: scale(.7); opacity: .4; }
+  40%           { transform: scale(1); opacity: 1; }
+}
+
+/* ─── CHAT INPUT ─────────────────────────────────── */
+.chat-footer {
+  border-top: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  background: var(--surface);
+}
+
+.chat-textarea {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--display);
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  max-height: 120px;
+  transition: border-color .2s;
+}
+.chat-textarea::placeholder { color: var(--muted); }
+.chat-textarea:focus { border-color: rgba(200,168,75,.4); }
+
+.footer-btn {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all .2s;
+}
+
+.btn-send {
+  background: var(--gold);
+  color: var(--bg);
+}
+.btn-send:hover { background: var(--gold2); transform: scale(1.04); }
+.btn-send:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+.btn-voice {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+}
+.btn-voice:hover { color: var(--text); border-color: var(--border2); }
+.btn-voice.recording {
+  background: rgba(255,68,102,.15);
+  border-color: var(--red);
+  color: var(--red);
+  animation: recPulse 1s infinite;
+}
+
+@keyframes recPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,102,.3); }
+  50%       { box-shadow: 0 0 0 6px rgba(255,68,102,0); }
+}
+
+/* ─── CONTENT PANELS ─────────────────────────────── */
+.content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.content-scroll::-webkit-scrollbar { width: 3px; }
+.content-scroll::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+.section-head {
+  margin-bottom: 4px;
+}
+
+.section-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: .04em;
+}
+
+.section-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 6px;
+  letter-spacing: .08em;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  border-radius: 10px;
+  padding: 12px 22px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: all .2s;
+}
+.action-btn:hover { background: var(--gold2); transform: translateY(-1px); }
+.action-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+.result-card {
+  background: #0a091a;
+  border: 1px solid rgba(200,168,75,.2);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+  padding: 22px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
+  display: none;
+  animation: msgIn .3s ease;
+}
+
+.result-card.visible { display: block; }
+
+.result-card h3 {
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: .14em;
+  margin: 16px 0 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.result-card h3:first-child { margin-top: 0; }
+.result-card strong { color: var(--gold2); }
+
+.strat-area {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  width: 100%;
+  min-height: 110px;
+  transition: border-color .2s;
+}
+.strat-area::placeholder { color: var(--muted); }
+.strat-area:focus { border-color: rgba(200,168,75,.4); }
+
+/* ─── MEMORY PANEL ───────────────────────────────── */
+.memory-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mem-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  animation: msgIn .2s ease;
+}
+
+.mem-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.mem-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.mem-badge.note    { background: rgba(200,168,75,.15); color: var(--gold); }
+.mem-badge.user    { background: rgba(100,100,200,.15); color: #8888ff; }
+.mem-badge.jarvis  { background: rgba(0,230,118,.1); color: var(--green); }
+.mem-badge.strategos { background: rgba(255,68,102,.1); color: var(--red); }
+
+.mem-date {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--dim);
+}
+
+.mem-text {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-height: 72px;
+  overflow: hidden;
+  position: relative;
+}
+
+.mem-text::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 20px;
+  background: linear-gradient(transparent, var(--surface2));
+}
+
+/* ─── VOICE STATUS BAR ───────────────────────────── */
+.voice-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(255,68,102,.08);
+  border-top: 1px solid rgba(255,68,102,.2);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--red);
+  letter-spacing: .08em;
+}
+.voice-bar.visible { display: flex; }
+
+.voice-waves {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+}
+
+.voice-wave {
+  width: 2px;
+  background: var(--red);
+  border-radius: 1px;
+  animation: wave 1s infinite ease-in-out;
+}
+.voice-wave:nth-child(1) { animation-delay: 0s; }
+.voice-wave:nth-child(2) { animation-delay: .1s; }
+.voice-wave:nth-child(3) { animation-delay: .2s; }
+.voice-wave:nth-child(4) { animation-delay: .1s; }
+.voice-wave:nth-child(5) { animation-delay: 0s; }
+
+@keyframes wave {
+  0%, 100% { height: 3px; }
+  50%       { height: 14px; }
+}
+
+/* ─── CLEAR BTN ─────────────────────────────────── */
+.clear-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: .06em;
+  transition: all .2s;
+}
+.clear-btn:hover { color: var(--red); border-color: rgba(255,68,102,.4); }
+
+/* ─── SAVE MEMORY FORM ───────────────────────────── */
+.save-row {
+  display: flex;
+  gap: 8px;
+}
+
+.save-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 12px;
+  outline: none;
+}
+.save-input::placeholder { color: var(--muted); }
+.save-input:focus { border-color: rgba(200,168,75,.4); }
+
+.save-btn {
+  background: var(--golddim);
+  border: 1px solid rgba(200,168,75,.3);
+  color: var(--gold);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: .06em;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.save-btn:hover { background: rgba(200,168,75,.2); }
+
+/* ─── LOADER OVERLAY ─────────────────────────────── */
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(200,168,75,.2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 </style>
 </head>
 <body>
 
-<aside class="sidebar">
-  <div class="logo">JARVIS</div>
-  <div class="status">ACTIVO</div>
+<div class="app">
 
-  <button class="nav-btn active" onclick="showPanel('chat')">💬 Chat</button>
-  <button class="nav-btn" onclick="showPanel('morning')">🌅 Morning Scan</button>
-  <button class="nav-btn" onclick="showPanel('strategos')">⚔️ Strategos</button>
-  <button class="nav-btn" onclick="showPanel('memory')">🧠 Memoria</button>
-</aside>
-
-<main class="main">
-
-  <div class="topbar">
-    <span class="topbar-title" id="panel-label">Chat</span>
-    <span style="font-size:12px;color:#333355">urus-backend · Railway</span>
-  </div>
-
-  <!-- CHAT -->
-  <div class="panel active" id="panel-chat">
-    <div class="chat-messages" id="chat-messages">
-      <div class="msg system">Jarvis está listo. Habla.</div>
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-name">JARVIS</div>
+      <div class="brand-tag">URUS COMMAND · A33</div>
+      <div class="live-indicator">
+        <span class="live-dot"></span>
+        SISTEMA ACTIVO
+      </div>
     </div>
-    <div class="typing" id="typing">Jarvis está pensando...</div>
-    <div class="chat-input-area">
-      <textarea class="chat-input" id="chat-input" rows="2"
-        placeholder="Escríbele a Jarvis..."
-        onkeydown="handleKey(event)"></textarea>
-      <button class="send-btn" id="send-btn" onclick="sendMessage()">Enviar</button>
-    </div>
-  </div>
 
-  <!-- MORNING -->
-  <div class="panel" id="panel-morning">
-    <div class="content-panel">
-      <div class="panel-title">Morning Scan</div>
-      <div class="panel-sub">Jarvis escanea tu estado y te da dirección para el día.</div>
-      <button class="big-btn" id="morning-btn" onclick="runMorning()">Activar escaneo</button>
-      <div class="result-box" id="morning-result"></div>
-    </div>
-  </div>
+    <nav class="nav">
+      <div class="nav-item active" data-panel="chat" onclick="switchPanel('chat', this)">
+        <span class="nav-icon">◈</span> Chat
+      </div>
+      <div class="nav-item" data-panel="morning" onclick="switchPanel('morning', this)">
+        <span class="nav-icon">◐</span> Morning Scan
+      </div>
+      <div class="nav-item" data-panel="strategos" onclick="switchPanel('strategos', this)">
+        <span class="nav-icon">⊕</span> Strategos
+      </div>
+      <div class="nav-item" data-panel="day" onclick="switchPanel('day', this)">
+        <span class="nav-icon">◫</span> Day Control
+      </div>
+      <div class="nav-item" data-panel="memory" onclick="switchPanel('memory', this)">
+        <span class="nav-icon">◉</span> Memoria
+      </div>
+    </nav>
 
-  <!-- STRATEGOS -->
-  <div class="panel" id="panel-strategos">
-    <div class="content-panel">
-      <div class="panel-title">Strategos</div>
-      <div class="panel-sub">Descríbele una situación. Jarvis te da las jugadas.</div>
-      <textarea class="strat-input" id="strat-input"
-        placeholder="Ej: Tengo un socio con recursos, quiero posicionarme antes de que me absorba..."></textarea>
-      <button class="big-btn" id="strat-btn" onclick="runStrategos()">Analizar</button>
-      <div class="result-box" id="strat-result"></div>
+    <div class="sidebar-footer">
+      URUS OS 2030 · v∞<br>
+      Agentverse · URUSVerify<br>
+      Privado · Single User
     </div>
-  </div>
+  </aside>
 
-  <!-- MEMORY -->
-  <div class="panel" id="panel-memory">
-    <div class="content-panel">
-      <div class="panel-title">Memoria</div>
-      <div class="panel-sub">Lo que Jarvis recuerda de ti.</div>
-      <button class="big-btn" onclick="loadMemory()">Cargar memoria</button>
-      <div class="memory-list" id="memory-list"></div>
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <div class="topbar">
+      <span class="topbar-label" id="topbar-label">CHAT</span>
+      <span class="topbar-sep"></span>
+      <span class="topbar-chip" id="model-chip">gpt-4o-mini · Railway</span>
+      <span class="topbar-chip" id="status-chip">ONLINE</span>
     </div>
-  </div>
 
-</main>
+    <!-- ── PANEL: CHAT ── -->
+    <div class="panel active" id="panel-chat">
+      <div class="chat-body" id="chat-body">
+        <div class="msg-wrap system">
+          <div class="msg-bubble">JARVIS URUS · MODO PRIVADO · SISTEMA LISTO</div>
+        </div>
+      </div>
+
+      <div class="typing-indicator" id="typing">
+        <div class="typing-bubble">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+
+      <div class="voice-bar" id="voice-bar">
+        <div class="voice-waves">
+          <div class="voice-wave"></div>
+          <div class="voice-wave"></div>
+          <div class="voice-wave"></div>
+          <div class="voice-wave"></div>
+          <div class="voice-wave"></div>
+        </div>
+        ESCUCHANDO... HABLA AHORA
+        <span style="flex:1"></span>
+        <span style="opacity:.5">Suelta para enviar · ESC para cancelar</span>
+      </div>
+
+      <div class="chat-footer">
+        <textarea class="chat-textarea" id="chat-input" rows="1"
+          placeholder="Escríbele a Jarvis... (Enter para enviar, Shift+Enter salto)"
+          oninput="autoResize(this)"
+          onkeydown="chatKey(event)"></textarea>
+        <button class="footer-btn btn-voice" id="voice-btn"
+          title="Mantén presionado para hablar"
+          onmousedown="startVoice()"
+          onmouseup="stopVoice()"
+          ontouchstart="startVoice()"
+          ontouchend="stopVoice()">🎙</button>
+        <button class="footer-btn btn-send" id="send-btn" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+
+    <!-- ── PANEL: MORNING ── -->
+    <div class="panel" id="panel-morning">
+      <div class="content-scroll">
+        <div class="section-head">
+          <div class="section-title">Morning Scan</div>
+          <div class="section-sub">ESCANEO DE INICIO DE DÍA · DIRECCIÓN Y CLARIDAD</div>
+        </div>
+        <div>
+          <textarea class="strat-area" id="morning-input"
+            placeholder="Opcional: dile cómo amaneciste, qué tienes en mente, qué sientes hoy..."></textarea>
+        </div>
+        <div>
+          <button class="action-btn" id="morning-btn" onclick="runMorning()">
+            <span>◐</span> Activar escaneo
+          </button>
+        </div>
+        <div class="result-card" id="morning-result"></div>
+      </div>
+    </div>
+
+    <!-- ── PANEL: STRATEGOS ── -->
+    <div class="panel" id="panel-strategos">
+      <div class="content-scroll">
+        <div class="section-head">
+          <div class="section-title">Strategos</div>
+          <div class="section-sub">ANÁLISIS DE PODER · JUGADAS · WAR ROOM PRIVADO</div>
+        </div>
+        <div>
+          <textarea class="strat-area" id="strat-input" rows="5"
+            placeholder="Descríbele la situación. Jarvis lee el juego real debajo de las palabras y te da las jugadas exactas..."></textarea>
+        </div>
+        <div>
+          <button class="action-btn" id="strat-btn" onclick="runStrategos()">
+            <span>⊕</span> Analizar situación
+          </button>
+        </div>
+        <div class="result-card" id="strat-result"></div>
+      </div>
+    </div>
+
+    <!-- ── PANEL: DAY CONTROL ── -->
+    <div class="panel" id="panel-day">
+      <div class="content-scroll">
+        <div class="section-head">
+          <div class="section-title">Day Control</div>
+          <div class="section-sub">ESTRUCTURA DEL DÍA · CORRECCIONES · POWER FRAME</div>
+        </div>
+        <button class="action-btn" id="day-btn" onclick="runDay()">
+          <span>◫</span> Generar control de día
+        </button>
+        <div class="result-card" id="day-result"></div>
+      </div>
+    </div>
+
+    <!-- ── PANEL: MEMORIA ── -->
+    <div class="panel" id="panel-memory">
+      <div class="content-scroll">
+        <div class="section-head">
+          <div class="section-title">Memoria</div>
+          <div class="section-sub">TODO LO QUE JARVIS RECUERDA DE TI</div>
+        </div>
+
+        <div class="save-row">
+          <input class="save-input" id="save-input"
+            placeholder="Guardar nota en memoria de Jarvis..."
+            onkeydown="if(event.key==='Enter') saveNote()"/>
+          <button class="save-btn" onclick="saveNote()">+ GUARDAR</button>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="action-btn" onclick="loadMemory()" style="padding:10px 18px; font-size:12px;">
+            ◉ Cargar memoria
+          </button>
+          <button class="clear-btn" onclick="clearChat()">Limpiar chat</button>
+        </div>
+
+        <div class="memory-grid" id="memory-grid"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
 
 <script>
-const BASE = "";  // mismo dominio
+// ─── CONFIG ──────────────────────────────────────────
+const API = '';
+let isLoading = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let recording = false;
 
-// ── Panel navigation
-function showPanel(name) {
+// ─── PANEL SWITCH ────────────────────────────────────
+function switchPanel(name, el) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
-  event.target.classList.add('active');
-  const labels = { chat: 'Chat', morning: 'Morning Scan', strategos: 'Strategos', memory: 'Memoria' };
-  document.getElementById('panel-label').textContent = labels[name];
+  el.classList.add('active');
+  const labels = {
+    chat: 'CHAT', morning: 'MORNING SCAN',
+    strategos: 'STRATEGOS', day: 'DAY CONTROL', memory: 'MEMORIA'
+  };
+  document.getElementById('topbar-label').textContent = labels[name] || name.toUpperCase();
 }
 
-// ── Chat
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+// ─── CHAT ────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
 
-async function sendMessage() {
+function chatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+
+async function sendChat(text) {
   const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if (!text) return;
+  const msg = text || input.value.trim();
+  if (!msg || isLoading) return;
 
-  addMsg(text, 'user');
+  addMsg(msg, 'user');
   input.value = '';
+  input.style.height = 'auto';
   setLoading(true);
 
   try {
-    const res = await fetch('/v1/jarvis/strategos', {
+    const res = await fetch(API + '/v1/jarvis/strategos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: text })
+      body: JSON.stringify({ input: msg })
     });
     const data = await res.json();
     const reply = data.output || data.reply || data.strategy || 'Sin respuesta.';
     addMsg(reply, 'jarvis');
-  } catch (e) {
-    addMsg('Error al conectar con Jarvis.', 'system');
+  } catch {
+    addMsg('Error de conexión con Jarvis.', 'system');
   }
   setLoading(false);
 }
 
 function addMsg(text, type) {
-  const box = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'msg ' + type;
-  div.textContent = text;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
+  const body = document.getElementById('chat-body');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap ' + type;
+
+  if (type !== 'system') {
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    meta.textContent = type === 'user' ? 'TÚ' : 'JARVIS · ' + new Date().toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'});
+    wrap.appendChild(meta);
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  if (type === 'jarvis') {
+    bubble.innerHTML = renderMarkdown(text);
+  } else {
+    bubble.textContent = text;
+  }
+  wrap.appendChild(bubble);
+  body.appendChild(wrap);
+
+  // scroll to bottom
+  requestAnimationFrame(() => body.scrollTop = body.scrollHeight);
 }
 
 function setLoading(on) {
-  document.getElementById('typing').style.display = on ? 'block' : 'none';
+  isLoading = on;
+  document.getElementById('typing').classList.toggle('visible', on);
   document.getElementById('send-btn').disabled = on;
-  const box = document.getElementById('chat-messages');
-  if (on) box.scrollTop = box.scrollHeight;
+  if (on) {
+    const body = document.getElementById('chat-body');
+    requestAnimationFrame(() => body.scrollTop = body.scrollHeight);
+  }
 }
 
-// ── Morning
+function clearChat() {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = '<div class="msg-wrap system"><div class="msg-bubble">CHAT LIMPIADO · JARVIS LISTO</div></div>';
+}
+
+// ─── MARKDOWN RENDER (básico) ─────────────────────────
+function renderMarkdown(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/^#{1,3} (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^[-–—] (.+)$/gm,'&nbsp;&nbsp;· $1')
+    .replace(/\n{2,}/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+    .replace(/^(.+)$/,'<p>$1</p>');
+}
+
+// ─── VOICE ───────────────────────────────────────────
+async function startVoice() {
+  if (recording) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.start();
+    recording = true;
+    document.getElementById('voice-btn').classList.add('recording');
+    document.getElementById('voice-bar').classList.add('visible');
+  } catch {
+    addMsg('Acceso al micrófono denegado.', 'system');
+  }
+}
+
+async function stopVoice() {
+  if (!recording || !mediaRecorder) return;
+  recording = false;
+  document.getElementById('voice-btn').classList.remove('recording');
+  document.getElementById('voice-bar').classList.remove('visible');
+
+  mediaRecorder.stop();
+  mediaRecorder.onstop = async () => {
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    const reader = new FileReader();
+    reader.onload = async () => {
+      // Transcribir via OpenAI Whisper en el backend
+      try {
+        const formData = new FormData();
+        formData.append('audio', blob, 'voice.webm');
+        const res = await fetch(API + '/v1/jarvis/voice', {
+          method: 'POST',
+          body: formData
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const transcription = data.text || data.transcription;
+          if (transcription) {
+            document.getElementById('chat-input').value = transcription;
+            addMsg('[🎙 Voz transcrita: "' + transcription + '"]', 'system');
+            sendChat(transcription);
+          }
+        } else {
+          // Fallback: poner en input para envío manual
+          addMsg('[🎙 Voz grabada — revisa /v1/jarvis/voice en backend]', 'system');
+        }
+      } catch {
+        addMsg('[🎙 Voice endpoint no disponible aún]', 'system');
+      }
+    };
+    reader.readAsArrayBuffer(blob);
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+  };
+}
+
+// ESC cancela grabación
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && recording) {
+    recording = false;
+    mediaRecorder?.stop();
+    mediaRecorder?.stream?.getTracks().forEach(t => t.stop());
+    document.getElementById('voice-btn').classList.remove('recording');
+    document.getElementById('voice-bar').classList.remove('visible');
+    addMsg('[Grabación cancelada]', 'system');
+  }
+});
+
+// ─── MORNING ─────────────────────────────────────────
 async function runMorning() {
   const btn = document.getElementById('morning-btn');
-  const box = document.getElementById('morning-result');
+  const result = document.getElementById('morning-result');
+  const input = document.getElementById('morning-input').value.trim();
   btn.disabled = true;
-  btn.textContent = 'Escaneando...';
-  box.style.display = 'none';
+  btn.innerHTML = '<span class="spinner"></span> Escaneando...';
+  result.classList.remove('visible');
 
   try {
-    const res = await fetch('/v1/jarvis/morning', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
-    const data = await res.json();
-    box.textContent = data.output || data.scan || 'Sin respuesta.';
-    box.style.display = 'block';
-  } catch (e) {
-    box.textContent = 'Error al conectar.';
-    box.style.display = 'block';
-  }
-  btn.disabled = false;
-  btn.textContent = 'Activar escaneo';
-}
-
-// ── Strategos
-async function runStrategos() {
-  const input = document.getElementById('strat-input').value.trim();
-  if (!input) return;
-  const btn = document.getElementById('strat-btn');
-  const box = document.getElementById('strat-result');
-  btn.disabled = true;
-  btn.textContent = 'Analizando...';
-  box.style.display = 'none';
-
-  try {
-    const res = await fetch('/v1/jarvis/strategos', {
+    const res = await fetch(API + '/v1/jarvis/morning', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input })
     });
     const data = await res.json();
-    box.textContent = data.output || data.reply || data.strategy || 'Sin respuesta.';
-    box.style.display = 'block';
-  } catch (e) {
-    box.textContent = 'Error al conectar.';
-    box.style.display = 'block';
+    result.innerHTML = renderMarkdown(data.output || data.scan || 'Sin respuesta.');
+    result.classList.add('visible');
+  } catch {
+    result.textContent = 'Error de conexión.';
+    result.classList.add('visible');
   }
   btn.disabled = false;
-  btn.textContent = 'Analizar';
+  btn.innerHTML = '<span>◐</span> Activar escaneo';
 }
 
-// ── Memory
-async function loadMemory() {
-  const list = document.getElementById('memory-list');
-  list.innerHTML = '<div class="msg system">Cargando...</div>';
+// ─── STRATEGOS ───────────────────────────────────────
+async function runStrategos() {
+  const input = document.getElementById('strat-input').value.trim();
+  if (!input) return;
+  const btn = document.getElementById('strat-btn');
+  const result = document.getElementById('strat-result');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analizando...';
+  result.classList.remove('visible');
 
   try {
-    const res = await fetch('/v1/jarvis/recall', {
+    const res = await fetch(API + '/v1/jarvis/strategos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ limit: 20 })
+      body: JSON.stringify({ input })
+    });
+    const data = await res.json();
+    result.innerHTML = renderMarkdown(data.output || data.reply || 'Sin respuesta.');
+    result.classList.add('visible');
+  } catch {
+    result.textContent = 'Error de conexión.';
+    result.classList.add('visible');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<span>⊕</span> Analizar situación';
+}
+
+// ─── DAY CONTROL ─────────────────────────────────────
+async function runDay() {
+  const btn = document.getElementById('day-btn');
+  const result = document.getElementById('day-result');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generando...';
+  result.classList.remove('visible');
+
+  try {
+    const res = await fetch(API + '/v1/jarvis/day', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    result.innerHTML = renderMarkdown(data.output || data.reply || 'Sin respuesta.');
+    result.classList.add('visible');
+  } catch {
+    result.textContent = 'Error de conexión.';
+    result.classList.add('visible');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<span>◫</span> Generar control de día';
+}
+
+// ─── MEMORY ──────────────────────────────────────────
+async function loadMemory() {
+  const grid = document.getElementById('memory-grid');
+  grid.innerHTML = '<div class="msg-wrap system"><div class="msg-bubble">Cargando memoria...</div></div>';
+
+  try {
+    const res = await fetch(API + '/v1/jarvis/recall', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 30 })
     });
     const data = await res.json();
     const items = data.memory || data.entries || [];
 
     if (!items.length) {
-      list.innerHTML = '<div class="msg system">Sin memoria aún.</div>';
+      grid.innerHTML = '<div class="msg-wrap system"><div class="msg-bubble">Sin memoria aún.</div></div>';
       return;
     }
 
-    list.innerHTML = items.map(m => `
-      <div class="memory-item">
-        <div class="mem-type">${m.type || 'note'}</div>
-        <div class="mem-content">${m.content || ''}</div>
-        <div class="mem-date">${m.created_at ? new Date(m.created_at).toLocaleString('es') : ''}</div>
-      </div>
-    `).join('');
-  } catch (e) {
-    list.innerHTML = '<div class="msg system">Error al cargar.</div>';
+    grid.innerHTML = items.map(m => {
+      const badge = m.type || 'note';
+      const date = m.created_at ? new Date(m.created_at).toLocaleString('es') : '';
+      const preview = (m.content || '').slice(0, 200);
+      return `
+        <div class="mem-card">
+          <div class="mem-header">
+            <span class="mem-badge ${badge}">${badge}</span>
+            <span class="mem-date">${date}</span>
+          </div>
+          <div class="mem-text">${preview}</div>
+        </div>
+      `;
+    }).join('');
+  } catch {
+    grid.innerHTML = '<div class="msg-wrap system"><div class="msg-bubble">Error al cargar.</div></div>';
+  }
+}
+
+async function saveNote() {
+  const input = document.getElementById('save-input');
+  const content = input.value.trim();
+  if (!content) return;
+
+  try {
+    await fetch(API + '/v1/jarvis/memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, type: 'note' })
+    });
+    input.value = '';
+    addMsg('[✓ Nota guardada en memoria de Jarvis]', 'system');
+    // Si el panel de memoria está activo, recargar
+    if (document.getElementById('panel-memory').classList.contains('active')) {
+      loadMemory();
+    }
+  } catch {
+    addMsg('[Error al guardar nota]', 'system');
   }
 }
 </script>
