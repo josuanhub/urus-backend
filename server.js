@@ -2332,10 +2332,27 @@ await pool.query(`
     ON wa_leads(wa_connection_id, phone)
     WHERE wa_connection_id IS NOT NULL;
   `);
+
+
+  // ── JARVIS MEMORY ──────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS jarvis_memory (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      type        TEXT NOT NULL DEFAULT 'note',
+      content     TEXT NOT NULL,
+      metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_jarvis_memory_created_at
+    ON jarvis_memory(created_at DESC);
+  `);
   
   
   console.log("DB schema ensured");
 }
+
 
 function buildSystemPromptJohnson() {
   return `
