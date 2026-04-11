@@ -2,827 +2,1107 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>JARVIS · URUS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,700;12..96,800&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-:root {
-  --bg0:#080e12;
-  --bg1:#0c1318;
-  --bg2:#101a20;
-  --bg3:#141f26;
-  --bg4:#1a2830;
-  --line:#1e2f38;
-  --line2:#253845;
-  --em:#00d97e;
-  --em2:#00ff94;
-  --em-dim:rgba(0,217,126,.08);
-  --em-glow:rgba(0,217,126,.15);
-  --acc:#e8c547;
-  --acc2:#f5d76e;
-  --acc-dim:rgba(232,197,71,.08);
-  --red:#ff4757;
-  --red-dim:rgba(255,71,87,.1);
-  --sky:#38bdf8;
-  --frost:#cdd8e0;
-  --muted:#4a6070;
-  --sub:#2a3d4a;
-  --f-head:'Bricolage Grotesque',system-ui,sans-serif;
-  --f-body:'Bricolage Grotesque',system-ui,sans-serif;
-  --f-mono:'Fira Code',monospace;
+:root{
+  --ink:#050810;
+  --ink1:#080c18;
+  --ink2:#0c1120;
+  --ink3:#111828;
+  --ink4:#182030;
+  --wire:#1c2840;
+  --wire2:#243450;
+  --copper:#b8965a;
+  --copper2:#d4ae72;
+  --copper3:#f0cc90;
+  --cu-dim:rgba(184,150,90,.1);
+  --cu-glow:rgba(184,150,90,.06);
+  --cu-ring:rgba(184,150,90,.22);
+  --jade:#00c47a;
+  --jade-dim:rgba(0,196,122,.08);
+  --crimson:#e83a5a;
+  --crim-dim:rgba(232,58,90,.09);
+  --ice:#a8c4d8;
+  --ice2:#ccdde8;
+  --fog:#3d5570;
+  --fog2:#2a3d55;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --mono:'Space Mono',monospace;
+  --sans:'Plus Jakarta Sans',system-ui,sans-serif;
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;height:100dvh;background:var(--bg0);color:var(--frost);font-family:var(--f-body);font-size:14px;line-height:1.55;overflow:hidden;-webkit-text-size-adjust:100%;}
+html{height:100%;background:var(--ink);}
+body{
+  height:100%;height:100dvh;
+  background:var(--ink);
+  color:var(--ice);
+  font-family:var(--sans);
+  font-size:14px;
+  line-height:1.6;
+  overflow:hidden;
+  -webkit-text-size-adjust:100%;
+}
 
-/* ── ambient bg ── */
 body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:
-    radial-gradient(ellipse 60% 40% at 0% 0%,rgba(0,217,126,.06) 0%,transparent 55%),
-    radial-gradient(ellipse 40% 60% at 100% 100%,rgba(232,197,71,.04) 0%,transparent 55%);
+    radial-gradient(ellipse 70% 50% at 15% 0%,rgba(184,150,90,.055) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 70% at 85% 100%,rgba(0,196,122,.04) 0%,transparent 55%),
+    radial-gradient(ellipse 30% 30% at 50% 50%,rgba(184,150,90,.025) 0%,transparent 60%);
 }
 
-/* ══════════════════════════ LAYOUT ══════════════════════════ */
-.app{
-  display:grid;
-  grid-template-columns:64px 1fr;
-  grid-template-rows:100dvh;
+/* grid lines subtle */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(184,150,90,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(184,150,90,.018) 1px,transparent 1px);
+  background-size:60px 60px;
+}
+
+/* ══════ SHELL ══════════════════════════════════════ */
+.shell{
+  position:relative;z-index:1;
   height:100dvh;
-  position:relative;
+  display:flex;flex-direction:column;
 }
 
-/* ══════════════════════════ NAV RAIL ════════════════════════ */
-.rail{
-  background:var(--bg1);
-  border-right:1px solid var(--line);
-  display:flex;flex-direction:column;align-items:center;
-  padding:18px 0;gap:4px;z-index:20;
-}
-
-.rail-logo{
-  font-family:var(--f-head);font-weight:800;font-size:11px;
-  color:var(--em);letter-spacing:.22em;text-transform:uppercase;
-  margin-bottom:16px;padding-bottom:16px;
-  border-bottom:1px solid var(--line);
-  width:100%;text-align:center;
-}
-
-.rb{
-  width:40px;height:40px;border-radius:10px;
-  background:transparent;border:1px solid transparent;
-  cursor:pointer;color:var(--muted);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;transition:all .16s;position:relative;
-  font-family:var(--f-mono);font-size:7px;letter-spacing:.06em;
-}
-.rb .ico{font-size:16px;line-height:1;}
-.rb:hover{color:var(--frost);background:var(--bg3);}
-.rb.on{color:var(--em);background:var(--em-dim);border-color:rgba(0,217,126,.2);}
-.rb.on::before{content:'';position:absolute;left:-1px;top:22%;bottom:22%;width:2px;background:var(--em);border-radius:0 2px 2px 0;}
-
-.rail-gap{flex:1;}
-
-.r-tts{
-  width:36px;height:36px;border-radius:8px;border:1px solid var(--line2);
-  background:transparent;color:var(--muted);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;font-size:15px;
-  transition:all .16s;
-}
-.r-tts:hover{color:var(--frost);}
-.r-tts.on{color:var(--em);border-color:rgba(0,217,126,.3);background:var(--em-dim);}
-
-/* ══════════════════════════ STAGE ═══════════════════════════ */
-.stage{display:flex;flex-direction:column;overflow:hidden;min-width:0;}
-
-/* topbar */
+/* ══════ TOPBAR ══════════════════════════════════════ */
 .topbar{
-  height:50px;border-bottom:1px solid var(--line);
-  display:flex;align-items:center;padding:0 20px;gap:10px;
-  flex-shrink:0;background:rgba(8,14,18,.8);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  height:56px;flex-shrink:0;
+  border-bottom:1px solid var(--wire);
+  background:rgba(5,8,16,.85);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  display:flex;align-items:center;
+  padding:0 24px;gap:0;
+  position:relative;z-index:10;
 }
-.tb-title{font-family:var(--f-head);font-weight:700;font-size:15px;color:var(--frost);}
-.tb-gap{flex:1;}
-.chip{
-  font-family:var(--f-mono);font-size:9px;color:var(--muted);
-  background:var(--bg2);border:1px solid var(--line);
-  padding:3px 8px;border-radius:5px;letter-spacing:.06em;
-}
-.chip.live{color:var(--em);border-color:rgba(0,217,126,.25);background:var(--em-dim);}
 
-/* ── panels ── */
+.tb-brand{
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:22px;
+  font-weight:300;
+  color:var(--copper2);
+  letter-spacing:.06em;
+  margin-right:32px;
+  flex-shrink:0;
+}
+
+.tb-brand span{
+  font-style:normal;
+  font-weight:600;
+  font-size:10px;
+  font-family:var(--mono);
+  color:var(--fog);
+  letter-spacing:.2em;
+  display:block;
+  line-height:1;
+  margin-top:-2px;
+}
+
+/* nav tabs */
+.nav{display:flex;align-items:center;gap:2px;flex:1;}
+
+.nt{
+  font-family:var(--mono);
+  font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--fog);padding:7px 14px;border-radius:6px;
+  cursor:pointer;border:1px solid transparent;
+  transition:all .18s;white-space:nowrap;
+}
+.nt:hover{color:var(--ice);background:var(--ink3);}
+.nt.on{
+  color:var(--copper2);
+  background:var(--cu-dim);
+  border-color:var(--cu-ring);
+}
+
+.tb-gap{flex:1;}
+
+/* status + tts */
+.tb-right{display:flex;align-items:center;gap:8px;}
+
+.status-pill{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:8px;letter-spacing:.1em;
+  color:var(--jade);padding:4px 10px;border-radius:20px;
+  background:var(--jade-dim);border:1px solid rgba(0,196,122,.2);
+}
+.s-dot{width:5px;height:5px;background:var(--jade);border-radius:50%;animation:sdot 2s infinite;}
+@keyframes sdot{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,196,122,.5);}50%{opacity:.6;box-shadow:0 0 0 5px rgba(0,196,122,0);}}
+
+.tts-btn{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--cu-dim);border:1px solid var(--cu-ring);
+  color:var(--copper2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:all .15s;
+}
+.tts-btn:hover{background:rgba(184,150,90,.18);}
+.tts-btn.off{background:transparent;color:var(--fog);border-color:var(--wire);}
+
+/* ══════ CONTENT AREA ════════════════════════════════ */
+.content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+
+/* ══════ PANELS ══════════════════════════════════════ */
 .panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
 .panel.on{display:flex;}
 
-/* ══════════════════════════ CHAT ════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+   CHAT
+══════════════════════════════════════════════════════ */
 .feed{
-  flex:1;overflow-y:auto;padding:24px 20px;
-  display:flex;flex-direction:column;gap:20px;
+  flex:1;overflow-y:auto;
+  padding:28px 0;
+  display:flex;flex-direction:column;gap:0;
   scroll-behavior:smooth;
 }
 .feed::-webkit-scrollbar{width:3px;}
-.feed::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px;}
+.feed::-webkit-scrollbar-thumb{background:var(--wire2);border-radius:2px;}
 
-/* rows */
-.row{display:flex;flex-direction:column;animation:fadeUp .22s ease;}
+/* message rows */
+.row{
+  display:flex;flex-direction:column;
+  padding:0 24px;margin-bottom:22px;
+  animation:rIn .22s ease;
+}
+@keyframes rIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
 .row.me{align-items:flex-end;}
 .row.ai{align-items:flex-start;}
-.row.sys{align-items:center;}
+.row.sys{align-items:center;margin-bottom:16px;}
 
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-
-.row-meta{font-family:var(--f-mono);font-size:8px;color:var(--sub);margin-bottom:5px;letter-spacing:.08em;}
+.row-who{
+  font-family:var(--mono);font-size:8px;
+  letter-spacing:.1em;color:var(--fog2);
+  margin-bottom:6px;
+}
 
 .bub{
-  max-width:78%;padding:12px 16px;border-radius:16px;
-  font-size:13.5px;line-height:1.75;
-}
-.row.me .bub{
-  background:var(--bg4);border:1px solid var(--line2);
-  color:#b8c8d5;border-radius:16px 16px 4px 16px;
-}
-.row.ai .bub{
-  background:var(--bg1);
-  border:1px solid rgba(0,217,126,.18);
-  border-left:2.5px solid var(--em);
-  color:var(--frost);border-radius:4px 16px 16px 16px;
-  max-width:88%;
-}
-.row.sys .bub{
-  background:transparent;border:1px dashed var(--line2);
-  color:var(--sub);font-family:var(--f-mono);font-size:9px;
-  padding:5px 14px;border-radius:5px;max-width:100%;text-align:center;
+  max-width:72%;
+  font-size:14px;line-height:1.78;
+  border-radius:18px;padding:14px 18px;
 }
 
-/* markdown inside ai bub */
-.bub .mh{display:block;font-family:var(--f-mono);font-size:9px;color:var(--em);letter-spacing:.16em;text-transform:uppercase;margin:14px 0 6px;font-weight:500;}
+.row.me .bub{
+  background:var(--ink3);
+  border:1px solid var(--wire2);
+  color:var(--ice);
+  border-radius:18px 18px 4px 18px;
+}
+
+.row.ai .bub{
+  background:var(--ink1);
+  border:1px solid var(--cu-ring);
+  border-left:2.5px solid var(--copper);
+  color:var(--ice2);
+  border-radius:4px 18px 18px 18px;
+  max-width:82%;
+}
+
+.row.sys .bub{
+  background:transparent;
+  border:1px dashed var(--wire2);
+  color:var(--fog);
+  font-family:var(--mono);font-size:9px;
+  padding:5px 16px;border-radius:6px;
+  max-width:100%;text-align:center;letter-spacing:.06em;
+}
+
+/* markdown inside ai bubble */
+.bub .mh{display:block;font-family:var(--mono);font-size:9px;color:var(--copper2);letter-spacing:.18em;text-transform:uppercase;margin:16px 0 6px;font-weight:700;}
 .bub .mh:first-child{margin-top:0;}
-.bub strong{color:var(--acc2);font-weight:600;}
-.bub em{color:#7898a8;font-style:italic;}
-.bub .mp{display:block;margin-bottom:8px;}
+.bub strong{color:var(--copper3);font-weight:600;}
+.bub em{color:#7a9aaa;font-style:italic;}
+.bub .mp{display:block;margin-bottom:9px;}
 .bub .mp:last-child{margin-bottom:0;}
-.bub .ml{display:block;padding-left:16px;margin-bottom:4px;position:relative;}
-.bub .ml::before{content:'›';color:var(--em);position:absolute;left:4px;font-size:12px;}
-.bub .mhr{display:block;height:1px;background:var(--line);margin:10px 0;}
+.bub .ml{display:block;padding-left:18px;margin-bottom:5px;position:relative;}
+.bub .ml::before{content:'›';color:var(--copper);position:absolute;left:5px;font-size:13px;top:-1px;}
+.bub .mhr{display:block;height:1px;background:var(--wire);margin:12px 0;}
 
 /* typing */
-.typing{display:none;align-items:flex-start;padding:0 0 4px;}
-.typing.on{display:flex;}
-.t-bub{
-  background:var(--bg1);border:1px solid rgba(0,217,126,.16);
-  border-left:2.5px solid var(--em);
-  border-radius:4px 16px 16px 16px;padding:12px 16px;
+.typing-row{
+  display:none;padding:0 24px 4px;
+  align-items:flex-start;animation:rIn .2s ease;
+}
+.typing-row.on{display:flex;}
+.typing-bub{
+  background:var(--ink1);
+  border:1px solid var(--cu-ring);
+  border-left:2.5px solid var(--copper);
+  border-radius:4px 18px 18px 18px;
+  padding:14px 18px;
   display:flex;align-items:center;gap:5px;
 }
-.td{width:5px;height:5px;background:var(--em);border-radius:50%;animation:td 1.3s infinite ease-in-out;}
-.td:nth-child(2){animation-delay:.15s;}
-.td:nth-child(3){animation-delay:.3s;}
-@keyframes td{0%,80%,100%{transform:scale(.55);opacity:.3;}40%{transform:scale(1);opacity:1;}}
+.td{width:5px;height:5px;background:var(--copper);border-radius:50%;animation:tdot 1.4s infinite ease-in-out;}
+.td:nth-child(2){animation-delay:.16s;}
+.td:nth-child(3){animation-delay:.32s;}
+@keyframes tdot{0%,80%,100%{transform:scale(.55);opacity:.3;}40%{transform:scale(1);opacity:1;}}
 
 /* ── chat footer ── */
-.foot{border-top:1px solid var(--line);background:var(--bg1);flex-shrink:0;}
+.chat-foot{
+  border-top:1px solid var(--wire);
+  background:rgba(8,12,24,.95);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  flex-shrink:0;
+}
 
 .rec-bar{
   display:none;align-items:center;gap:10px;
-  padding:8px 18px;
-  background:rgba(255,71,87,.06);
-  border-bottom:1px solid rgba(255,71,87,.15);
-  font-family:var(--f-mono);font-size:8.5px;color:var(--red);letter-spacing:.1em;
+  padding:8px 22px;
+  background:rgba(232,58,90,.06);
+  border-bottom:1px solid rgba(232,58,90,.15);
+  font-family:var(--mono);font-size:8.5px;color:var(--crimson);letter-spacing:.1em;
 }
 .rec-bar.on{display:flex;}
-.waves{display:flex;align-items:center;gap:2px;height:14px;}
-.wv{width:2.5px;background:var(--red);border-radius:2px;animation:wva .9s infinite ease-in-out;}
+.waves{display:flex;align-items:center;gap:2.5px;height:14px;}
+.wv{width:2.5px;background:var(--crimson);border-radius:2px;animation:wva .9s infinite ease-in-out;}
 .wv:nth-child(1){animation-delay:0s;}
 .wv:nth-child(2){animation-delay:.09s;}
 .wv:nth-child(3){animation-delay:.18s;}
 .wv:nth-child(4){animation-delay:.09s;}
 .wv:nth-child(5){animation-delay:0s;}
 @keyframes wva{0%,100%{height:3px;}50%{height:13px;}}
-.rec-label{flex:1;}
+.rec-flex{flex:1;}
 .rec-hint{opacity:.4;font-size:7.5px;}
 
-.irow{display:flex;align-items:flex-end;padding:12px 14px;gap:8px;}
-
-.cta-in{
-  flex:1;background:var(--bg2);border:1px solid var(--line2);
-  border-radius:14px;padding:11px 15px;
-  color:var(--frost);font-family:var(--f-body);font-size:13.5px;
-  line-height:1.5;resize:none;outline:none;max-height:140px;
-  transition:border-color .15s,box-shadow .15s;
+.input-row{
+  display:flex;align-items:flex-end;
+  padding:14px 18px;gap:8px;
 }
-.cta-in::placeholder{color:var(--sub);}
-.cta-in:focus{border-color:rgba(0,217,126,.3);box-shadow:0 0 0 3px rgba(0,217,126,.05);}
+
+.chat-ta{
+  flex:1;
+  background:var(--ink2);
+  border:1px solid var(--wire2);
+  border-radius:16px;
+  padding:12px 16px;
+  color:var(--ice2);
+  font-family:var(--sans);
+  font-size:14px;line-height:1.55;
+  resize:none;outline:none;
+  max-height:140px;
+  transition:border-color .18s,box-shadow .18s;
+}
+.chat-ta::placeholder{color:var(--fog2);}
+.chat-ta:focus{
+  border-color:var(--cu-ring);
+  box-shadow:0 0 0 3px var(--cu-glow);
+}
 
 .ib{
-  width:40px;height:40px;border-radius:11px;border:none;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:16px;flex-shrink:0;transition:all .15s;
+  width:42px;height:42px;border-radius:12px;
+  border:none;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;transition:all .16s;
 }
-.ib-send{background:var(--em);color:var(--bg0);}
-.ib-send:hover:not(:disabled){background:var(--em2);transform:scale(1.04);}
-.ib-send:disabled{opacity:.25;cursor:not-allowed;transform:none;}
-.ib-mic{background:var(--bg2);border:1px solid var(--line2);color:var(--muted);}
-.ib-mic:hover{color:var(--frost);}
-.ib-mic.on{background:var(--red-dim);border-color:rgba(255,71,87,.4);color:var(--red);animation:mpulse 1.2s infinite;}
-@keyframes mpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,71,87,.3);}50%{box-shadow:0 0 0 6px rgba(255,71,87,0);}}
-.ib-att{background:var(--bg2);border:1px solid var(--line2);color:var(--muted);}
-.ib-att:hover{color:var(--frost);}
+.ib-send{background:var(--copper);color:var(--ink);}
+.ib-send:hover:not(:disabled){background:var(--copper2);transform:scale(1.04);}
+.ib-send:disabled{opacity:.22;cursor:not-allowed;transform:none;}
+.ib-mic{background:var(--ink2);border:1px solid var(--wire2);color:var(--fog);}
+.ib-mic:hover{color:var(--ice);}
+.ib-mic.on{background:var(--crim-dim);border-color:rgba(232,58,90,.4);color:var(--crimson);animation:mpulse 1.2s infinite;}
+@keyframes mpulse{0%,100%{box-shadow:0 0 0 0 rgba(232,58,90,.3);}50%{box-shadow:0 0 0 7px rgba(232,58,90,0);}}
+.ib-att{background:var(--ink2);border:1px solid var(--wire2);color:var(--fog);}
+.ib-att:hover{color:var(--ice);}
 
-.hints{display:flex;gap:14px;padding:0 16px 9px;font-family:var(--f-mono);font-size:7.5px;color:var(--sub);letter-spacing:.06em;}
+.foot-hints{
+  display:flex;gap:16px;
+  padding:0 20px 10px;
+  font-family:var(--mono);font-size:7.5px;color:var(--fog2);letter-spacing:.06em;
+}
 
-/* ══════════════════════════ CONTENT PANELS ══════════════════ */
-.cv{flex:1;overflow-y:auto;padding:32px 28px;display:flex;flex-direction:column;gap:22px;}
+/* ══════════════════════════════════════════════════════
+   CONTENT PANELS (Morning, Strategos, Day, Docs, Memory)
+══════════════════════════════════════════════════════ */
+.cv{
+  flex:1;overflow-y:auto;
+  max-width:820px;width:100%;
+  margin:0 auto;
+  padding:40px 28px;
+  display:flex;flex-direction:column;gap:24px;
+}
 .cv::-webkit-scrollbar{width:3px;}
-.cv::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px;}
+.cv::-webkit-scrollbar-thumb{background:var(--wire2);border-radius:2px;}
 
-.ph{}
-.pt{font-family:var(--f-head);font-weight:800;font-size:28px;color:var(--frost);letter-spacing:-.01em;line-height:1.1;}
-.ps{font-family:var(--f-mono);font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-top:8px;}
+/* section header */
+.sec-head{}
+.sec-title{
+  font-family:var(--serif);
+  font-size:38px;font-weight:300;font-style:italic;
+  color:var(--ice2);letter-spacing:-.01em;line-height:1.1;
+}
+.sec-sub{
+  font-family:var(--mono);font-size:9px;
+  color:var(--fog);letter-spacing:.16em;text-transform:uppercase;
+  margin-top:10px;
+}
 
-.divl{height:1px;background:var(--line);border:none;flex-shrink:0;}
+.sec-divider{height:1px;background:var(--wire);border:none;flex-shrink:0;}
 
-/* voice bar for content panels */
+/* panel voice rec bar */
 .pv-rec{
   display:none;align-items:center;gap:10px;
-  padding:10px 16px;background:rgba(255,71,87,.06);
-  border:1px solid rgba(255,71,87,.15);border-radius:10px;
-  font-family:var(--f-mono);font-size:9px;color:var(--red);letter-spacing:.1em;
+  padding:11px 16px;
+  background:var(--crim-dim);
+  border:1px solid rgba(232,58,90,.2);
+  border-radius:10px;
+  font-family:var(--mono);font-size:9px;color:var(--crimson);letter-spacing:.1em;
 }
 .pv-rec.on{display:flex;}
 
-/* big textarea */
-.bta{
-  background:var(--bg2);border:1px solid var(--line2);border-radius:12px;
-  padding:16px 18px;color:var(--frost);font-family:var(--f-body);
-  font-size:13.5px;line-height:1.6;resize:vertical;outline:none;
-  min-height:110px;width:100%;transition:border-color .15s;
+/* textarea */
+.sec-ta{
+  background:var(--ink2);border:1px solid var(--wire2);border-radius:14px;
+  padding:16px 18px;color:var(--ice2);font-family:var(--sans);
+  font-size:14px;line-height:1.6;resize:vertical;outline:none;
+  min-height:110px;width:100%;transition:border-color .18s;
 }
-.bta::placeholder{color:var(--sub);}
-.bta:focus{border-color:rgba(0,217,126,.3);}
+.sec-ta::placeholder{color:var(--fog2);}
+.sec-ta:focus{border-color:var(--cu-ring);}
 
-/* CTAs */
-.btn-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+/* action row */
+.act-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
 
-.btn-primary{
+.btn-go{
   display:inline-flex;align-items:center;gap:9px;
-  background:var(--em);color:var(--bg0);
-  border:none;border-radius:11px;
-  padding:12px 22px;font-family:var(--f-head);
-  font-size:13px;font-weight:700;cursor:pointer;
-  letter-spacing:.02em;transition:all .16s;
+  background:var(--copper);color:var(--ink);
+  border:none;border-radius:12px;
+  padding:13px 24px;font-family:var(--sans);
+  font-size:13px;font-weight:600;cursor:pointer;
+  letter-spacing:.01em;transition:all .18s;
 }
-.btn-primary:hover:not(:disabled){background:var(--em2);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,217,126,.3);}
-.btn-primary:disabled{opacity:.3;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-go:hover:not(:disabled){background:var(--copper2);transform:translateY(-2px);box-shadow:0 8px 30px rgba(184,150,90,.35);}
+.btn-go:disabled{opacity:.28;cursor:not-allowed;transform:none;box-shadow:none;}
 
-.btn-voice-panel{
+.btn-voice{
   display:inline-flex;align-items:center;gap:7px;
-  background:var(--bg2);border:1px solid var(--line2);color:var(--muted);
-  border-radius:11px;padding:12px 18px;font-family:var(--f-head);
+  background:var(--ink2);border:1px solid var(--wire2);color:var(--fog);
+  border-radius:12px;padding:13px 20px;font-family:var(--sans);
   font-size:13px;font-weight:600;cursor:pointer;transition:all .16s;
 }
-.btn-voice-panel:hover{color:var(--frost);border-color:var(--line2);}
-.btn-voice-panel.on{color:var(--red);border-color:rgba(255,71,87,.4);background:var(--red-dim);animation:mpulse 1.2s infinite;}
-
-/* result card */
-.res{
-  background:var(--bg1);border:1px solid rgba(0,217,126,.16);
-  border-left:3px solid var(--em);border-radius:12px;
-  padding:22px 20px;font-size:13.5px;line-height:1.82;
-  color:var(--frost);display:none;animation:fadeUp .3s ease;
+.btn-voice:hover{color:var(--ice);border-color:var(--wire2);}
+.btn-voice.on{
+  color:var(--crimson);
+  border-color:rgba(232,58,90,.4);
+  background:var(--crim-dim);
+  animation:mpulse 1.2s infinite;
 }
-.res.on{display:block;}
-.res .rh{display:block;font-family:var(--f-mono);font-size:9px;color:var(--em);letter-spacing:.18em;text-transform:uppercase;margin:16px 0 7px;font-weight:500;}
-.res .rh:first-child{margin-top:0;}
-.res strong{color:var(--acc2);}
-.res em{color:#7898a8;}
-.res .rp{display:block;margin-bottom:9px;}
-.res .rp:last-child{margin-bottom:0;}
-.res .rl{display:block;padding-left:16px;margin-bottom:5px;position:relative;}
-.res .rl::before{content:'→';color:var(--em);position:absolute;left:2px;font-size:11px;}
-.res .rhr{display:block;height:1px;background:var(--line);margin:12px 0;}
 
-/* memory panel */
-.mem-grid{display:flex;flex-direction:column;gap:8px;}
-.mc{
-  background:var(--bg2);border:1px solid var(--line);border-radius:10px;
-  padding:13px 15px;transition:border-color .15s;animation:fadeUp .18s ease;
+/* result */
+.res-block{
+  background:var(--ink1);
+  border:1px solid var(--cu-ring);
+  border-left:3px solid var(--copper);
+  border-radius:14px;
+  padding:24px 22px;
+  font-size:14px;line-height:1.85;
+  color:var(--ice2);
+  display:none;animation:rIn .3s ease;
 }
-.mc:hover{border-color:var(--line2);}
-.mc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
-.badge{font-family:var(--f-mono);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;padding:2px 7px;border-radius:3px;}
-.b-note{background:var(--acc-dim);color:var(--acc);}
-.b-user{background:rgba(56,189,248,.1);color:var(--sky);}
-.b-jarvis{background:var(--em-dim);color:var(--em);}
-.b-strategos{background:var(--red-dim);color:var(--red);}
-.b-document{background:rgba(139,92,246,.1);color:#a78bfa;}
-.mc-ts{font-family:var(--f-mono);font-size:7.5px;color:var(--sub);}
-.mc-text{font-size:12px;color:var(--muted);line-height:1.55;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;}
+.res-block.on{display:block;}
+.res-block .rh{display:block;font-family:var(--mono);font-size:8.5px;color:var(--copper2);letter-spacing:.18em;text-transform:uppercase;margin:18px 0 7px;font-weight:700;}
+.res-block .rh:first-child{margin-top:0;}
+.res-block strong{color:var(--copper3);}
+.res-block em{color:#7a9aaa;}
+.res-block .rp{display:block;margin-bottom:10px;}
+.res-block .rp:last-child{margin-bottom:0;}
+.res-block .rl{display:block;padding-left:18px;margin-bottom:5px;position:relative;}
+.res-block .rl::before{content:'→';color:var(--copper);position:absolute;left:2px;font-size:11px;}
+.res-block .rhr{display:block;height:1px;background:var(--wire);margin:14px 0;}
 
-/* upload zone */
-.drop{
-  background:var(--bg2);border:1.5px dashed var(--line2);border-radius:12px;
-  padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;
+/* ── DOCS ── */
+.drop-zone{
+  background:var(--ink2);border:1.5px dashed var(--wire2);border-radius:14px;
+  padding:36px 24px;text-align:center;cursor:pointer;transition:all .2s;
   position:relative;overflow:hidden;
 }
-.drop:hover,.drop.drag{border-color:rgba(0,217,126,.4);background:var(--em-dim);}
-.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;}
-.drop-ico{font-size:28px;margin-bottom:8px;}
-.drop-lbl{font-size:12.5px;color:var(--muted);}
-.drop-lbl strong{color:var(--em);}
-.drop-sub{font-family:var(--f-mono);font-size:8px;color:var(--sub);letter-spacing:.07em;margin-top:5px;}
-.up-fb{font-family:var(--f-mono);font-size:9px;padding:9px 13px;border-radius:8px;display:none;}
-.up-fb.ok{display:block;background:var(--em-dim);border:1px solid rgba(0,217,126,.2);color:var(--em);}
-.up-fb.err{display:block;background:var(--red-dim);border:1px solid rgba(255,71,87,.2);color:var(--red);}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--cu-ring);background:var(--cu-glow);}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.dz-icon{font-size:32px;margin-bottom:12px;display:block;}
+.dz-lbl{font-size:13px;color:var(--fog);}
+.dz-lbl strong{color:var(--copper2);}
+.dz-sub{font-family:var(--mono);font-size:8.5px;color:var(--fog2);letter-spacing:.07em;margin-top:7px;}
+.up-fb{font-family:var(--mono);font-size:9.5px;padding:10px 14px;border-radius:9px;display:none;}
+.up-fb.ok{display:block;background:var(--jade-dim);border:1px solid rgba(0,196,122,.2);color:var(--jade);}
+.up-fb.err{display:block;background:var(--crim-dim);border:1px solid rgba(232,58,90,.2);color:var(--crimson);}
 
-/* note save */
-.note-row{display:flex;gap:8px;}
-.note-in{
-  flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:9px;
-  padding:10px 13px;color:var(--frost);font-family:var(--f-body);font-size:13px;outline:none;
-  transition:border-color .15s;
+/* ── MEMORY ── */
+.mem-controls{display:flex;gap:8px;flex-wrap:wrap;}
+.mem-in{
+  flex:1;min-width:200px;
+  background:var(--ink2);border:1px solid var(--wire2);border-radius:10px;
+  padding:11px 14px;color:var(--ice2);font-family:var(--sans);font-size:13.5px;
+  outline:none;transition:border-color .15s;
 }
-.note-in::placeholder{color:var(--sub);}
-.note-in:focus{border-color:rgba(0,217,126,.3);}
-.note-save{
-  background:var(--em-dim);border:1px solid rgba(0,217,126,.25);color:var(--em);
-  border-radius:9px;padding:10px 14px;font-family:var(--f-mono);font-size:9.5px;
-  cursor:pointer;letter-spacing:.07em;white-space:nowrap;transition:all .16s;
+.mem-in::placeholder{color:var(--fog2);}
+.mem-in:focus{border-color:var(--cu-ring);}
+.mem-save{
+  background:var(--cu-dim);border:1px solid var(--cu-ring);color:var(--copper2);
+  border-radius:10px;padding:11px 16px;font-family:var(--mono);
+  font-size:9.5px;cursor:pointer;letter-spacing:.08em;white-space:nowrap;transition:all .16s;
 }
-.note-save:hover{background:var(--em-glow);}
+.mem-save:hover{background:rgba(184,150,90,.18);}
+
+.mem-list{display:flex;flex-direction:column;gap:8px;}
+.mc{
+  background:var(--ink2);border:1px solid var(--wire);border-radius:10px;
+  padding:14px 16px;animation:rIn .18s ease;transition:border-color .15s;
+}
+.mc:hover{border-color:var(--wire2);}
+.mc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.badge{font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 8px;border-radius:3px;}
+.b-note{background:rgba(184,150,90,.12);color:var(--copper2);}
+.b-user{background:rgba(100,150,220,.12);color:#6699dd;}
+.b-jarvis{background:var(--jade-dim);color:var(--jade);}
+.b-strategos{background:var(--crim-dim);color:var(--crimson);}
+.b-document{background:rgba(150,100,240,.1);color:#b090ff;}
+.b-morning{background:rgba(200,180,100,.1);color:#c8b464;}
+.b-day{background:rgba(80,160,200,.1);color:#50a0c8;}
+.mc-ts{font-family:var(--mono);font-size:7.5px;color:var(--fog2);}
+.mc-text{font-size:12px;color:var(--fog);line-height:1.55;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;}
 
 /* spinner */
-.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(0,217,126,.2);border-top-color:var(--em);border-radius:50%;animation:sp .65s linear infinite;flex-shrink:0;}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(184,150,90,.2);border-top-color:var(--copper);border-radius:50%;animation:sp .65s linear infinite;flex-shrink:0;}
 @keyframes sp{to{transform:rotate(360deg);}}
 
-/* mobile bottom nav */
-.mob-nav{display:none;}
-@media(max-width:680px){
-  .app{grid-template-columns:1fr;grid-template-rows:1fr 58px;}
-  .rail{display:none;}
-  .stage{grid-row:1;}
-  .mob-nav{
-    display:flex;grid-row:2;
-    background:var(--bg1);border-top:1px solid var(--line);
-    height:58px;
-  }
-  .mb{
-    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:2px;background:transparent;border:none;color:var(--muted);
-    cursor:pointer;transition:color .15s;padding:0;
-  }
-  .mb .mi{font-size:18px;}
-  .mb .ml{font-family:var(--f-mono);font-size:7px;letter-spacing:.06em;}
-  .mb.on{color:var(--em);}
+/* ══════ MOBILE ══════════════════════════════════════ */
+@media(max-width:640px){
+  .topbar{padding:0 14px;gap:0;}
+  .tb-brand{font-size:18px;margin-right:16px;}
+  .nt{padding:6px 10px;font-size:8px;}
+  .tb-right .status-pill span:last-child{display:none;}
+  .feed{padding:20px 0;}
+  .row{padding:0 14px;}
+  .bub{max-width:90%;}
+  .row.ai .bub{max-width:95%;}
+  .input-row{padding:10px 12px;}
+  .cv{padding:24px 16px;}
+  .sec-title{font-size:28px;}
+  .btn-go,.btn-voice{padding:11px 16px;font-size:12px;}
 }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="shell">
 
-<!-- ══ RAIL ══════════════════════════════════════════ -->
-<aside class="rail">
-  <div class="rail-logo">J·A·R</div>
-  <button class="rb on" data-p="chat" onclick="go('chat',this)">
-    <span class="ico">◈</span><span>Chat</span>
-  </button>
-  <button class="rb" data-p="morning" onclick="go('morning',this)">
-    <span class="ico">◐</span><span>Day</span>
-  </button>
-  <button class="rb" data-p="strategos" onclick="go('strategos',this)">
-    <span class="ico">⊕</span><span>Strat</span>
-  </button>
-  <button class="rb" data-p="day" onclick="go('day',this)">
-    <span class="ico">◫</span><span>Control</span>
-  </button>
-  <button class="rb" data-p="docs" onclick="go('docs',this)">
-    <span class="ico">◉</span><span>Docs</span>
-  </button>
-  <button class="rb" data-p="memory" onclick="go('memory',this)">
-    <span class="ico">◈</span><span>Mem</span>
-  </button>
-  <div class="rail-gap"></div>
-  <button class="r-tts on" id="r-tts" onclick="toggleTTS()" title="Voz">🔊</button>
-</aside>
+  <!-- ══ TOPBAR ══════════════════════════════════════ -->
+  <header class="topbar">
+    <div class="tb-brand">Jarvis<span>URUS · A33</span></div>
 
-<!-- ══ STAGE ══════════════════════════════════════════ -->
-<main class="stage">
-  <div class="topbar">
-    <span class="tb-title" id="tb-title">Chat</span>
+    <nav class="nav">
+      <div class="nt on" data-p="chat" onclick="go('chat',this)">Chat</div>
+      <div class="nt" data-p="morning" onclick="go('morning',this)">Morning</div>
+      <div class="nt" data-p="strategos" onclick="go('strategos',this)">Strategos</div>
+      <div class="nt" data-p="day" onclick="go('day',this)">Day Control</div>
+      <div class="nt" data-p="docs" onclick="go('docs',this)">Documents</div>
+      <div class="nt" data-p="memory" onclick="go('memory',this)">Memory</div>
+    </nav>
+
     <div class="tb-gap"></div>
-    <span class="chip live">● Online</span>
-    <span class="chip">URUS A33</span>
-  </div>
 
-  <!-- ── CHAT ── -->
-  <div class="panel on" id="p-chat">
-    <div class="feed" id="feed">
-      <div class="row sys"><div class="bub">JARVIS · URUS COMMAND · PRIVADO · LISTO</div></div>
+    <div class="tb-right">
+      <div class="status-pill"><span class="s-dot"></span><span>Online</span></div>
+      <button class="tts-btn on" id="tts-btn" onclick="toggleTTS()" title="Voz on/off">🔊</button>
     </div>
-    <div class="typing" id="typing"><div class="t-bub"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>
-    <div class="foot">
-      <div class="rec-bar" id="rec-bar">
-        <div class="waves"><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div></div>
-        <span class="rec-label">ESCUCHANDO...</span>
-        <span class="rec-hint">Clic en mic para detener · ESC cancela</span>
-      </div>
-      <div class="irow">
-        <input type="file" id="att" accept=".pdf,.txt,.md,.js,.json" style="display:none" onchange="chatAtt(this)"/>
-        <button class="ib ib-att" onclick="document.getElementById('att').click()" title="Adjuntar">📎</button>
-        <textarea class="cta-in" id="cin" rows="1" placeholder="Escríbele a Jarvis... o habla con el micrófono"
-          oninput="aH(this)" onkeydown="ck(event)"></textarea>
-        <button class="ib ib-mic" id="mic" onclick="toggleMic()">🎙</button>
-        <button class="ib ib-send" id="sbtn" onclick="send()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        </button>
-      </div>
-      <div class="hints"><span>Enter — enviar</span><span>Shift+Enter — salto</span><span>📎 — doc</span><span>🎙 — voz</span></div>
-    </div>
-  </div>
+  </header>
 
-  <!-- ── MORNING SCAN ── -->
-  <div class="panel" id="p-morning">
-    <div class="cv">
-      <div class="ph"><div class="pt">Morning Scan</div><div class="ps">Escaneo de inicio · Diagnóstico · Dirección para el día</div></div>
-      <hr class="divl"/>
-      <div class="pv-rec" id="mr-rec">
-        <div class="waves"><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div></div>
-        <span>ESCUCHANDO...</span><span style="opacity:.4;font-size:7.5px;margin-left:auto;">ESC cancela</span>
-      </div>
-      <textarea class="bta" id="m-ta" placeholder="Opcional: cuéntale cómo amaneciste, qué tienes en mente..."></textarea>
-      <div class="btn-row">
-        <button class="btn-primary" id="m-btn" onclick="runPanel('morning')">🌅 Activar escaneo</button>
-        <button class="btn-voice-panel" id="m-mic" onclick="panelMic('morning')">🎙 Hablar</button>
-      </div>
-      <div class="res" id="m-res"></div>
-    </div>
-  </div>
+  <!-- ══ CONTENT ══════════════════════════════════════ -->
+  <div class="content">
 
-  <!-- ── STRATEGOS ── -->
-  <div class="panel" id="p-strategos">
-    <div class="cv">
-      <div class="ph"><div class="pt">Strategos</div><div class="ps">Análisis de poder · Jugadas reales · War room privado</div></div>
-      <hr class="divl"/>
-      <div class="pv-rec" id="sr-rec">
-        <div class="waves"><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div></div>
-        <span>ESCUCHANDO...</span><span style="opacity:.4;font-size:7.5px;margin-left:auto;">ESC cancela</span>
+    <!-- ── CHAT ── -->
+    <div class="panel on" id="p-chat">
+      <div class="feed" id="feed">
+        <div class="row sys"><div class="bub">JARVIS · URUS COMMAND · PRIVADO · LISTO</div></div>
       </div>
-      <textarea class="bta" id="s-ta" style="min-height:130px" placeholder="Describe la situación. Jarvis lee el juego real y te da las jugadas exactas..."></textarea>
-      <div class="btn-row">
-        <button class="btn-primary" id="s-btn" onclick="runPanel('strategos')">⚔️ Analizar</button>
-        <button class="btn-voice-panel" id="s-mic" onclick="panelMic('strategos')">🎙 Hablar</button>
+      <div class="typing-row" id="typing">
+        <div class="typing-bub"><div class="td"></div><div class="td"></div><div class="td"></div></div>
       </div>
-      <div class="res" id="s-res"></div>
-    </div>
-  </div>
-
-  <!-- ── DAY CONTROL ── -->
-  <div class="panel" id="p-day">
-    <div class="cv">
-      <div class="ph"><div class="pt">Day Control</div><div class="ps">Estructura del día · Estado · Correcciones · Power frame</div></div>
-      <hr class="divl"/>
-      <div class="btn-row">
-        <button class="btn-primary" id="d-btn" onclick="runPanel('day')">📋 Generar control</button>
-      </div>
-      <div class="res" id="d-res"></div>
-    </div>
-  </div>
-
-  <!-- ── DOCS ── -->
-  <div class="panel" id="p-docs">
-    <div class="cv">
-      <div class="ph"><div class="pt">Documents</div><div class="ps">Sube archivos · Jarvis los lee e integra a su memoria automáticamente</div></div>
-      <hr class="divl"/>
-      <div class="drop" id="dz" ondragover="doDrag(event,true)" ondragleave="doDrag(event,false)" ondrop="doDrop(event)">
-        <input type="file" accept=".pdf,.txt,.md,.js,.json" multiple onchange="doUp(this.files)"/>
-        <div class="drop-ico">📂</div>
-        <div class="drop-lbl"><strong>Arrastra aquí</strong> o haz clic para seleccionar</div>
-        <div class="drop-sub">PDF · TXT · MD · JS · JSON · Máx 10MB por archivo</div>
-      </div>
-      <div class="up-fb" id="up-fb"></div>
-      <div style="font-family:var(--f-mono);font-size:8.5px;color:var(--sub);line-height:1.7;">
-        Los documentos se integran automáticamente a la memoria de Jarvis.<br/>
-        Jarvis los usa en todas las conversaciones sin que tengas que mencionarlos.
+      <div class="chat-foot">
+        <div class="rec-bar" id="c-rec">
+          <div class="waves"><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div></div>
+          <span class="rec-flex">ESCUCHANDO...</span>
+          <span class="rec-hint">Clic en mic para detener · ESC cancela</span>
+        </div>
+        <div class="input-row">
+          <input type="file" id="att-file" accept=".pdf,.txt,.md,.js,.json" style="display:none" onchange="chatAtt(this)"/>
+          <button class="ib ib-att" onclick="document.getElementById('att-file').click()" title="Adjuntar">📎</button>
+          <textarea class="chat-ta" id="cin" rows="1"
+            placeholder="Escríbele a Jarvis... o habla con el micrófono"
+            oninput="aH(this)" onkeydown="ck(event)"></textarea>
+          <button class="ib ib-mic" id="c-mic" onclick="toggleChatMic()">🎙</button>
+          <button class="ib ib-send" id="sbtn" onclick="sendChat()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <div class="foot-hints">
+          <span>Enter — enviar</span>
+          <span>Shift+Enter — salto de línea</span>
+          <span>📎 — adjuntar doc</span>
+          <span>🎙 — voz</span>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ── MEMORY ── -->
-  <div class="panel" id="p-memory">
-    <div class="cv">
-      <div class="ph"><div class="pt">Memory</div><div class="ps">Todo lo que Jarvis recuerda · Se guarda automáticamente</div></div>
-      <hr class="divl"/>
-      <div class="note-row">
-        <input class="note-in" id="n-in" placeholder="Agregar nota a la memoria de Jarvis..." onkeydown="if(event.key==='Enter')saveNote()"/>
-        <button class="note-save" onclick="saveNote()">+ GUARDAR</button>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn-primary" style="padding:10px 18px;font-size:12px;" onclick="loadMem()">↺ Cargar memoria</button>
-      </div>
-      <div class="mem-grid" id="mem-grid">
-        <div style="font-family:var(--f-mono);font-size:9px;color:var(--sub);text-align:center;padding:24px;">Pulsa "Cargar memoria" para ver</div>
+    <!-- ── MORNING SCAN ── -->
+    <div class="panel" id="p-morning">
+      <div class="cv">
+        <div class="sec-head">
+          <div class="sec-title">Morning Scan</div>
+          <div class="sec-sub">Escaneo de inicio · Diagnóstico · Dirección para el día</div>
+        </div>
+        <hr class="sec-divider"/>
+        <div class="pv-rec" id="m-rec">
+          <div class="waves"><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div></div>
+          <span style="flex:1">ESCUCHANDO...</span><span style="opacity:.4;font-size:7.5px;font-family:var(--mono);">ESC cancela</span>
+        </div>
+        <textarea class="sec-ta" id="m-ta" placeholder="Opcional: cuéntale cómo amaneciste, qué tienes en mente, qué sientes..."></textarea>
+        <div class="act-row">
+          <button class="btn-go" id="m-go" onclick="runPanel('morning')">🌅 Activar escaneo</button>
+          <button class="btn-voice" id="m-mic" onclick="panelMic('morning')">🎙 Hablar</button>
+        </div>
+        <div class="res-block" id="m-res"></div>
       </div>
     </div>
-  </div>
 
-</main><!-- /stage -->
+    <!-- ── STRATEGOS ── -->
+    <div class="panel" id="p-strategos">
+      <div class="cv">
+        <div class="sec-head">
+          <div class="sec-title">Strategos</div>
+          <div class="sec-sub">Análisis de poder · Jugadas exactas · War room privado</div>
+        </div>
+        <hr class="sec-divider"/>
+        <div class="pv-rec" id="s-rec">
+          <div class="waves"><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div></div>
+          <span style="flex:1">ESCUCHANDO...</span><span style="opacity:.4;font-size:7.5px;font-family:var(--mono);">ESC cancela</span>
+        </div>
+        <textarea class="sec-ta" id="s-ta" style="min-height:140px" placeholder="Describe la situación. Jarvis detecta lo que hay debajo de las palabras y te da la jugada exacta..."></textarea>
+        <div class="act-row">
+          <button class="btn-go" id="s-go" onclick="runPanel('strategos')">⚔️ Analizar</button>
+          <button class="btn-voice" id="s-mic" onclick="panelMic('strategos')">🎙 Hablar</button>
+        </div>
+        <div class="res-block" id="s-res"></div>
+      </div>
+    </div>
 
-<!-- ══ MOBILE NAV ═════════════════════════════════════ -->
-<nav class="mob-nav">
-  <button class="mb on" onclick="go('chat',this)"><span class="mi">◈</span><span class="ml">Chat</span></button>
-  <button class="mb" onclick="go('morning',this)"><span class="mi">◐</span><span class="ml">Morning</span></button>
-  <button class="mb" onclick="go('strategos',this)"><span class="mi">⊕</span><span class="ml">Strategos</span></button>
-  <button class="mb" onclick="go('docs',this)"><span class="mi">◉</span><span class="ml">Docs</span></button>
-  <button class="mb" onclick="go('memory',this)"><span class="mi">◈</span><span class="ml">Memory</span></button>
-</nav>
+    <!-- ── DAY CONTROL ── -->
+    <div class="panel" id="p-day">
+      <div class="cv">
+        <div class="sec-head">
+          <div class="sec-title">Day Control</div>
+          <div class="sec-sub">Estructura del día · Estado · Correcciones · Power frame</div>
+        </div>
+        <hr class="sec-divider"/>
+        <div class="act-row">
+          <button class="btn-go" id="d-go" onclick="runPanel('day')">📋 Generar control de día</button>
+        </div>
+        <div class="res-block" id="d-res"></div>
+      </div>
+    </div>
 
-</div><!-- /app -->
+    <!-- ── DOCUMENTS ── -->
+    <div class="panel" id="p-docs">
+      <div class="cv">
+        <div class="sec-head">
+          <div class="sec-title">Documents</div>
+          <div class="sec-sub">Jarvis lee e integra a su memoria automáticamente</div>
+        </div>
+        <hr class="sec-divider"/>
+        <div class="drop-zone" id="dz"
+          ondragover="drag(event,true)" ondragleave="drag(event,false)" ondrop="drop(event)">
+          <input type="file" accept=".pdf,.txt,.md,.js,.json" multiple onchange="doUp(this.files)"/>
+          <span class="dz-icon">📂</span>
+          <div class="dz-lbl"><strong>Arrastra aquí</strong> o haz clic para seleccionar</div>
+          <div class="dz-sub">PDF · TXT · MD · JS · JSON · Máx 10MB por archivo</div>
+        </div>
+        <div class="up-fb" id="up-fb"></div>
+        <div style="font-family:var(--mono);font-size:8.5px;color:var(--fog2);line-height:1.8;">
+          Los documentos se integran a la memoria de Jarvis.<br/>
+          Los usa en todas las conversaciones sin que tengas que mencionar nada.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MEMORY ── -->
+    <div class="panel" id="p-memory">
+      <div class="cv">
+        <div class="sec-head">
+          <div class="sec-title">Memory</div>
+          <div class="sec-sub">Todo lo que Jarvis recuerda · Se guarda automáticamente con cada respuesta</div>
+        </div>
+        <hr class="sec-divider"/>
+        <div class="mem-controls">
+          <input class="mem-in" id="n-in" placeholder="Agregar nota a la memoria de Jarvis..."
+            onkeydown="if(event.key==='Enter')saveNote()"/>
+          <button class="mem-save" onclick="saveNote()">+ GUARDAR</button>
+          <button class="btn-go" style="padding:11px 18px;font-size:12px;" onclick="loadMem()">↺ Cargar</button>
+        </div>
+        <div class="mem-list" id="mem-list">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--fog2);text-align:center;padding:28px;">Pulsa "Cargar" para ver la memoria</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /shell -->
+
 <script>
-const BASE='';
-let busy=false,ttsOn=true,mic=null,micOn=false,panelMicOn={};
-let msgN=0;
+/* ═══════════════════════════════════════════════════════════════
+   JARVIS URUS — ENGINE COMPLETO
+   - Voz en chat y en cada panel
+   - Memoria automática tras cada respuesta
+   - TTS en todas las respuestas
+   - Markdown render
+   - Upload de docs
+   ═══════════════════════════════════════════════════════════════ */
+
+const BASE = '';
+let busy = false;
+let ttsOn = true;
+let chatMicOn = false;
+let chatRec = null;
+let panelRec = null;
+let activePanelMic = null;
 
 /* ── routing ── */
-const labels={chat:'Chat',morning:'Morning Scan',strategos:'Strategos',day:'Day Control',docs:'Documents',memory:'Memory'};
-function go(name,el){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('.rb,.mb').forEach(b=>b.classList.remove('on'));
-  document.getElementById('p-'+name).classList.add('on');
+function go(name, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.nt').forEach(n => n.classList.remove('on'));
+  document.getElementById('p-' + name).classList.add('on');
   el.classList.add('on');
-  document.querySelectorAll('[data-p="'+name+'"]').forEach(b=>b.classList.add('on'));
-  document.getElementById('tb-title').textContent=labels[name]||name;
 }
 
 /* ── textarea auto-height ── */
-function aH(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,140)+'px';}
+function aH(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+}
 
-/* ── key handler ── */
-function ck(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+/* ── keyboard ── */
+function ck(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
 
-/* ── escape ── */
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){stopMic();Object.keys(panelMicOn).forEach(k=>{if(panelMicOn[k])stopPanelMic(k);});}});
+/* ESC cancels all voice */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    stopChatMic();
+    stopPanelMic();
+  }
+});
 
-/* ════════════════════ CHAT ════════════════════ */
-async function send(forced){
-  const ta=document.getElementById('cin');
-  const txt=forced||ta.value.trim();
-  if(!txt||busy)return;
-  addRow(txt,'me');
-  ta.value='';ta.style.height='auto';
+/* ═══════════════════════════ CHAT ══════════════════════════════ */
+
+async function sendChat(forced) {
+  const ta = document.getElementById('cin');
+  const text = forced || ta.value.trim();
+  if (!text || busy) return;
+
+  addRow(text, 'me');
+  ta.value = ''; ta.style.height = 'auto';
   setLoad(true);
-  try{
-    const r=await fetch(BASE+'/v1/jarvis/strategos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input:txt})});
-    const d=await r.json();
-    const rep=d.output||d.reply||d.strategy||'Sin respuesta.';
-    addRow(rep,'ai');
-    if(ttsOn)speak(rep);
-    autoSaveMem('strategos',txt+'\n'+rep);
-  }catch{addRow('Error de conexión con Jarvis.','sys');}
+
+  try {
+    const r = await fetch(BASE + '/v1/jarvis/strategos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: text })
+    });
+    const d = await r.json();
+    const reply = d.output || d.reply || d.strategy || 'Sin respuesta.';
+    addRow(reply, 'ai');
+    if (ttsOn) speak(reply);
+    autoSave('strategos', `[TÚ] ${text}\n[JARVIS] ${reply}`);
+  } catch {
+    addRow('Error de conexión con Jarvis.', 'sys');
+  }
   setLoad(false);
 }
 
-function addRow(txt,type){
-  const feed=document.getElementById('feed');
-  const row=document.createElement('div');
-  row.className='row '+type;
-  if(type!=='sys'){
-    const m=document.createElement('div');
-    m.className='row-meta';
-    m.textContent=type==='me'?'TÚ':'JARVIS · '+fmtT();
-    row.appendChild(m);
+function addRow(txt, type) {
+  const feed = document.getElementById('feed');
+  const row = document.createElement('div');
+  row.className = 'row ' + type;
+
+  if (type !== 'sys') {
+    const who = document.createElement('div');
+    who.className = 'row-who';
+    who.textContent = type === 'me' ? 'TÚ' : 'JARVIS · ' + fmtT();
+    row.appendChild(who);
   }
-  const b=document.createElement('div');
-  b.className='bub';
-  b.innerHTML=type==='ai'?mdBub(txt):escH(txt);
-  row.appendChild(b);
+
+  const bub = document.createElement('div');
+  bub.className = 'bub';
+  bub.innerHTML = type === 'ai' ? mdBub(txt) : escH(txt);
+  row.appendChild(bub);
   feed.appendChild(row);
-  if(type==='me'){msgN++;} 
-  requestAnimationFrame(()=>feed.scrollTop=feed.scrollHeight);
+
+  requestAnimationFrame(() => feed.scrollTop = feed.scrollHeight);
 }
 
-function setLoad(on){
-  busy=on;
-  document.getElementById('typing').classList.toggle('on',on);
-  document.getElementById('sbtn').disabled=on;
-  if(on){const f=document.getElementById('feed');requestAnimationFrame(()=>f.scrollTop=f.scrollHeight);}
+function setLoad(on) {
+  busy = on;
+  document.getElementById('typing').classList.toggle('on', on);
+  document.getElementById('sbtn').disabled = on;
+  if (on) {
+    const f = document.getElementById('feed');
+    requestAnimationFrame(() => f.scrollTop = f.scrollHeight);
+  }
 }
 
-function fmtT(){return new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});}
+function fmtT() {
+  return new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+}
 
-/* ── escape html ── */
-function escH(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+/* ── HTML escape ── */
+function escH(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
-/* ── markdown for bubble ── */
-function mdBub(raw){
-  const e=escH(raw);
+/* ── Markdown bubble ── */
+function mdBub(raw) {
+  const e = escH(raw);
   return e
-    .replace(/^#{1,3} (.+)$/gm,'<span class="mh">$1</span>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/^[-–•] (.+)$/gm,'<span class="ml">$1</span>')
-    .replace(/^---$/gm,'<span class="mhr"></span>')
-    .replace(/\n{2,}/g,'</span><span class="mp">')
-    .replace(/\n/g,'<br>')
-    .replace(/^/,'<span class="mp">').replace(/$/,'</span>');
+    .replace(/^#{1,3} (.+)$/gm, '<span class="mh">$1</span>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^[-–•] (.+)$/gm, '<span class="ml">$1</span>')
+    .replace(/^---$/gm, '<span class="mhr"></span>')
+    .replace(/\n{2,}/g, '</span><span class="mp">')
+    .replace(/\n/g, '<br>')
+    .replace(/^/, '<span class="mp">').replace(/$/, '</span>');
 }
 
-/* ── markdown for result ── */
-function mdRes(raw){
-  const e=escH(raw);
+/* ── Markdown result ── */
+function mdRes(raw) {
+  const e = escH(raw);
   return e
-    .replace(/^#{1,3} (.+)$/gm,'<span class="rh">$1</span>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/^[-–•] (.+)$/gm,'<span class="rl">$1</span>')
-    .replace(/^---$/gm,'<span class="rhr"></span>')
-    .replace(/\n{2,}/g,'</span><span class="rp">')
-    .replace(/\n/g,'<br>')
-    .replace(/^/,'<span class="rp">').replace(/$/,'</span>');
+    .replace(/^#{1,3} (.+)$/gm, '<span class="rh">$1</span>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^[-–•] (.+)$/gm, '<span class="rl">$1</span>')
+    .replace(/^---$/gm, '<span class="rhr"></span>')
+    .replace(/\n{2,}/g, '</span><span class="rp">')
+    .replace(/\n/g, '<br>')
+    .replace(/^/, '<span class="rp">').replace(/$/, '</span>');
 }
 
-/* ════════════════════ VOICE (MIC) ════════════════════ */
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+/* ═══════════════════ VOICE — CHAT MIC ═══════════════════════ */
 
-function toggleMic(){micOn?stopMic():startMic();}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-function startMic(){
-  if(!SR){addRow('Tu navegador no soporta voz. Usa Chrome.','sys');return;}
-  mic=new SR();mic.lang='es-ES';mic.continuous=false;mic.interimResults=true;
-  mic.onstart=()=>{micOn=true;document.getElementById('mic').classList.add('on');document.getElementById('rec-bar').classList.add('on');};
-  mic.onresult=e=>{
-    const ta=document.getElementById('cin');
-    let fin='',inter='';
-    for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t;else inter+=t;}
-    ta.value=fin||inter;aH(ta);
+function toggleChatMic() {
+  chatMicOn ? stopChatMic() : startChatMic();
+}
+
+function startChatMic() {
+  if (!SR) { addRow('Tu navegador no soporta voz. Usa Chrome.', 'sys'); return; }
+  stopPanelMic();
+
+  chatRec = new SR();
+  chatRec.lang = 'es-ES';
+  chatRec.continuous = false;
+  chatRec.interimResults = true;
+
+  chatRec.onstart = () => {
+    chatMicOn = true;
+    document.getElementById('c-mic').classList.add('on');
+    document.getElementById('c-rec').classList.add('on');
   };
-  mic.onend=()=>{stopMic();const ta=document.getElementById('cin');if(ta.value.trim())setTimeout(()=>send(),280);};
-  mic.onerror=e=>{stopMic();if(e.error!=='aborted')addRow('[Voz: '+e.error+']','sys');};
-  mic.start();
-}
 
-function stopMic(){
-  micOn=false;
-  document.getElementById('mic').classList.remove('on');
-  document.getElementById('rec-bar').classList.remove('on');
-  mic?.stop();mic=null;
-}
-
-/* ── panel voice ── */
-let pMic=null;
-
-function panelMic(panel){
-  if(panelMicOn[panel]){stopPanelMic(panel);return;}
-  if(!SR){return;}
-  pMic=new SR();pMic.lang='es-ES';pMic.continuous=false;pMic.interimResults=true;
-  pMic.onstart=()=>{
-    panelMicOn[panel]=true;
-    document.getElementById(panel[0]+'-mic').classList.add('on');
-    const rec=document.getElementById(panel==='morning'?'mr-rec':'sr-rec');
-    if(rec)rec.classList.add('on');
+  chatRec.onresult = e => {
+    const ta = document.getElementById('cin');
+    let fin = '', inter = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) fin += t; else inter += t;
+    }
+    ta.value = fin || inter;
+    aH(ta);
   };
-  pMic.onresult=e=>{
-    const taId=panel==='morning'?'m-ta':'s-ta';
-    const ta=document.getElementById(taId);
-    let fin='',inter='';
-    for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t;else inter+=t;}
-    ta.value=fin||inter;
+
+  chatRec.onend = () => {
+    stopChatMic();
+    const ta = document.getElementById('cin');
+    if (ta.value.trim()) setTimeout(() => sendChat(), 280);
   };
-  pMic.onend=()=>{
-    stopPanelMic(panel);
-    runPanel(panel);
+
+  chatRec.onerror = e => {
+    stopChatMic();
+    if (e.error !== 'aborted') addRow('[Voz: ' + e.error + ']', 'sys');
   };
-  pMic.onerror=()=>stopPanelMic(panel);
-  pMic.start();
+
+  chatRec.start();
 }
 
-function stopPanelMic(panel){
-  panelMicOn[panel]=false;
-  const btn=document.getElementById(panel[0]+'-mic');
-  if(btn)btn.classList.remove('on');
-  const rec=document.getElementById(panel==='morning'?'mr-rec':'sr-rec');
-  if(rec)rec.classList.remove('on');
-  pMic?.stop();pMic=null;
+function stopChatMic() {
+  chatMicOn = false;
+  document.getElementById('c-mic').classList.remove('on');
+  document.getElementById('c-rec').classList.remove('on');
+  chatRec?.stop(); chatRec = null;
 }
 
-/* ════════════════════ TTS ════════════════════ */
-const synth=window.speechSynthesis;
-let ttsV=null;
-function loadV(){const vv=synth.getVoices();ttsV=vv.find(v=>v.lang==='es-ES'&&/jorge|pablo|male/i.test(v.name))||vv.find(v=>v.lang.startsWith('es'))||null;}
-speechSynthesis.onvoiceschanged=loadV;loadV();
+/* ═══════════════════ VOICE — PANEL MIC ══════════════════════ */
 
-function speak(raw){
-  if(!ttsOn||!synth)return;synth.cancel();
-  const clean=raw.replace(/#{1,3} /g,'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/<[^>]+>/g,'').replace(/\n+/g,'. ').slice(0,900);
-  const u=new SpeechSynthesisUtterance(clean);
-  u.lang='es-ES';u.rate=1.05;u.pitch=0.88;u.volume=1;
-  if(ttsV)u.voice=ttsV;synth.speak(u);
+function panelMic(panel) {
+  if (activePanelMic === panel) { stopPanelMic(); return; }
+  stopChatMic();
+  stopPanelMic();
+  if (!SR) return;
+
+  const taId = panel === 'morning' ? 'm-ta' : 's-ta';
+  const recId = panel === 'morning' ? 'm-rec' : 's-rec';
+  const micId = panel === 'morning' ? 'm-mic' : 's-mic';
+
+  panelRec = new SR();
+  panelRec.lang = 'es-ES';
+  panelRec.continuous = false;
+  panelRec.interimResults = true;
+
+  panelRec.onstart = () => {
+    activePanelMic = panel;
+    document.getElementById(micId).classList.add('on');
+    document.getElementById(recId).classList.add('on');
+  };
+
+  panelRec.onresult = e => {
+    const ta = document.getElementById(taId);
+    let fin = '', inter = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) fin += t; else inter += t;
+    }
+    ta.value = fin || inter;
+  };
+
+  panelRec.onend = () => {
+    const prev = activePanelMic;
+    stopPanelMic();
+    runPanel(prev);
+  };
+
+  panelRec.onerror = () => stopPanelMic();
+  panelRec.start();
 }
 
-function toggleTTS(){
-  ttsOn=!ttsOn;synth.cancel();
-  const b=document.getElementById('r-tts');
-  b.textContent=ttsOn?'🔊':'🔇';
-  b.classList.toggle('on',ttsOn);
+function stopPanelMic() {
+  if (!activePanelMic) return;
+  const panel = activePanelMic;
+  const recId = panel === 'morning' ? 'm-rec' : 's-rec';
+  const micId = panel === 'morning' ? 'm-mic' : 's-mic';
+  document.getElementById(micId)?.classList.remove('on');
+  document.getElementById(recId)?.classList.remove('on');
+  panelRec?.stop(); panelRec = null;
+  activePanelMic = null;
 }
 
-/* ════════════════════ AUTO MEMORY ════════════════════ */
-async function autoSaveMem(type,content){
-  try{
-    await fetch(BASE+'/v1/jarvis/memory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content,type})});
-  }catch{}
+/* ═══════════════════ TTS ════════════════════════════════════ */
+
+const synth = window.speechSynthesis;
+let ttsVoice = null;
+
+function loadVoices() {
+  const vv = synth.getVoices();
+  ttsVoice = vv.find(v => v.lang === 'es-ES' && /jorge|pablo|male/i.test(v.name))
+    || vv.find(v => v.lang.startsWith('es'))
+    || null;
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function speak(raw) {
+  if (!ttsOn || !synth) return;
+  synth.cancel();
+  const clean = raw
+    .replace(/#{1,3} /g, '').replace(/\*\*/g, '').replace(/\*/g, '')
+    .replace(/<[^>]+>/g, '').replace(/\n+/g, '. ').slice(0, 1000);
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang = 'es-ES'; u.rate = 1.05; u.pitch = 0.88; u.volume = 1;
+  if (ttsVoice) u.voice = ttsVoice;
+  synth.speak(u);
 }
 
-/* ════════════════════ CONTENT PANELS ════════════════════ */
-const panelCfg={
-  morning:{btn:'m-btn',res:'m-res',ta:'m-ta',ep:'/v1/jarvis/morning',method:'POST',bodyFn:()=>({input:document.getElementById('m-ta').value.trim()})},
-  strategos:{btn:'s-btn',res:'s-res',ta:'s-ta',ep:'/v1/jarvis/strategos',method:'POST',bodyFn:()=>({input:document.getElementById('s-ta').value.trim()})},
-  day:{btn:'d-btn',res:'d-res',ep:'/v1/jarvis/day',method:'POST',bodyFn:()=>({})}
+function toggleTTS() {
+  ttsOn = !ttsOn;
+  synth.cancel();
+  const b = document.getElementById('tts-btn');
+  b.textContent = ttsOn ? '🔊' : '🔇';
+  b.classList.toggle('off', !ttsOn);
+}
+
+/* ═══════════════════ AUTO MEMORY ════════════════════════════ */
+
+async function autoSave(type, content) {
+  try {
+    await fetch(BASE + '/v1/jarvis/memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, type })
+    });
+  } catch {}
+}
+
+/* ═══════════════════ PANELS ════════════════════════════════ */
+
+const panelCfg = {
+  morning: {
+    go: 'm-go', res: 'm-res',
+    ep: '/v1/jarvis/morning',
+    body: () => ({ input: document.getElementById('m-ta').value.trim() }),
+    orig: '🌅 Activar escaneo',
+    type: 'morning'
+  },
+  strategos: {
+    go: 's-go', res: 's-res',
+    ep: '/v1/jarvis/strategos',
+    body: () => ({ input: document.getElementById('s-ta').value.trim() }),
+    orig: '⚔️ Analizar',
+    type: 'strategos'
+  },
+  day: {
+    go: 'd-go', res: 'd-res',
+    ep: '/v1/jarvis/day',
+    body: () => ({}),
+    orig: '📋 Generar control de día',
+    type: 'day'
+  }
 };
 
-async function runPanel(name){
-  const cfg=panelCfg[name];
-  const btn=document.getElementById(cfg.btn);
-  const res=document.getElementById(cfg.res);
-  if(!btn||!res)return;
-  btn.disabled=true;
-  const origTxt=btn.innerHTML;
-  btn.innerHTML='<span class="spin"></span> Procesando...';
+async function runPanel(name) {
+  const cfg = panelCfg[name];
+  if (!cfg) return;
+  const btn = document.getElementById(cfg.go);
+  const res = document.getElementById(cfg.res);
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Procesando...';
   res.classList.remove('on');
-  try{
-    const r=await fetch(BASE+cfg.ep,{method:cfg.method,headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg.bodyFn())});
-    const d=await r.json();
-    const out=d.output||d.scan||d.reply||'Sin respuesta.';
-    res.innerHTML=mdRes(out);
+
+  try {
+    const r = await fetch(BASE + cfg.ep, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg.body())
+    });
+    const d = await r.json();
+    const out = d.output || d.scan || d.reply || 'Sin respuesta.';
+    res.innerHTML = mdRes(out);
     res.classList.add('on');
-    if(ttsOn)speak(out);
-    autoSaveMem(name,out);
-  }catch{res.textContent='Error de conexión.';res.classList.add('on');}
-  btn.disabled=false;btn.innerHTML=origTxt;
-}
-
-/* ════════════════════ FILE UPLOAD ════════════════════ */
-async function chatAtt(input){
-  for(const f of input.files){
-    addRow('📎 Subiendo: '+f.name+'...','sys');
-    const ok=await upFile(f);
-    addRow(ok?'✓ "'+f.name+'" integrado en memoria de Jarvis.':'✗ Error al subir "'+f.name+'".','sys');
+    if (ttsOn) speak(out);
+    autoSave(cfg.type, out);
+  } catch {
+    res.textContent = 'Error de conexión.';
+    res.classList.add('on');
   }
-  input.value='';
+
+  btn.disabled = false;
+  btn.innerHTML = cfg.orig;
 }
 
-async function doUp(files){
-  let ok=0,fail=0;
-  for(const f of files){if(await upFile(f))ok++;else fail++;}
-  const fb=document.getElementById('up-fb');
-  fb.className='up-fb '+(fail===0?'ok':'err');
-  fb.textContent=fail===0?'✓ '+ok+' archivo(s) integrado(s) en la memoria de Jarvis.':ok+' ok · '+fail+' error(es).';
+/* ═══════════════════ FILE UPLOAD ════════════════════════════ */
+
+async function chatAtt(input) {
+  for (const f of input.files) {
+    addRow('📎 Subiendo: ' + f.name + '...', 'sys');
+    const ok = await upFile(f);
+    addRow(ok ? '✓ "' + f.name + '" integrado en memoria de Jarvis.' : '✗ Error al subir "' + f.name + '".', 'sys');
+  }
+  input.value = '';
 }
 
-async function upFile(file){
-  const fd=new FormData();fd.append('file',file);
-  try{
-    const r=await fetch(BASE+'/v1/jarvis/upload',{method:'POST',body:fd});
-    const d=await r.json();
+async function doUp(files) {
+  const fb = document.getElementById('up-fb');
+  fb.className = 'up-fb';
+  let ok = 0, fail = 0;
+  for (const f of files) { if (await upFile(f)) ok++; else fail++; }
+  fb.className = 'up-fb ' + (fail === 0 ? 'ok' : 'err');
+  fb.textContent = fail === 0
+    ? '✓ ' + ok + ' archivo(s) integrado(s) en la memoria de Jarvis.'
+    : ok + ' ok · ' + fail + ' error(es). Revisa formato y tamaño.';
+}
+
+async function upFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch(BASE + '/v1/jarvis/upload', { method: 'POST', body: fd });
+    const d = await r.json();
     return !!d.ok;
-  }catch{return false;}
+  } catch { return false; }
 }
 
-function doDrag(e,on){e.preventDefault();document.getElementById('dz').classList.toggle('drag',on);}
-function doDrop(e){e.preventDefault();doDrag(e,false);doUp(e.dataTransfer.files);}
+function drag(e, on) {
+  e.preventDefault();
+  document.getElementById('dz').classList.toggle('drag', on);
+}
+function drop(e) {
+  e.preventDefault();
+  drag(e, false);
+  doUp(e.dataTransfer.files);
+}
 
-/* ════════════════════ MEMORY ════════════════════ */
-async function saveNote(){
-  const inp=document.getElementById('n-in');
-  const content=inp.value.trim();
-  if(!content)return;
-  try{
-    await fetch(BASE+'/v1/jarvis/memory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content,type:'note'})});
-    inp.value='';
-    addRow('✓ Nota guardada en memoria de Jarvis.','sys');
+/* ═══════════════════ MEMORY ═════════════════════════════════ */
+
+async function saveNote() {
+  const inp = document.getElementById('n-in');
+  const content = inp.value.trim();
+  if (!content) return;
+  try {
+    await fetch(BASE + '/v1/jarvis/memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, type: 'note' })
+    });
+    inp.value = '';
+    addRow('✓ Nota guardada en memoria de Jarvis.', 'sys');
     loadMem();
-  }catch{addRow('Error al guardar nota.','sys');}
+  } catch { addRow('Error al guardar nota.', 'sys'); }
 }
 
-async function loadMem(){
-  const grid=document.getElementById('mem-grid');
-  grid.innerHTML='<div style="font-family:var(--f-mono);font-size:9px;color:var(--sub);text-align:center;padding:20px;">Cargando...</div>';
-  try{
-    const r=await fetch(BASE+'/v1/jarvis/recall',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({limit:40})});
-    const d=await r.json();
-    const items=d.memory||d.entries||[];
-    if(!items.length){grid.innerHTML='<div style="font-family:var(--f-mono);font-size:9px;color:var(--sub);text-align:center;padding:24px;">Sin memoria aún.</div>';return;}
-    grid.innerHTML=items.map(m=>{
-      const type=m.type||'note';
-      const cls='b-'+type;
-      const ts=m.created_at?new Date(m.created_at).toLocaleString('es',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-      const prev=escH((m.content||'').slice(0,200));
-      return `<div class="mc"><div class="mc-top"><span class="badge ${cls}">${type}</span><span class="mc-ts">${ts}</span></div><div class="mc-text">${prev}</div></div>`;
+async function loadMem() {
+  const list = document.getElementById('mem-list');
+  list.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--fog2);text-align:center;padding:20px;">Cargando...</div>';
+  try {
+    const r = await fetch(BASE + '/v1/jarvis/recall', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 50 })
+    });
+    const d = await r.json();
+    const items = d.memory || d.entries || [];
+
+    if (!items.length) {
+      list.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--fog2);text-align:center;padding:28px;">Sin memoria aún.</div>';
+      return;
+    }
+
+    list.innerHTML = items.map(m => {
+      const type = m.type || 'note';
+      const cls = 'b-' + type.split('_')[0];
+      const ts = m.created_at
+        ? new Date(m.created_at).toLocaleString('es', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '';
+      const prev = escH((m.content || '').slice(0, 240));
+      return `<div class="mc">
+        <div class="mc-top">
+          <span class="badge ${cls}">${type}</span>
+          <span class="mc-ts">${ts}</span>
+        </div>
+        <div class="mc-text">${prev}</div>
+      </div>`;
     }).join('');
-  }catch{grid.innerHTML='<div style="font-family:var(--f-mono);font-size:9px;color:var(--sub);text-align:center;padding:20px;">Error al cargar.</div>';}
+  } catch {
+    list.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--fog2);text-align:center;padding:20px;">Error al cargar.</div>';
+  }
 }
 
-/* init */
+/* ── Init ── */
 loadMem();
 </script>
 </body>
