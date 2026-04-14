@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>URUS — WhatsApp Growth OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+/* ============================================================
+   URUS DASHBOARD — PRODUCTION v1.0
+   Backend: https://urus-backend-production.up.railway.app
+   ============================================================ */
+
+:root {
+  --bg:        #09090b;
+  --bg-card:   #0f0f12;
+  --bg-hover:  #111116;
+  --bg-input:  #111116;
+  --border:    #1c1c1f;
+  --border-s:  #141417;
+  --text-1:    #fafafa;
+  --text-2:    #a1a1aa;
+  --text-3:    #52525b;
+  --gold:      #c8a84b;
+  --gold-d:    #1c1a0a;
+  --gold-b:    #3f3210;
+  --green:     #22c55e;
+  --green-d:   #052e16;
+  --green-b:   #14532d;
+  --red:       #ef4444;
+  --red-d:     #1c0a0a;
+  --red-b:     #3f1010;
+  --blue:      #60a5fa;
+  --blue-d:    #0f1f3d;
+  --radius:    10px;
+  --radius-lg: 14px;
+  --font:      'Syne', sans-serif;
+  --mono:      'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text-1);
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ============================================================ SCROLLBAR */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #27272a; border-radius: 99px; }
+
+/* ============================================================ LAYOUT */
+#app { display: flex; height: 100vh; }
+
+/* ============================================================ SIDEBAR */
+#sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: var(--bg);
+  border-right: 0.5px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: transform .25s ease;
+  z-index: 200;
+}
+
+.sb-top { padding: 20px 16px 16px; }
+.sb-brand { display: flex; align-items: center; gap: 10px; }
+.sb-mark {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--gold-d); border: 0.5px solid var(--gold-b);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sb-mark svg { width: 15px; height: 15px; }
+.sb-wordmark { font-size: 14px; font-weight: 700; color: var(--text-1); letter-spacing: .02em; }
+.sb-client { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.sb-divider { height: 0.5px; background: var(--border); margin: 12px 16px; }
+
+.sb-nav { padding: 0 8px; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.sb-section { margin-bottom: 4px; }
+.sb-section-label {
+  font-size: 9px; color: var(--text-3); letter-spacing: .1em;
+  text-transform: uppercase; padding: 0 10px; margin-bottom: 3px;
+  font-family: var(--mono);
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: 8px;
+  font-size: 12px; color: var(--text-3);
+  cursor: pointer; position: relative;
+  transition: all .15s; user-select: none;
+  border: none; background: transparent; width: 100%; text-align: left;
+}
+.nav-item:hover { background: var(--bg-hover); color: var(--text-2); }
+.nav-item.active {
+  background: var(--bg-hover); color: var(--text-1);
+}
+.nav-item.active::before {
+  content: ''; position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 2px; height: 14px;
+  background: var(--gold); border-radius: 0 2px 2px 0;
+}
+.nav-item svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .5; }
+.nav-item.active svg { opacity: 1; }
+.nav-badge {
+  margin-left: auto; font-size: 9px; padding: 1px 6px;
+  border-radius: 999px; background: #1c1c1f; color: var(--text-3);
+  font-family: var(--mono);
+}
+.nav-item.active .nav-badge { background: var(--gold-d); color: var(--gold); }
+
+.sb-footer {
+  padding: 14px 16px; border-top: 0.5px solid var(--border);
+  display: flex; align-items: center; gap: 9px;
+}
+.sb-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--gold-d); border: 0.5px solid var(--gold-b);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: var(--gold); flex-shrink: 0;
+}
+.sb-uname { font-size: 11px; color: var(--text-2); }
+.sb-plan { font-size: 9px; color: var(--gold); font-family: var(--mono); }
+
+/* ============================================================ MAIN */
+#main {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-width: 0;
+}
+
+/* ============================================================ TOPBAR */
+#topbar {
+  padding: 14px 24px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; background: var(--bg);
+}
+.tb-left {}
+.tb-title { font-size: 15px; font-weight: 600; color: var(--text-1); }
+.tb-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; font-family: var(--mono); }
+.tb-right { display: flex; align-items: center; gap: 10px; }
+.tb-ia {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; color: var(--green);
+  background: var(--green-d); border: 0.5px solid var(--green-b);
+  padding: 4px 10px; border-radius: 999px; font-family: var(--mono);
+}
+.ia-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
+}
+.tb-notif {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.tb-notif svg { width: 14px; height: 14px; color: var(--text-3); }
+.tb-plan {
+  font-size: 9px; padding: 3px 9px; border-radius: 999px;
+  background: var(--gold-d); color: var(--gold);
+  border: 0.5px solid var(--gold-b); font-family: var(--mono);
+  font-weight: 600; letter-spacing: .05em;
+}
+.tb-user-av {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--gold-d); border: 0.5px solid var(--gold-b);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: var(--gold);
+  cursor: pointer;
+}
+#hamburger {
+  display: none; background: none; border: none;
+  cursor: pointer; padding: 4px; color: var(--text-2);
+}
+
+/* ============================================================ PAGES */
+#content { flex: 1; overflow-y: auto; }
+.page { display: none; padding: 24px; animation: fadeIn .2s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ============================================================ CARDS */
+.card {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.card-head {
+  padding: 14px 16px; border-bottom: 0.5px solid var(--border-s);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title { font-size: 12px; font-weight: 500; color: var(--text-2); font-family: var(--mono); }
+.card-action { font-size: 11px; color: var(--gold); cursor: pointer; }
+.card-action:hover { text-decoration: underline; }
+
+/* ============================================================ KPI */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 12px; margin-bottom: 20px;
+}
+.kpi {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 18px;
+  position: relative; overflow: hidden;
+}
+.kpi::before {
+  content: ''; position: absolute; top: 0; left: 20%; right: 20%;
+  height: 1px; background: var(--gold); opacity: .15;
+}
+.kpi.alert { border-color: var(--red-b); }
+.kpi.alert::before { background: var(--red); }
+.kpi-label {
+  font-size: 9px; color: var(--text-3); text-transform: uppercase;
+  letter-spacing: .1em; margin-bottom: 10px; font-family: var(--mono);
+}
+.kpi-val { font-size: 26px; font-weight: 600; color: var(--text-1); line-height: 1; }
+.kpi-val.red { color: var(--red); }
+.kpi-delta {
+  font-size: 10px; margin-top: 5px; display: flex;
+  align-items: center; gap: 4px; font-family: var(--mono);
+}
+.kpi-delta.up { color: var(--green); }
+.kpi-delta.dn { color: var(--red); }
+.kpi-delta.warn { color: #f59e0b; }
+
+/* ============================================================ GRID 2 */
+.grid-2 { display: grid; grid-template-columns: 58% 42%; gap: 12px; margin-bottom: 16px; }
+
+/* ============================================================ TABLE */
+.tbl-wrap { overflow-x: auto; }
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th {
+  padding: 8px 14px; text-align: left; font-size: 9px;
+  color: var(--text-3); text-transform: uppercase; letter-spacing: .08em;
+  border-bottom: 0.5px solid var(--border); font-family: var(--mono);
+  font-weight: 400;
+}
+.tbl td { padding: 10px 14px; border-bottom: 0.5px solid var(--border-s); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tbody tr { cursor: pointer; transition: background .12s; }
+.tbl tbody tr:hover { background: var(--bg-hover); }
+.tbl-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; flex-shrink: 0;
+}
+.av-hot { background: var(--red-d); color: var(--red); }
+.av-warm { background: #1c130a; color: #f59e0b; }
+.av-cold { background: #0a0a1c; color: #6366f1; }
+.av-default { background: var(--bg-hover); color: var(--text-2); }
+.tbl-name { font-size: 12px; font-weight: 500; color: var(--text-1); }
+.tbl-sub { font-size: 10px; color: var(--text-3); margin-top: 1px; font-family: var(--mono); }
+.tbl-msg { font-size: 11px; color: var(--text-3); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tbl-time { font-size: 10px; color: var(--text-3); font-family: var(--mono); white-space: nowrap; }
+
+/* ============================================================ BADGES */
+.badge {
+  display: inline-flex; align-items: center; font-size: 9px;
+  padding: 2px 8px; border-radius: 999px; font-weight: 600;
+  font-family: var(--mono); letter-spacing: .03em; white-space: nowrap;
+}
+.b-nuevo    { background: #1a1a2e; color: #818cf8; border: 0.5px solid #2a2a4e; }
+.b-contactado { background: var(--blue-d); color: var(--blue); border: 0.5px solid #1a3a6a; }
+.b-interesado { background: #1c1a0a; color: #fbbf24; border: 0.5px solid #3a3010; }
+.b-propuesta  { background: #1a0f0a; color: #fb923c; border: 0.5px solid #3a2010; }
+.b-demo       { background: #0a0f1c; color: #818cf8; border: 0.5px solid #1a1a3e; }
+.b-cerrado    { background: var(--green-d); color: var(--green); border: 0.5px solid var(--green-b); }
+.b-perdido    { background: var(--red-d); color: var(--red); border: 0.5px solid var(--red-b); }
+.b-new        { background: #1a1a2e; color: #818cf8; border: 0.5px solid #2a2a4e; }
+.b-hot        { background: var(--red-d); color: var(--red); border: 0.5px solid var(--red-b); }
+.b-warm       { background: #1c130a; color: #f59e0b; border: 0.5px solid #3a2810; }
+.b-cold       { background: #0a0a1c; color: #6366f1; border: 0.5px solid #1a1a3e; }
+.b-ia         { background: var(--green-d); color: var(--green); border: 0.5px solid var(--green-b); }
+.b-gold       { background: var(--gold-d); color: var(--gold); border: 0.5px solid var(--gold-b); }
+
+/* ============================================================ PIPELINE */
+.pipe-list { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.pipe-row {}
+.pipe-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.pipe-label { font-size: 11px; color: var(--text-2); }
+.pipe-amount { font-size: 11px; color: var(--gold); font-weight: 600; font-family: var(--mono); }
+.pipe-bar-bg { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.pipe-bar { height: 3px; background: var(--gold); border-radius: 99px; transition: width .6s ease; }
+.pipe-meta { font-size: 9px; color: var(--text-3); margin-top: 3px; font-family: var(--mono); }
+.pipe-total {
+  margin: 12px 16px 14px; padding-top: 10px;
+  border-top: 0.5px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.pipe-total-label { font-size: 10px; color: var(--text-3); font-family: var(--mono); }
+.pipe-total-val { font-size: 15px; font-weight: 600; color: var(--gold); font-family: var(--mono); }
+
+/* ============================================================ JARVIS BANNER */
+.jarvis-banner {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-left: 2px solid var(--gold);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  padding: 14px 18px; display: flex; align-items: center; gap: 14px;
+}
+.jarvis-icon {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: var(--gold-d); border: 0.5px solid var(--gold-b);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.jarvis-icon svg { width: 16px; height: 16px; }
+.jarvis-content { flex: 1; min-width: 0; }
+.jarvis-title { font-size: 11px; font-weight: 600; color: var(--gold); margin-bottom: 3px; font-family: var(--mono); }
+.jarvis-text { font-size: 12px; color: var(--text-2); line-height: 1.55; }
+.jarvis-btn {
+  font-size: 10px; color: var(--gold); border: 0.5px solid var(--gold-b);
+  padding: 6px 12px; border-radius: 6px; background: transparent;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  font-family: var(--mono); transition: background .15s;
+}
+.jarvis-btn:hover { background: var(--gold-d); }
+
+/* ============================================================ BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px; font-size: 12px;
+  font-weight: 600; cursor: pointer; border: none;
+  transition: all .15s; font-family: var(--font);
+}
+.btn-primary { background: var(--gold); color: #09090b; }
+.btn-primary:hover { background: #d4b456; }
+.btn-secondary {
+  background: transparent; color: var(--text-2);
+  border: 0.5px solid #27272a;
+}
+.btn-secondary:hover { background: var(--bg-hover); color: var(--text-1); }
+.btn-danger { background: var(--red-d); color: var(--red); border: 0.5px solid var(--red-b); }
+.btn-sm { padding: 5px 12px; font-size: 11px; }
+.btn-icon { padding: 7px; border-radius: 8px; }
+
+/* ============================================================ SEARCH & FILTER */
+.search-bar {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 16px;
+}
+.search-input-wrap { position: relative; flex: 1; }
+.search-input-wrap svg {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  width: 14px; height: 14px; color: var(--text-3); pointer-events: none;
+}
+.search-input {
+  width: 100%; background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 8px 12px 8px 32px;
+  font-size: 12px; color: var(--text-1); font-family: var(--font); outline: none;
+  transition: border-color .15s;
+}
+.search-input:focus { border-color: var(--gold); }
+.search-input::placeholder { color: var(--text-3); }
+.filter-select {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 8px 12px; font-size: 12px;
+  color: var(--text-2); font-family: var(--font); outline: none;
+  cursor: pointer; transition: border-color .15s;
+}
+.filter-select:focus { border-color: var(--gold); }
+
+/* ============================================================ CHAT PAGE */
+#chat-layout { display: flex; height: calc(100vh - 57px); }
+#leads-list {
+  width: 280px; min-width: 280px; border-right: 0.5px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.leads-list-head {
+  padding: 14px 16px; border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+}
+.leads-list-title { font-size: 13px; font-weight: 600; color: var(--text-1); margin-bottom: 10px; }
+.leads-search {
+  width: 100%; background: var(--bg-hover); border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 7px 12px; font-size: 11px;
+  color: var(--text-1); font-family: var(--font); outline: none;
+}
+.leads-search::placeholder { color: var(--text-3); }
+.leads-scroll { flex: 1; overflow-y: auto; }
+.lead-item {
+  padding: 12px 16px; border-bottom: 0.5px solid var(--border-s);
+  cursor: pointer; transition: background .12s; position: relative;
+}
+.lead-item:hover { background: var(--bg-hover); }
+.lead-item.active { background: var(--bg-hover); border-left: 2px solid var(--gold); }
+.lead-item-top { display: flex; align-items: center; gap: 10px; }
+.lead-item-av {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex-shrink: 0;
+}
+.lead-item-info { flex: 1; min-width: 0; }
+.lead-item-name { font-size: 12px; font-weight: 600; color: var(--text-1); }
+.lead-item-preview {
+  font-size: 11px; color: var(--text-3); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
+}
+.lead-item-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 6px;
+}
+.lead-item-time { font-size: 9px; color: var(--text-3); font-family: var(--mono); }
+.unread-badge {
+  min-width: 16px; height: 16px; border-radius: 99px;
+  background: var(--gold); color: #09090b;
+  font-size: 9px; font-weight: 700; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ============================================================ CHAT AREA */
+#chat-area {
+  flex: 1; display: flex; flex-direction: column; min-width: 0;
+  background: #07070a;
+}
+#chat-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+}
+#chat-empty svg { width: 40px; height: 40px; color: var(--text-3); opacity: .4; }
+#chat-empty p { font-size: 13px; color: var(--text-3); }
+#chat-header {
+  padding: 12px 20px; border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg); flex-shrink: 0;
+}
+.chat-header-av {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex-shrink: 0;
+}
+.chat-header-info { flex: 1; }
+.chat-header-name { font-size: 13px; font-weight: 600; color: var(--text-1); }
+.chat-header-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; font-family: var(--mono); }
+.chat-header-actions { display: flex; gap: 6px; }
+.chat-header-btn {
+  font-size: 10px; padding: 4px 10px; border-radius: 6px;
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  color: var(--text-2); cursor: pointer; font-family: var(--mono);
+  transition: all .15s;
+}
+.chat-header-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+#chat-messages {
+  flex: 1; overflow-y: auto; padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.msg-wrap { display: flex; flex-direction: column; }
+.msg-wrap.out { align-items: flex-end; }
+.bubble {
+  max-width: 70%; padding: 10px 14px;
+  border-radius: 12px; font-size: 12px; line-height: 1.6;
+}
+.bubble-in {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  color: var(--text-1); border-radius: 4px 12px 12px 12px;
+  align-self: flex-start;
+}
+.bubble-out {
+  background: var(--green-d); border: 0.5px solid var(--green-b);
+  color: #bbf7d0; border-radius: 12px 4px 12px 12px;
+}
+.bubble-ia {
+  background: var(--gold-d); border: 0.5px solid var(--gold-b);
+  color: #fef3c7; border-radius: 12px 4px 12px 12px;
+}
+.msg-time {
+  font-size: 9px; color: var(--text-3); margin-top: 3px;
+  font-family: var(--mono);
+}
+.typing-indicator { display: flex; gap: 4px; align-items: center; padding: 10px 14px; }
+.typing-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--text-3);
+  animation: typingBounce 1.2s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes typingBounce {
+  0%, 100% { transform: translateY(0); opacity: .4; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+#chat-input-area {
+  padding: 12px 20px; border-top: 0.5px solid var(--border);
+  display: flex; gap: 8px; align-items: center;
+  background: var(--bg); flex-shrink: 0;
+}
+#chat-input {
+  flex: 1; background: var(--bg-input); border: 0.5px solid var(--border);
+  border-radius: 10px; padding: 10px 14px;
+  font-size: 13px; color: var(--text-1); font-family: var(--font);
+  outline: none; resize: none; max-height: 120px;
+  transition: border-color .15s; line-height: 1.5;
+}
+#chat-input:focus { border-color: var(--gold); }
+#chat-input::placeholder { color: var(--text-3); }
+#chat-send {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--gold); border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: background .15s;
+}
+#chat-send:hover { background: #d4b456; }
+#chat-send svg { width: 14px; height: 14px; }
+
+/* ============================================================ PIPELINE PAGE */
+.kanban { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.kanban-col { min-width: 200px; flex-shrink: 0; }
+.kanban-col-head {
+  padding: 10px 12px; background: var(--bg-card);
+  border: 0.5px solid var(--border); border-radius: 10px 10px 0 0;
+  border-bottom: none; display: flex; align-items: center; justify-content: space-between;
+}
+.kanban-col-title { font-size: 11px; font-weight: 600; color: var(--text-2); font-family: var(--mono); }
+.kanban-col-count {
+  font-size: 9px; padding: 1px 6px; border-radius: 99px;
+  background: #1c1c1f; color: var(--text-3); font-family: var(--mono);
+}
+.kanban-col-body {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-top: none; border-radius: 0 0 10px 10px;
+  min-height: 80px; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.kanban-card {
+  background: var(--bg-hover); border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; cursor: pointer;
+  transition: border-color .15s;
+}
+.kanban-card:hover { border-color: var(--gold); }
+.kanban-card-name { font-size: 12px; font-weight: 500; color: var(--text-1); }
+.kanban-card-biz { font-size: 10px; color: var(--text-3); margin-top: 2px; font-family: var(--mono); }
+.kanban-card-amount { font-size: 11px; color: var(--gold); font-weight: 600; margin-top: 6px; font-family: var(--mono); }
+.kanban-col-total {
+  font-size: 10px; color: var(--text-3); font-family: var(--mono);
+  padding: 4px 12px 8px;
+}
+
+/* ============================================================ EMPTY STATE */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 60px 20px; gap: 12px; text-align: center;
+}
+.empty-state svg { width: 36px; height: 36px; color: var(--text-3); opacity: .4; }
+.empty-state h3 { font-size: 14px; color: var(--text-2); }
+.empty-state p { font-size: 12px; color: var(--text-3); max-width: 280px; line-height: 1.6; }
+
+/* ============================================================ LOADING */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-hover) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite; border-radius: 6px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ============================================================ TOAST */
+#toast-container {
+  position: fixed; top: 16px; right: 16px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: 10px; padding: 12px 16px;
+  font-size: 12px; color: var(--text-1); min-width: 240px;
+  animation: toastIn .25s ease; pointer-events: all;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.success { border-left: 2px solid var(--green); }
+.toast.error { border-left: 2px solid var(--red); }
+.toast.info { border-left: 2px solid var(--gold); }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ============================================================ LOGIN */
+#login-page {
+  display: none; position: fixed; inset: 0;
+  background: var(--bg); z-index: 1000;
+  align-items: center; justify-content: center;
+}
+#login-page.show { display: flex; }
+.login-box {
+  width: 100%; max-width: 380px; padding: 24px;
+}
+.login-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; justify-content: center; }
+.login-mark {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--gold-d); border: 0.5px solid var(--gold-b);
+  display: flex; align-items: center; justify-content: center;
+}
+.login-mark svg { width: 18px; height: 18px; }
+.login-brand { font-size: 18px; font-weight: 800; color: var(--text-1); }
+.login-brand span { color: var(--gold); }
+.login-card {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 28px;
+}
+.login-title { font-size: 16px; font-weight: 700; color: var(--text-1); margin-bottom: 4px; }
+.login-sub { font-size: 12px; color: var(--text-3); margin-bottom: 24px; }
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 11px; color: var(--text-2); margin-bottom: 6px; display: block; font-family: var(--mono); }
+.form-input {
+  width: 100%; background: var(--bg-input); border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; font-size: 13px;
+  color: var(--text-1); font-family: var(--font); outline: none;
+  transition: border-color .15s;
+}
+.form-input:focus { border-color: var(--gold); }
+.form-input::placeholder { color: var(--text-3); }
+.login-btn {
+  width: 100%; background: var(--gold); color: #09090b;
+  border: none; border-radius: 8px; padding: 12px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  font-family: var(--font); transition: background .15s; margin-top: 6px;
+}
+.login-btn:hover { background: #d4b456; }
+.login-btn:disabled { opacity: .5; cursor: not-allowed; }
+.login-toggle {
+  text-align: center; margin-top: 14px; font-size: 12px; color: var(--text-3);
+}
+.login-toggle a { color: var(--gold); cursor: pointer; text-decoration: none; }
+.login-toggle a:hover { text-decoration: underline; }
+.login-powered {
+  text-align: center; margin-top: 24px; font-size: 10px;
+  color: var(--text-3); font-family: var(--mono);
+}
+.login-powered span { color: var(--gold); }
+.login-error {
+  background: var(--red-d); border: 0.5px solid var(--red-b);
+  border-radius: 8px; padding: 10px 12px; font-size: 12px;
+  color: var(--red); margin-bottom: 14px; display: none;
+}
+
+/* ============================================================ JARVIS PAGE */
+.jarvis-sections { display: flex; flex-direction: column; gap: 12px; }
+.jarvis-section {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 18px;
+}
+.jarvis-section-title {
+  font-size: 12px; font-weight: 600; color: var(--gold);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono);
+}
+.jarvis-section-body { font-size: 13px; color: var(--text-2); line-height: 1.7; }
+.jarvis-loading { text-align: center; padding: 40px; color: var(--text-3); font-family: var(--mono); }
+
+/* ============================================================ DECISION SCAN */
+.scan-form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.scan-textarea {
+  width: 100%; background: var(--bg-input); border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; font-size: 12px;
+  color: var(--text-1); font-family: var(--font); outline: none;
+  resize: vertical; min-height: 80px; transition: border-color .15s;
+}
+.scan-textarea:focus { border-color: var(--gold); }
+.scan-textarea::placeholder { color: var(--text-3); }
+.scan-results { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.scan-card {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px;
+}
+.scan-card-title {
+  font-size: 10px; color: var(--gold); font-weight: 600;
+  font-family: var(--mono); margin-bottom: 8px; text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.scan-card-body { font-size: 12px; color: var(--text-2); line-height: 1.65; }
+
+/* ============================================================ IA CONFIG */
+.ia-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ia-chat-area {
+  background: var(--bg); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); display: flex; flex-direction: column;
+  overflow: hidden; height: 400px;
+}
+.ia-chat-head {
+  padding: 12px 16px; border-bottom: 0.5px solid var(--border);
+  font-size: 11px; color: var(--text-3); font-family: var(--mono);
+}
+.ia-chat-msgs {
+  flex: 1; overflow-y: auto; padding: 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ia-chat-inp {
+  padding: 10px 14px; border-top: 0.5px solid var(--border);
+  display: flex; gap: 8px;
+}
+.ia-chat-input {
+  flex: 1; background: var(--bg-input); border: 0.5px solid var(--border);
+  border-radius: 999px; padding: 7px 14px; font-size: 12px;
+  color: var(--text-1); font-family: var(--font); outline: none;
+}
+.ia-chat-input::placeholder { color: var(--text-3); }
+.ia-chat-send {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--gold); border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+.ia-chat-send svg { width: 12px; height: 12px; }
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 0.5px solid var(--border-s);
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-label { font-size: 12px; color: var(--text-2); }
+.toggle {
+  width: 36px; height: 20px; border-radius: 999px;
+  position: relative; cursor: pointer; transition: background .2s;
+  background: #1c1c1f; border: none;
+}
+.toggle.on { background: var(--green); }
+.toggle::after {
+  content: ''; position: absolute; width: 14px; height: 14px;
+  border-radius: 50%; background: #fff; top: 3px; left: 3px;
+  transition: transform .2s;
+}
+.toggle.on::after { transform: translateX(16px); }
+
+/* ============================================================ PLANS PAGE */
+.plans-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+.plan-card {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px; position: relative;
+}
+.plan-card.featured { border-color: var(--gold-b); }
+.plan-card.featured::before {
+  content: 'MÁS POPULAR'; position: absolute; top: -10px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--gold); color: #09090b; font-size: 9px;
+  font-weight: 700; padding: 3px 12px; border-radius: 999px;
+  font-family: var(--mono); letter-spacing: .05em;
+}
+.plan-name { font-size: 13px; font-weight: 700; color: var(--text-1); margin-bottom: 4px; }
+.plan-desc { font-size: 11px; color: var(--text-3); margin-bottom: 16px; }
+.plan-price { font-size: 30px; font-weight: 800; color: var(--text-1); line-height: 1; }
+.plan-price span { font-size: 13px; font-weight: 400; color: var(--text-3); }
+.plan-setup { font-size: 11px; color: var(--text-3); margin-top: 4px; margin-bottom: 20px; font-family: var(--mono); }
+.plan-features { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.plan-features li { font-size: 12px; color: var(--text-2); display: flex; align-items: flex-start; gap: 8px; }
+.plan-features li::before { content: '→'; color: var(--gold); flex-shrink: 0; }
+.plan-btn { width: 100%; }
+
+/* ============================================================ WHATSAPP PAGE */
+.wa-tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+.wa-tab {
+  padding: 7px 16px; border-radius: 8px; font-size: 12px;
+  font-family: var(--mono); cursor: pointer; transition: all .15s;
+  background: transparent; border: 0.5px solid var(--border); color: var(--text-3);
+}
+.wa-tab.active { background: var(--bg-card); color: var(--text-1); border-color: var(--gold); }
+.wa-status {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px; background: var(--bg-card);
+  border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+}
+.wa-status-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--red); flex-shrink: 0;
+}
+.wa-status-dot.connected { background: var(--green); }
+.wa-status-text { font-size: 13px; font-weight: 500; color: var(--text-1); }
+.wa-status-sub { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+.wa-form { display: flex; flex-direction: column; gap: 14px; }
+.wa-field {}
+.wa-label {
+  font-size: 11px; color: var(--text-2); margin-bottom: 5px;
+  display: block; font-family: var(--mono);
+}
+.wa-help { font-size: 10px; color: var(--text-3); margin-top: 4px; font-family: var(--mono); }
+
+/* ============================================================ MOBILE */
+@media (max-width: 768px) {
+  #sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 20px rgba(0,0,0,.5);
+  }
+  #sidebar.open { transform: translateX(0); }
+  #hamburger { display: flex; }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .grid-2 { grid-template-columns: 1fr; }
+  .scan-form { grid-template-columns: 1fr; }
+  .scan-results { grid-template-columns: 1fr; }
+  .plans-grid { grid-template-columns: 1fr; }
+  .ia-grid { grid-template-columns: 1fr; }
+  #leads-list { display: none; }
+  #leads-list.mobile-show { display: flex; position: fixed; inset: 0; z-index: 100; background: var(--bg); }
+  .page { padding: 16px; }
+  .kanban { gap: 8px; }
+  .kanban-col { min-width: 170px; }
+}
+
+#overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.6); z-index: 199;
+}
+#overlay.show { display: block; }
+
+/* ============================================================ POWERED */
+.powered {
+  text-align: center; padding: 12px; font-size: 10px;
+  color: var(--text-3); font-family: var(--mono);
+  border-top: 0.5px solid var(--border);
+}
+.powered span { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ LOGIN -->
+<div id="login-page" class="show">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-mark">
+        <svg viewBox="0 0 18 18" fill="none">
+          <path d="M9 1L16 5V13L9 17L2 13V5L9 1Z" stroke="#c8a84b" stroke-width="1.5" fill="none"/>
+          <circle cx="9" cy="9" r="2.5" fill="#c8a84b"/>
+        </svg>
+      </div>
+      <div class="login-brand">URUS <span>OS</span></div>
+    </div>
+    <div class="login-card">
+      <div class="login-title" id="login-title">Accede a tu sistema</div>
+      <div class="login-sub" id="login-sub">WhatsApp Growth Operating System</div>
+      <div class="login-error" id="login-error"></div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="login-email" type="email" placeholder="tu@email.com" autocomplete="email"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input class="form-input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar al sistema</button>
+      <div class="login-toggle">
+        ¿No tienes cuenta? <a onclick="toggleAuthMode()">Crear cuenta</a>
+      </div>
+    </div>
+    <div class="login-powered">Powered by <span>URUS Blueprint System</span></div>
+  </div>
+</div>
+
+<!-- ============================================================ TOAST -->
+<div id="toast-container"></div>
+
+<!-- ============================================================ OVERLAY MOBILE -->
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<!-- ============================================================ APP -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-top">
+      <div class="sb-brand">
+        <div class="sb-mark">
+          <svg viewBox="0 0 18 18" fill="none">
+            <path d="M9 1L16 5V13L9 17L2 13V5L9 1Z" stroke="#c8a84b" stroke-width="1.5" fill="none"/>
+            <circle cx="9" cy="9" r="2.5" fill="#c8a84b"/>
+          </svg>
+        </div>
+        <div>
+          <div class="sb-wordmark">URUS OS</div>
+          <div class="sb-client" id="sb-client-name">Cargando...</div>
+        </div>
+      </div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-nav">
+      <div class="sb-section">
+        <div class="sb-section-label">Principal</div>
+        <button class="nav-item active" onclick="navigate('dashboard')">
+          <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="10" y="1" width="5" height="5" rx="1"/><rect x="1" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" onclick="navigate('leads')">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 7a5 5 0 0110 0H3z"/></svg>
+          Mis Leads
+          <span class="nav-badge" id="nb-leads">0</span>
+        </button>
+        <button class="nav-item" onclick="navigate('chat')">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 2a1 1 0 011-1h12a1 1 0 011 1v9a1 1 0 01-1 1H9l-3 3v-3H2a1 1 0 01-1-1V2z"/></svg>
+          Conversaciones
+          <span class="nav-badge" id="nb-conv">0</span>
+        </button>
+        <button class="nav-item" onclick="navigate('pipeline')">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 5h14M1 5l3-3M1 5l3 3M15 11H1M15 11l-3-3M15 11l-3 3"/></svg>
+          Pipeline
+        </button>
+      </div>
+      <div class="sb-section">
+        <div class="sb-section-label">Inteligencia</div>
+        <button class="nav-item" onclick="navigate('jarvis')">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a6 6 0 100 12A6 6 0 008 1zm0 2a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 9.5c-1.8 0-3.4-.9-4.3-2.3.1-1.4 2.9-2.2 4.3-2.2s4.2.8 4.3 2.2C11.4 11.6 9.8 12.5 8 12.5z"/></svg>
+          JARVIS
+        </button>
+        <button class="nav-item" onclick="navigate('ia')">
+          <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 5v3l2 2"/></svg>
+          Asistente IA
+        </button>
+        <button class="nav-item" onclick="navigate('scan')">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 4h3M1 8h3M1 12h3M6 4h9M6 8h9M6 12h9"/></svg>
+          Decision Scan
+        </button>
+      </div>
+      <div class="sb-section">
+        <div class="sb-section-label">Sistema</div>
+        <button class="nav-item" onclick="navigate('whatsapp')">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 017 7c0 2.5-1.3 4.7-3.3 6l.3 2-2-.7A7 7 0 118 1z"/></svg>
+          WhatsApp
+        </button>
+        <button class="nav-item" onclick="navigate('planes')">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l2 4 5 .7-3.5 3.4.8 5-4.3-2.3L4.3 14l.8-5L1.5 5.7 6.5 5z"/></svg>
+          Mi Plan
+        </button>
+      </div>
+    </div>
+    <div class="powered">Powered by <span>URUS Blueprint System</span></div>
+    <div class="sb-footer">
+      <div class="sb-avatar" id="sb-avatar">--</div>
+      <div>
+        <div class="sb-uname" id="sb-uname">Usuario</div>
+        <div class="sb-plan" id="sb-plan">Growth · activo</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <!-- TOPBAR -->
+    <div id="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button id="hamburger" onclick="toggleSidebar()">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+            <rect y="3" width="18" height="1.5" rx="1"/>
+            <rect y="8.25" width="18" height="1.5" rx="1"/>
+            <rect y="13.5" width="18" height="1.5" rx="1"/>
+          </svg>
+        </button>
+        <div class="tb-left">
+          <div class="tb-title" id="page-title">Dashboard</div>
+          <div class="tb-sub" id="page-sub">Lunes 14 de abril</div>
+        </div>
+      </div>
+      <div class="tb-right">
+        <div class="tb-ia"><div class="ia-dot"></div>IA operando</div>
+        <div class="tb-notif">
+          <svg viewBox="0 0 16 16" fill="currentColor" style="color:var(--text-3)"><path d="M8 1a5.5 5.5 0 015.5 5.5v3l1 2H2l1-2V6.5A5.5 5.5 0 018 1zM6.5 13h3a1.5 1.5 0 01-3 0z"/></svg>
+        </div>
+        <div class="tb-plan" id="tb-plan">GROWTH</div>
+        <div class="tb-user-av" id="tb-avatar" onclick="doLogout()">--</div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div id="content">
+
+      <!-- ============================================================ DASHBOARD PAGE -->
+      <div class="page active" id="page-dashboard">
+        <div class="kpi-grid" id="kpi-grid">
+          <div class="kpi"><div class="kpi-label">Leads este mes</div><div class="kpi-val skeleton" style="height:32px;width:60px"> </div><div class="kpi-delta up" style="height:14px;width:100px" ></div></div>
+          <div class="kpi"><div class="kpi-label">IA respondiendo</div><div class="kpi-val skeleton" style="height:32px;width:60px"> </div></div>
+          <div class="kpi"><div class="kpi-label">Conversiones</div><div class="kpi-val skeleton" style="height:32px;width:80px"> </div></div>
+          <div class="kpi alert"><div class="kpi-label">Sin respuesta</div><div class="kpi-val skeleton" style="height:32px;width:40px"> </div></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Actividad reciente</div>
+              <div class="card-action" onclick="navigate('leads')">ver todos →</div>
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th>Contacto</th>
+                    <th>Estado</th>
+                    <th>Temp.</th>
+                    <th>Último mensaje</th>
+                    <th>Hace</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-leads-tbody">
+                  <tr><td colspan="5" style="padding:30px;text-align:center;color:var(--text-3);font-size:12px">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Pipeline resumen</div>
+              <div class="card-action" onclick="navigate('pipeline')">ver todo →</div>
+            </div>
+            <div class="pipe-list" id="dash-pipeline">
+              <div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px">Cargando...</div>
+            </div>
+            <div class="pipe-total">
+              <span class="pipe-total-label">Pipeline total</span>
+              <span class="pipe-total-val" id="pipeline-total">$0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="jarvis-banner" id="jarvis-banner">
+          <div class="jarvis-icon">
+            <svg viewBox="0 0 18 18" fill="none">
+              <path d="M9 1L16 5V13L9 17L2 13V5L9 1Z" stroke="#c8a84b" stroke-width="1.5" fill="none"/>
+              <circle cx="9" cy="9" r="2.5" fill="#c8a84b"/>
+            </svg>
+          </div>
+          <div class="jarvis-content">
+            <div class="jarvis-title">Último análisis · JARVIS</div>
+            <div class="jarvis-text" id="jarvis-preview">Cargando análisis estratégico...</div>
+          </div>
+          <button class="jarvis-btn" onclick="navigate('jarvis')">Ver análisis completo →</button>
+        </div>
+      </div>
+
+      <!-- ============================================================ LEADS PAGE -->
+      <div class="page" id="page-leads">
+        <div class="search-bar">
+          <div class="search-input-wrap">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7 1a6 6 0 100 12A6 6 0 007 1zm8 13l-3-3"/></svg>
+            <input class="search-input" id="leads-search" placeholder="Buscar por nombre, teléfono o negocio..." oninput="filterLeads()"/>
+          </div>
+          <select class="filter-select" id="leads-filter" onchange="filterLeads()">
+            <option value="">Todos los estados</option>
+            <option value="NEW">Nuevo</option>
+            <option value="CONTACTED">Contactado</option>
+            <option value="INTERESTED">Interesado</option>
+            <option value="PROPOSAL">Propuesta</option>
+            <option value="DEMO">Demo</option>
+            <option value="CLOSED">Cerrado</option>
+            <option value="LOST">Perdido</option>
+          </select>
+          <button class="btn btn-primary" onclick="navigate('chat')">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2a1 1 0 011-1h12a1 1 0 011 1v9a1 1 0 01-1 1H9l-3 3v-3H2a1 1 0 01-1-1V2z"/></svg>
+            Chat
+          </button>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Contacto</th>
+                  <th>Teléfono</th>
+                  <th>Estado</th>
+                  <th>Score</th>
+                  <th>Último mensaje</th>
+                </tr>
+              </thead>
+              <tbody id="leads-tbody">
+                <tr><td colspan="5" style="padding:40px;text-align:center;color:var(--text-3);font-size:12px">Cargando leads...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ CHAT PAGE -->
+      <div class="page" id="page-chat" style="padding:0">
+        <div id="chat-layout">
+          <div id="leads-list">
+            <div class="leads-list-head">
+              <div class="leads-list-title">Conversaciones</div>
+              <input class="leads-search" placeholder="Buscar..." oninput="filterChatLeads(this.value)"/>
+            </div>
+            <div class="leads-scroll" id="chat-leads-scroll"></div>
+          </div>
+          <div id="chat-area">
+            <div id="chat-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              <p>Selecciona una conversación</p>
+            </div>
+            <div id="chat-active" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+              <div id="chat-header"></div>
+              <div id="chat-messages"></div>
+              <div id="chat-input-area">
+                <textarea id="chat-input" rows="1" placeholder="Escribe un mensaje o deja que la IA responda..." onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
+                <button id="chat-send" onclick="sendMessage()">
+                  <svg viewBox="0 0 24 24" fill="#09090b"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ PIPELINE PAGE -->
+      <div class="page" id="page-pipeline">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-1)">Pipeline Kanban</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--mono);margin-top:2px">Arrastra leads entre columnas</div>
+          </div>
+        </div>
+        <div class="kanban" id="kanban-board"></div>
+      </div>
+
+      <!-- ============================================================ JARVIS PAGE -->
+      <div class="page" id="page-jarvis">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-1)">JARVIS — Análisis Estratégico</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--mono);margin-top:2px" id="jarvis-updated">Actualizado hace unos momentos</div>
+          </div>
+          <button class="btn btn-secondary" onclick="runJarvis()">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.5 3.5h1v4.5l3 1.5-.5 1L7.5 9V4.5z"/></svg>
+            Generar análisis
+          </button>
+        </div>
+        <div class="jarvis-sections" id="jarvis-sections">
+          <div class="jarvis-loading">Cargando análisis de JARVIS...</div>
+        </div>
+      </div>
+
+      <!-- ============================================================ IA PAGE -->
+      <div class="page" id="page-ia">
+        <div class="ia-grid">
+          <div>
+            <div class="card" style="margin-bottom:14px">
+              <div class="card-head"><div class="card-title">Configuración del asistente</div></div>
+              <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+                <div class="form-group">
+                  <label class="form-label">Nombre del negocio</label>
+                  <input class="form-input" id="ia-business" placeholder="Ej: Boutique Moda México"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Servicios que ofrezco</label>
+                  <textarea class="scan-textarea" id="ia-services" placeholder="Describe tus servicios y productos..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Precios y paquetes</label>
+                  <textarea class="scan-textarea" id="ia-pricing" placeholder="Starter $97/mes, Growth $197/mes..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Objeciones frecuentes</label>
+                  <textarea class="scan-textarea" id="ia-objections" placeholder="Precio alto → ROI en 3 meses..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tono de respuesta</label>
+                  <select class="filter-select" id="ia-tone" style="width:100%">
+                    <option value="profesional">Profesional</option>
+                    <option value="amigable">Amigable y cercano</option>
+                    <option value="consultivo">Consultivo</option>
+                    <option value="urgente">Con urgencia</option>
+                  </select>
+                </div>
+                <div style="border-top:0.5px solid var(--border);padding-top:12px">
+                  <div class="toggle-row">
+                    <span class="toggle-label">IA responde automáticamente en WA</span>
+                    <button class="toggle on" id="tog-auto" onclick="this.classList.toggle('on')"></button>
+                  </div>
+                  <div class="toggle-row">
+                    <span class="toggle-label">Follow up 24h sin respuesta</span>
+                    <button class="toggle on" id="tog-fu1" onclick="this.classList.toggle('on')"></button>
+                  </div>
+                  <div class="toggle-row">
+                    <span class="toggle-label">Follow up a los 3 días</span>
+                    <button class="toggle" id="tog-fu3" onclick="this.classList.toggle('on')"></button>
+                  </div>
+                </div>
+                <button class="btn btn-primary" style="width:100%" onclick="saveIAConfig()">Guardar configuración</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="ia-chat-area">
+              <div class="ia-chat-head">Simular conversación con la IA</div>
+              <div class="ia-chat-msgs" id="ia-chat-msgs">
+                <div class="msg-wrap">
+                  <div class="bubble bubble-in">Hola, soy el asistente de tu negocio. ¿En qué puedo ayudarte?</div>
+                </div>
+              </div>
+              <div class="ia-chat-inp">
+                <input class="ia-chat-input" id="ia-chat-input" placeholder="Escribe un mensaje de prueba..." onkeydown="if(event.key==='Enter')testIAChat()"/>
+                <button class="ia-chat-send" onclick="testIAChat()">
+                  <svg viewBox="0 0 24 24" fill="#09090b"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ SCAN PAGE -->
+      <div class="page" id="page-scan">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-head"><div class="card-title">Decision Scan — Diagnóstico de negocio</div></div>
+          <div style="padding:18px">
+            <div class="scan-form">
+              <div class="form-group">
+                <label class="form-label">Industria / Nicho</label>
+                <input class="form-input" id="scan-industry" placeholder="Ej: Servicios profesionales"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Describe tu caso</label>
+                <textarea class="scan-textarea" id="scan-case" placeholder="¿Qué está pasando en tu negocio?"></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">¿Dónde pierdes más valor?</label>
+                <textarea class="scan-textarea" id="scan-loss" placeholder="¿Qué no está funcionando?"></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fricción principal</label>
+                <textarea class="scan-textarea" id="scan-friction" placeholder="¿Qué proceso se repite o genera más fricción?"></textarea>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="runScan()" id="scan-btn">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1 4h3M1 8h3M1 12h3M6 4h9M6 8h9M6 12h9"/></svg>
+              Analizar
+            </button>
+          </div>
+        </div>
+        <div class="scan-results" id="scan-results" style="display:none"></div>
+      </div>
+
+      <!-- ============================================================ WHATSAPP PAGE -->
+      <div class="page" id="page-whatsapp">
+        <div class="wa-tabs">
+          <button class="wa-tab active" onclick="waTab('twilio',this)">Twilio</button>
+          <button class="wa-tab" onclick="waTab('meta',this)">Meta WA Cloud</button>
+        </div>
+        <div class="wa-status">
+          <div class="wa-status-dot" id="wa-dot"></div>
+          <div>
+            <div class="wa-status-text" id="wa-status-text">Desconectado</div>
+            <div class="wa-status-sub" id="wa-status-sub">Configura tus credenciales para conectar</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Configuración Twilio</div></div>
+          <div style="padding:18px">
+            <div class="wa-form">
+              <div class="wa-field">
+                <label class="wa-label">Account SID</label>
+                <input class="form-input" id="wa-sid" placeholder="ACxxxxxxxxxxxxxxx"/>
+                <div class="wa-help">Encuéntralo en twilio.com/console</div>
+              </div>
+              <div class="wa-field">
+                <label class="wa-label">Auth Token</label>
+                <input class="form-input" id="wa-token" type="password" placeholder="••••••••••••••"/>
+                <div class="wa-help">Clave secreta de tu cuenta Twilio</div>
+              </div>
+              <div class="wa-field">
+                <label class="wa-label">Número WhatsApp From</label>
+                <input class="form-input" id="wa-from" placeholder="+14155238886"/>
+                <div class="wa-help">El número WhatsApp de tu cuenta Twilio</div>
+              </div>
+              <div class="wa-field">
+                <label class="wa-label">Webhook URL (ya configurado)</label>
+                <input class="form-input" value="https://urus-backend-production.up.railway.app/v1/twilio/wa/webhook" readonly style="color:var(--text-3)"/>
+                <div class="wa-help">Esta URL ya está activa en tu backend</div>
+              </div>
+              <button class="btn btn-primary" onclick="saveWAConfig()">Guardar y probar conexión</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ PLANES PAGE -->
+      <div class="page" id="page-planes">
+        <div style="margin-bottom:24px">
+          <div style="font-size:14px;font-weight:600;color:var(--text-1)">Planes y Suscripción</div>
+          <div style="font-size:11px;color:var(--text-3);font-family:var(--mono);margin-top:2px">Tu plan actual: <span style="color:var(--gold)" id="current-plan-name">Growth</span></div>
+        </div>
+        <div class="plans-grid">
+          <div class="plan-card">
+            <div class="plan-name">Starter</div>
+            <div class="plan-desc">Para negocios que están comenzando</div>
+            <div class="plan-price">$97<span>/mes</span></div>
+            <div class="plan-setup">Setup único: $197</div>
+            <ul class="plan-features">
+              <li>Hasta 2 usuarios</li>
+              <li>CRM WhatsApp completo</li>
+              <li>Pipeline de ventas</li>
+              <li>Bandeja de mensajes</li>
+              <li>JARVIS básico (1 análisis/día)</li>
+              <li>Soporte por email</li>
+            </ul>
+            <button class="btn btn-secondary plan-btn" onclick="selectPlan('starter')">Seleccionar plan</button>
+          </div>
+          <div class="plan-card featured">
+            <div class="plan-name">Growth</div>
+            <div class="plan-desc">Para negocios en expansión</div>
+            <div class="plan-price">$197<span>/mes</span></div>
+            <div class="plan-setup">Setup único: $397</div>
+            <ul class="plan-features">
+              <li>Hasta 5 usuarios</li>
+              <li>Todo lo de Starter</li>
+              <li>JARVIS Loop (análisis continuo)</li>
+              <li>Asistente IA personalizable</li>
+              <li>Decision Scan ilimitado</li>
+              <li>Reportes avanzados</li>
+              <li>Soporte prioritario WhatsApp</li>
+            </ul>
+            <button class="btn btn-primary plan-btn" onclick="selectPlan('growth')">Plan activo</button>
+          </div>
+          <div class="plan-card">
+            <div class="plan-name">Enterprise</div>
+            <div class="plan-desc">Para operaciones grandes</div>
+            <div class="plan-price" style="font-size:22px">A cotizar</div>
+            <div class="plan-setup">Setup personalizado</div>
+            <ul class="plan-features">
+              <li>Usuarios ilimitados</li>
+              <li>Todo lo de Growth</li>
+              <li>API dedicada</li>
+              <li>Integraciones personalizadas</li>
+              <li>Onboarding 1:1</li>
+              <li>SLA premium</li>
+              <li>Manager de cuenta dedicado</li>
+            </ul>
+            <button class="btn btn-primary plan-btn" onclick="showToast('Te contactaremos en menos de 24h','info')">Contactar</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end content -->
+  </div><!-- end main -->
+</div><!-- end app -->
+
+<script>
+/* ============================================================
+   URUS DASHBOARD — JAVASCRIPT ENGINE
+   ============================================================ */
+
+const API = 'https://urus-backend-production.up.railway.app';
+let state = {
+  token: localStorage.getItem('urus_token'),
+  user: JSON.parse(localStorage.getItem('urus_user') || 'null'),
+  leads: [],
+  currentLead: null,
+  chatPollInterval: null,
+  authMode: 'login',
+  iaConfig: JSON.parse(localStorage.getItem('urus_ia_config') || 'null'),
+};
+
+/* ============================================================ API HELPERS */
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(state.token ? { 'Authorization': `Bearer ${state.token}` } : {}),
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const res = await fetch(API + path, opts);
+    const data = await res.json();
+    if (res.status === 401) { doLogout(); return null; }
+    return data;
+  } catch (e) {
+    // Demo fallback cuando no hay conexión al backend
+    return demoFallback(method, path, body);
+  }
+}
+
+function demoFallback(method, path, body) {
+  if (path === '/v1/wa/leads') return { success: true, leads: DEMO_LEADS };
+  if (path.match(/\/v1\/wa\/leads\/(.+)\/messages/)) {
+    const id = path.split('/')[4];
+    const lead = DEMO_LEADS.find(l => l.id === id) || DEMO_LEADS[0];
+    return { success: true, lead, messages: DEMO_MESSAGES[id] || DEMO_MESSAGES['demo-1'] };
+  }
+  if (path === '/v1/auth/login' || path === '/v1/auth/signup') {
+    return { token: 'demo-token-12345', user: { id: 'demo-user', email: body?.email || 'demo@urus.app' } };
+  }
+  if (path.includes('/v1/jarvis')) return { reply: '⚔️ STRATEGIC TRUTH\nTus leads en etapa DEMO llevan más de 5 días sin avanzar. El 60% de tus conversiones vienen de leads que reciben respuesta en menos de 2 horas.\n\n♟️ DOMINANT MOVE\nPrioriza los 2 leads calientes en Demo con una llamada personalizada hoy. Ofrece un incentivo de cierre inmediato.\n\n🧬 LEVERAGE POINT\nLa velocidad de respuesta es tu mayor ventaja. Quien responde primero cierra más.\n\n👁 SECOND-ORDER EFFECT\nCerrar 2 deals esta semana generaría $3,000+ en MRR y casos de éxito para usar como social proof.\n\n🚫 RISK VECTOR\nSi los leads en Demo no reciben contacto en las próximas 24h, la probabilidad de pérdida sube al 65%.' };
+  if (path === '/v1/decision-scan') return { reply: '1. Pérdida de valor principal\nLeads que entran pero no avanzan en el pipeline por falta de seguimiento sistemático.\n\n2. Fricción principal\nEl proceso de calificación manual consume tiempo que debería dedicarse al cierre.\n\n3. Decisión crítica\nAutomatizar el primer contacto y la calificación para liberar tiempo de venta real.\n\n4. Flujo recomendado\n1. Lead entra por WhatsApp → 2. IA califica en primeros 5 min → 3. Score asignado → 4. Seguimiento automático → 5. Vendedor interviene solo en leads calientes.\n\n5. Resultado esperado\nReducción del 70% en tiempo de calificación. Aumento del 40% en conversiones.\n\n6. Próximo paso sugerido\nConectar WhatsApp y activar el modo auto del Asistente IA esta semana.' };
+  if (path.includes('/send')) return { success: true };
+  return null;
+}
+
+/* ============================================================ AUTH */
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-error');
+
+  if (!email || !password) { showLoginError('Ingresa tu email y contraseña'); return; }
+
+  btn.disabled = true;
+  btn.textContent = state.authMode === 'login' ? 'Entrando...' : 'Creando cuenta...';
+  errEl.style.display = 'none';
+
+  const endpoint = state.authMode === 'login' ? '/v1/auth/login' : '/v1/auth/signup';
+  const data = await api('POST', endpoint, { email, password });
+
+  btn.disabled = false;
+  btn.textContent = state.authMode === 'login' ? 'Entrar al sistema' : 'Crear cuenta';
+
+  if (!data || (!data.token && !data.ok)) {
+    showLoginError(data?.error || data?.message || 'Error al iniciar sesión');
+    return;
+  }
+
+  state.token = data.token;
+  state.user = data.user;
+  localStorage.setItem('urus_token', data.token);
+  localStorage.setItem('urus_user', JSON.stringify(data.user));
+
+  document.getElementById('login-page').classList.remove('show');
+  initApp();
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function toggleAuthMode() {
+  state.authMode = state.authMode === 'login' ? 'signup' : 'login';
+  const isLogin = state.authMode === 'login';
+  document.getElementById('login-title').textContent = isLogin ? 'Accede a tu sistema' : 'Crear cuenta nueva';
+  document.getElementById('login-btn').textContent = isLogin ? 'Entrar al sistema' : 'Crear cuenta';
+  document.getElementById('login-toggle').innerHTML = isLogin
+    ? '¿No tienes cuenta? <a onclick="toggleAuthMode()">Crear cuenta</a>'
+    : '¿Ya tienes cuenta? <a onclick="toggleAuthMode()">Iniciar sesión</a>';
+}
+
+function doLogout() {
+  localStorage.removeItem('urus_token');
+  localStorage.removeItem('urus_user');
+  state.token = null;
+  state.user = null;
+  if (state.chatPollInterval) clearInterval(state.chatPollInterval);
+  document.getElementById('login-page').classList.add('show');
+}
+
+/* ============================================================ INIT */
+function initApp() {
+  if (!state.token) { document.getElementById('login-page').classList.add('show'); return; }
+
+  const email = state.user?.email || '';
+  const initials = email.slice(0,2).toUpperCase();
+  const clientName = email.split('@')[0];
+
+  document.getElementById('sb-avatar').textContent = initials;
+  document.getElementById('tb-avatar').textContent = initials;
+  document.getElementById('sb-uname').textContent = email;
+  document.getElementById('sb-client-name').textContent = clientName;
+  document.getElementById('page-sub').textContent = new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+
+  loadDashboard();
+  loadLeads();
+  loadChatLeads();
+}
+
+/* ============================================================ NAVIGATION */
+const pageTitles = {
+  dashboard: 'Dashboard',
+  leads: 'Mis Leads',
+  chat: 'Conversaciones',
+  pipeline: 'Pipeline',
+  jarvis: 'JARVIS',
+  ia: 'Asistente IA',
+  scan: 'Decision Scan',
+  whatsapp: 'WhatsApp',
+  planes: 'Mi Plan',
+};
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick')?.includes(`'${page}'`)) n.classList.add('active');
+  });
+
+  document.getElementById('page-title').textContent = pageTitles[page] || page;
+
+  if (page === 'jarvis') loadJarvis();
+  if (page === 'pipeline') loadPipeline();
+  if (page === 'chat') { loadChatLeads(); }
+  if (state.chatPollInterval && page !== 'chat') {
+    clearInterval(state.chatPollInterval);
+    state.chatPollInterval = null;
+  }
+
+  closeSidebar();
+}
+
+/* ============================================================ SIDEBAR MOBILE */
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+/* ============================================================ TOAST */
+function showToast(msg, type = 'info') {
+  const tc = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="${type==='success'?'#22c55e':type==='error'?'#ef4444':'#c8a84b'}"><circle cx="8" cy="8" r="7"/></svg>${msg}`;
+  tc.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(20px)'; t.style.transition = '.25s'; setTimeout(() => t.remove(), 250); }, 3000);
+}
+
+/* ============================================================ DASHBOARD */
+async function loadDashboard() {
+  const leadsData = await api('GET', '/v1/wa/leads');
+  if (!leadsData) return;
+
+  const leads = leadsData.leads || [];
+  state.leads = leads;
+
+  document.getElementById('nb-leads').textContent = leads.length;
+  document.getElementById('nb-conv').textContent = leads.filter(l => l.last_message).length;
+
+  const kpiGrid = document.getElementById('kpi-grid');
+  const total = leads.length;
+  const withMsg = leads.filter(l => l.last_message).length;
+  const noReply = leads.filter(l => l.status === 'NEW' && l.last_message).length;
+
+  kpiGrid.innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">Leads totales</div>
+      <div class="kpi-val">${total}</div>
+      <div class="kpi-delta up">↑ en tu sistema</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Con conversación</div>
+      <div class="kpi-val">${withMsg}</div>
+      <div class="kpi-delta up">↑ respondidos por IA</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Cerrados</div>
+      <div class="kpi-val">${leads.filter(l=>l.status==='CLOSED').length}</div>
+      <div class="kpi-delta up">↑ este mes</div>
+    </div>
+    <div class="kpi ${noReply > 0 ? 'alert' : ''}">
+      <div class="kpi-label">Sin respuesta</div>
+      <div class="kpi-val ${noReply > 0 ? 'red' : ''}">${noReply}</div>
+      <div class="kpi-delta ${noReply > 0 ? 'dn' : 'up'}">${noReply > 0 ? '↑ requiere atención' : '✓ al día'}</div>
+    </div>
+  `;
+
+  renderDashLeads(leads.slice(0, 5));
+  renderDashPipeline(leads);
+  renderJarvisPreview();
+}
+
+function renderDashLeads(leads) {
+  const tbody = document.getElementById('dash-leads-tbody');
+  if (!leads.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="padding:30px;text-align:center;color:var(--text-3);font-size:12px">No hay leads aún</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = leads.map(l => `
+    <tr onclick="openLead('${l.id}')">
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="tbl-avatar ${tempClass(l.status)}">${initials(l.name || l.phone)}</div>
+          <div>
+            <div class="tbl-name">${l.name || l.phone}</div>
+            <div class="tbl-sub">${l.phone || ''}</div>
+          </div>
+        </div>
+      </td>
+      <td>${statusBadge(l.status)}</td>
+      <td>${scoreBadge(l.score)}</td>
+      <td class="tbl-msg">${l.last_message || '—'}</td>
+      <td class="tbl-time">${timeAgo(l.updated_at)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderDashPipeline(leads) {
+  const stages = ['NEW','CONTACTED','INTERESTED','PROPOSAL','DEMO','CLOSED'];
+  const labels = { NEW:'Nuevo', CONTACTED:'Contactado', INTERESTED:'Interesado', PROPOSAL:'Propuesta', DEMO:'Demo', CLOSED:'Cerrado' };
+  const max = Math.max(...stages.map(s => leads.filter(l=>l.status===s).length), 1);
+  let total = 0;
+
+  const html = stages.map(s => {
+    const count = leads.filter(l => l.status === s).length;
+    const est = count * 1500;
+    total += est;
+    const pct = Math.round((count / max) * 100);
+    return `
+      <div class="pipe-row">
+        <div class="pipe-top">
+          <span class="pipe-label">${labels[s]}</span>
+          <span class="pipe-amount">$${est.toLocaleString()}</span>
+        </div>
+        <div class="pipe-bar-bg"><div class="pipe-bar" style="width:${pct}%"></div></div>
+        <div class="pipe-meta">${count} lead${count !== 1 ? 's' : ''}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('dash-pipeline').innerHTML = html;
+  document.getElementById('pipeline-total').textContent = `$${total.toLocaleString()}`;
+}
+
+function renderJarvisPreview() {
+  document.getElementById('jarvis-preview').textContent =
+    'Analiza tus leads activos. Ve a JARVIS para obtener tu análisis estratégico completo con movimientos dominantes y vectores de riesgo.';
+}
+
+/* ============================================================ LEADS PAGE */
+async function loadLeads() {
+  const data = await api('GET', '/v1/wa/leads');
+  if (!data) return;
+  state.leads = data.leads || [];
+  renderLeadsTable(state.leads);
+}
+
+function renderLeadsTable(leads) {
+  const tbody = document.getElementById('leads-tbody');
+  if (!leads.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><h3>No hay leads aún</h3><p>Los leads llegarán automáticamente cuando alguien escriba a tu WhatsApp</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = leads.map(l => `
+    <tr onclick="openLead('${l.id}')">
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="tbl-avatar ${tempClass(l.status)}">${initials(l.name || l.phone)}</div>
+          <div>
+            <div class="tbl-name">${l.name || 'Sin nombre'}</div>
+            <div class="tbl-sub">${l.phone}</div>
+          </div>
+        </div>
+      </td>
+      <td class="tbl-sub" style="font-family:var(--mono)">${l.phone}</td>
+      <td>${statusBadge(l.status)}</td>
+      <td><span style="font-size:12px;color:var(--gold);font-family:var(--mono)">${l.score || 0}</span></td>
+      <td class="tbl-msg">${l.last_message || '—'}</td>
+    </tr>
+  `).join('');
+}
+
+function filterLeads() {
+  const q = document.getElementById('leads-search').value.toLowerCase();
+  const f = document.getElementById('leads-filter').value;
+  const filtered = state.leads.filter(l => {
+    const matchQ = !q || (l.name||'').toLowerCase().includes(q) || (l.phone||'').includes(q);
+    const matchF = !f || l.status === f;
+    return matchQ && matchF;
+  });
+  renderLeadsTable(filtered);
+}
+
+function openLead(id) {
+  navigate('chat');
+  setTimeout(() => selectChatLead(id), 100);
+}
+
+/* ============================================================ CHAT */
+async function loadChatLeads() {
+  const data = await api('GET', '/v1/wa/leads');
+  if (!data) return;
+  state.leads = data.leads || [];
+  renderChatLeads(state.leads);
+}
+
+function renderChatLeads(leads) {
+  const container = document.getElementById('chat-leads-scroll');
+  if (!leads.length) {
+    container.innerHTML = `<div class="empty-state"><p>No hay conversaciones</p></div>`;
+    return;
+  }
+  container.innerHTML = leads.map(l => `
+    <div class="lead-item ${state.currentLead?.id === l.id ? 'active' : ''}" onclick="selectChatLead('${l.id}')">
+      <div class="lead-item-top">
+        <div class="lead-item-av ${tempClass(l.status)}">${initials(l.name || l.phone)}</div>
+        <div class="lead-item-info">
+          <div class="lead-item-name">${l.name || l.phone}</div>
+          <div class="lead-item-preview">${l.last_message || 'Sin mensajes aún'}</div>
+        </div>
+      </div>
+      <div class="lead-item-meta">
+        ${statusBadge(l.status)}
+        <span class="lead-item-time">${timeAgo(l.updated_at)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterChatLeads(q) {
+  const filtered = state.leads.filter(l =>
+    (l.name||'').toLowerCase().includes(q.toLowerCase()) ||
+    (l.phone||'').includes(q)
+  );
+  renderChatLeads(filtered);
+}
+
+async function selectChatLead(id) {
+  if (state.chatPollInterval) clearInterval(state.chatPollInterval);
+
+  const data = await api('GET', `/v1/wa/leads/${id}/messages`);
+  if (!data || !data.lead) return;
+
+  state.currentLead = data.lead;
+  renderChatLeads(state.leads);
+
+  document.getElementById('chat-empty').style.display = 'none';
+  const chatActive = document.getElementById('chat-active');
+  chatActive.style.display = 'flex';
+
+  renderChatHeader(data.lead);
+  renderMessages(data.messages || []);
+
+  state.chatPollInterval = setInterval(() => pollMessages(id), 4000);
+}
+
+function renderChatHeader(lead) {
+  document.getElementById('chat-header').innerHTML = `
+    <div class="chat-header-av ${tempClass(lead.status)}">${initials(lead.name || lead.phone)}</div>
+    <div class="chat-header-info">
+      <div class="chat-header-name">${lead.name || lead.phone}</div>
+      <div class="chat-header-sub">${lead.phone} · ${statusLabel(lead.status)}</div>
+    </div>
+    <div class="chat-header-actions">
+      <div class="chat-header-btn" onclick="showToast('Función próximamente','info')">Pipeline</div>
+      <div class="chat-header-btn" onclick="showToast('Función próximamente','info')">Notas</div>
+    </div>
+  `;
+}
+
+function renderMessages(messages) {
+  const container = document.getElementById('chat-messages');
+  if (!messages.length) {
+    container.innerHTML = `<div class="empty-state"><p>No hay mensajes aún</p></div>`;
+    return;
+  }
+  container.innerHTML = messages.map(m => {
+    const isOut = m.direction === 'outbound';
+    return `
+      <div class="msg-wrap ${isOut ? 'out' : ''}">
+        <div class="bubble ${isOut ? 'bubble-out' : 'bubble-in'}">${escapeHtml(m.body || '')}</div>
+        <div class="msg-time">${formatTime(m.created_at)}</div>
+      </div>
+    `;
+  }).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+async function pollMessages(leadId) {
+  const data = await api('GET', `/v1/wa/leads/${leadId}/messages`);
+  if (!data || !data.messages) return;
+  renderMessages(data.messages);
+  if (data.lead?.last_message !== state.currentLead?.last_message) {
+    state.currentLead = data.lead;
+    loadChatLeads();
+  }
+}
+
+async function sendMessage() {
+  if (!state.currentLead) return;
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  const tempMsg = { direction: 'outbound', body: msg, created_at: new Date().toISOString() };
+  const container = document.getElementById('chat-messages');
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-wrap out';
+  bubble.innerHTML = `<div class="bubble bubble-out">${escapeHtml(msg)}</div><div class="msg-time">Enviando...</div>`;
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+
+  const result = await api('POST', `/v1/wa/leads/${state.currentLead.id}/send`, { message: msg });
+  if (result?.success) {
+    bubble.querySelector('.msg-time').textContent = 'Enviado';
+    showToast('Mensaje enviado', 'success');
+  } else {
+    bubble.querySelector('.bubble-out').style.opacity = '.5';
+    bubble.querySelector('.msg-time').textContent = 'Error al enviar';
+    showToast('Error al enviar mensaje', 'error');
+  }
+}
+
+function chatKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+/* ============================================================ PIPELINE */
+async function loadPipeline() {
+  const data = await api('GET', '/v1/wa/leads');
+  if (!data) return;
+  const leads = data.leads || [];
+  const stages = [
+    { key: 'NEW', label: 'Nuevo' },
+    { key: 'CONTACTED', label: 'Contactado' },
+    { key: 'INTERESTED', label: 'Interesado' },
+    { key: 'PROPOSAL', label: 'Propuesta' },
+    { key: 'DEMO', label: 'Demo' },
+    { key: 'CLOSED', label: 'Cerrado' },
+    { key: 'LOST', label: 'Perdido' },
+  ];
+
+  const board = document.getElementById('kanban-board');
+  board.innerHTML = stages.map(s => {
+    const colLeads = leads.filter(l => l.status === s.key);
+    const cards = colLeads.length
+      ? colLeads.map(l => `
+          <div class="kanban-card" onclick="openLead('${l.id}')">
+            <div class="kanban-card-name">${l.name || l.phone}</div>
+            <div class="kanban-card-biz">${l.phone}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+              <div class="kanban-card-amount">$${(l.score * 100).toLocaleString()}</div>
+              ${scoreBadge(l.score)}
+            </div>
+          </div>
+        `).join('')
+      : `<div style="padding:12px;text-align:center;font-size:11px;color:var(--text-3);font-family:var(--mono)">vacío</div>`;
+
+    return `
+      <div class="kanban-col">
+        <div class="kanban-col-head">
+          <span class="kanban-col-title">${s.label}</span>
+          <span class="kanban-col-count">${colLeads.length}</span>
+        </div>
+        <div class="kanban-col-body">${cards}</div>
+        <div class="kanban-col-total">$${(colLeads.length * 1500).toLocaleString()}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================ JARVIS */
+async function loadJarvis() {
+  document.getElementById('jarvis-sections').innerHTML = '<div class="jarvis-loading">Generando análisis estratégico...</div>';
+  const data = await api('POST', '/v1/jarvis/brain', {
+    context: 'Analiza el estado actual del negocio basado en los leads del sistema.'
+  });
+  if (!data) {
+    document.getElementById('jarvis-sections').innerHTML = '<div class="jarvis-loading">Error al cargar JARVIS. Intenta de nuevo.</div>';
+    return;
+  }
+  const content = data.reply || data.output || data.content || 'Sin análisis disponible';
+  renderJarvisSections(content);
+  document.getElementById('jarvis-updated').textContent = `Actualizado: ${new Date().toLocaleTimeString('es-MX')}`;
+}
+
+function runJarvis() { loadJarvis(); }
+
+function renderJarvisSections(text) {
+  const sections = [
+    { key: '⚔️ STRATEGIC TRUTH', icon: '⚔️', label: 'Strategic Truth' },
+    { key: '♟️ DOMINANT MOVE', icon: '♟️', label: 'Dominant Move' },
+    { key: '🧬 LEVERAGE POINT', icon: '🧬', label: 'Leverage Point' },
+    { key: '👁 SECOND-ORDER EFFECT', icon: '👁', label: 'Second-Order Effect' },
+    { key: '🚫 RISK VECTOR', icon: '🚫', label: 'Risk Vector' },
+  ];
+
+  let html = '';
+  sections.forEach((s, i) => {
+    const start = text.indexOf(s.key);
+    const next = sections[i + 1] ? text.indexOf(sections[i + 1].key) : text.length;
+    const content = start !== -1
+      ? text.slice(start + s.key.length, next !== -1 ? next : undefined).trim()
+      : 'No disponible en este análisis.';
+
+    html += `
+      <div class="jarvis-section">
+        <div class="jarvis-section-title">${s.icon} ${s.label}</div>
+        <div class="jarvis-section-body">${escapeHtml(content)}</div>
+      </div>
+    `;
+  });
+
+  if (!html) {
+    html = `<div class="jarvis-section"><div class="jarvis-section-body">${escapeHtml(text)}</div></div>`;
+  }
+
+  document.getElementById('jarvis-sections').innerHTML = html;
+}
+
+/* ============================================================ DECISION SCAN */
+async function runScan() {
+  const industry = document.getElementById('scan-industry').value.trim();
+  const businessCase = document.getElementById('scan-case').value.trim();
+  const valueLoss = document.getElementById('scan-loss').value.trim();
+  const friction = document.getElementById('scan-friction').value.trim();
+
+  if (!businessCase || !valueLoss || !friction) {
+    showToast('Completa todos los campos', 'error'); return;
+  }
+
+  const btn = document.getElementById('scan-btn');
+  btn.textContent = 'Analizando...';
+  btn.disabled = true;
+
+  const data = await api('POST', '/v1/decision-scan', { industry, businessCase, valueLoss, friction });
+
+  btn.textContent = 'Analizar';
+  btn.disabled = false;
+
+  if (!data?.reply) { showToast('Error al analizar', 'error'); return; }
+
+  const sections = [
+    { num: '1', title: 'Pérdida de valor principal' },
+    { num: '2', title: 'Fricción principal' },
+    { num: '3', title: 'Decisión crítica' },
+    { num: '4', title: 'Flujo recomendado' },
+    { num: '5', title: 'Resultado esperado' },
+    { num: '6', title: 'Próximo paso sugerido' },
+  ];
+
+  const resultsEl = document.getElementById('scan-results');
+  resultsEl.style.display = 'grid';
+  resultsEl.innerHTML = sections.map((s, i) => {
+    const next = sections[i + 1];
+    const pattern = new RegExp(`${s.num}\\. ${s.title}([\\s\\S]*?)(?=${next ? next.num + '\\. ' : '$'})`, 'i');
+    const match = data.reply.match(pattern);
+    const content = match ? match[1].trim() : data.reply;
+
+    return `
+      <div class="scan-card">
+        <div class="scan-card-title">${s.num}. ${s.title}</div>
+        <div class="scan-card-body">${escapeHtml(content.slice(0, 400))}</div>
+      </div>
+    `;
+  }).join('');
+
+  showToast('Análisis completado', 'success');
+}
+
+/* ============================================================ IA CONFIG */
+function saveIAConfig() {
+  const config = {
+    business: document.getElementById('ia-business').value,
+    services: document.getElementById('ia-services').value,
+    pricing: document.getElementById('ia-pricing').value,
+    objections: document.getElementById('ia-objections').value,
+    tone: document.getElementById('ia-tone').value,
+    autoReply: document.getElementById('tog-auto').classList.contains('on'),
+    followUp1: document.getElementById('tog-fu1').classList.contains('on'),
+    followUp3: document.getElementById('tog-fu3').classList.contains('on'),
+  };
+  state.iaConfig = config;
+  localStorage.setItem('urus_ia_config', JSON.stringify(config));
+  showToast('Configuración guardada', 'success');
+}
+
+async function testIAChat() {
+  const input = document.getElementById('ia-chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const container = document.getElementById('ia-chat-msgs');
+  container.innerHTML += `<div class="msg-wrap out"><div class="bubble bubble-out">${escapeHtml(msg)}</div></div>`;
+  container.innerHTML += `<div class="msg-wrap" id="ia-typing"><div class="bubble bubble-in"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div></div>`;
+  container.scrollTop = container.scrollHeight;
+
+  const cfg = state.iaConfig || {};
+  const data = await api('POST', '/v1/decision-scan', {
+    industry: cfg.business || 'negocio',
+    businessCase: msg,
+    valueLoss: 'respuesta al lead',
+    friction: 'conversación de venta',
+  });
+
+  document.getElementById('ia-typing')?.remove();
+
+  const reply = data?.reply || 'No pude generar una respuesta. Verifica la configuración.';
+  container.innerHTML += `<div class="msg-wrap"><div class="bubble bubble-in">${escapeHtml(reply.slice(0, 300))}</div><div class="msg-time">IA simulada</div></div>`;
+  container.scrollTop = container.scrollHeight;
+}
+
+/* ============================================================ WHATSAPP */
+function waTab(tab, el) {
+  document.querySelectorAll('.wa-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  showToast(tab === 'meta' ? 'Meta WA Cloud próximamente' : 'Configuración Twilio', 'info');
+}
+
+function saveWAConfig() {
+  const sid = document.getElementById('wa-sid').value.trim();
+  const token = document.getElementById('wa-token').value.trim();
+  const from = document.getElementById('wa-from').value.trim();
+  if (!sid || !token || !from) { showToast('Completa todos los campos', 'error'); return; }
+  localStorage.setItem('urus_wa_config', JSON.stringify({ sid, token, from }));
+  document.getElementById('wa-dot').classList.add('connected');
+  document.getElementById('wa-status-text').textContent = 'Conectado';
+  document.getElementById('wa-status-sub').textContent = `Número: ${from}`;
+  showToast('Configuración guardada', 'success');
+}
+
+/* ============================================================ PLANES */
+function selectPlan(plan) {
+  showToast(`Para cambiar al plan ${plan}, contáctanos por WhatsApp`, 'info');
+}
+
+/* ============================================================ HELPERS */
+function initials(str) {
+  if (!str) return '--';
+  const parts = str.trim().split(' ');
+  return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : str.slice(0, 2).toUpperCase();
+}
+
+function tempClass(status) {
+  const map = { CLOSED: 'av-hot', INTERESTED: 'av-warm', PROPOSAL: 'av-warm', DEMO: 'av-warm', NEW: 'av-cold', CONTACTED: 'av-cold' };
+  return map[status] || 'av-default';
+}
+
+function statusBadge(status) {
+  const map = {
+    NEW: ['b-nuevo', 'Nuevo'],
+    CONTACTED: ['b-contactado', 'Contactado'],
+    INTERESTED: ['b-interesado', 'Interesado'],
+    PROPOSAL: ['b-propuesta', 'Propuesta'],
+    DEMO: ['b-demo', 'Demo'],
+    CLOSED: ['b-cerrado', 'Cerrado'],
+    LOST: ['b-perdido', 'Perdido'],
+  };
+  const [cls, label] = map[status] || ['b-nuevo', status];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function scoreBadge(score) {
+  if (score >= 70) return `<span class="badge b-hot">${score}</span>`;
+  if (score >= 40) return `<span class="badge b-warm">${score}</span>`;
+  return `<span class="badge b-cold">${score}</span>`;
+}
+
+function statusLabel(status) {
+  const map = { NEW:'Nuevo', CONTACTED:'Contactado', INTERESTED:'Interesado', PROPOSAL:'Propuesta', DEMO:'Demo', CLOSED:'Cerrado', LOST:'Perdido' };
+  return map[status] || status;
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '—';
+  const diff = (Date.now() - new Date(dateStr)) / 1000;
+  if (diff < 60) return 'ahora';
+  if (diff < 3600) return `${Math.floor(diff/60)}m`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h`;
+  return `${Math.floor(diff/86400)}d`;
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ============================================================ DEMO DATA FALLBACK */
+const DEMO_LEADS = [
+  { id:'demo-1', name:'María García', phone:'+5215512345678', status:'INTERESTED', score:82, last_message:'Me interesa el vestido rojo que vi en Instagram', updated_at: new Date(Date.now()-300000).toISOString() },
+  { id:'demo-2', name:'Roberto López', phone:'+5215587654321', status:'DEMO', score:65, last_message:'¿Cuáles son los precios del paquete premium?', updated_at: new Date(Date.now()-720000).toISOString() },
+  { id:'demo-3', name:'Ana Martínez', phone:'+5215598765432', status:'NEW', score:30, last_message:'Perfecto, agendamos la demo para el jueves', updated_at: new Date(Date.now()-1680000).toISOString() },
+  { id:'demo-4', name:'Pedro Hernández', phone:'+5215576543210', status:'PROPOSAL', score:70, last_message:'Necesito más información antes de decidir', updated_at: new Date(Date.now()-2400000).toISOString() },
+  { id:'demo-5', name:'Laura Sánchez', phone:'+5215565432109', status:'CONTACTED', score:45, last_message:'¿Tienen algún descuento por pago anual?', updated_at: new Date(Date.now()-3600000).toISOString() },
+  { id:'demo-6', name:'Jorge Ramírez', phone:'+5215554321098', status:'INTERESTED', score:55, last_message:'Gracias, lo voy a pensar y les aviso', updated_at: new Date(Date.now()-7200000).toISOString() },
+  { id:'demo-7', name:'Diana Torres', phone:'+5215543210987', status:'CLOSED', score:90, last_message:'¡Cerramos! Envíame la factura por favor', updated_at: new Date(Date.now()-86400000).toISOString() },
+];
+
+const DEMO_MESSAGES = {
+  'demo-1': [
+    { id:'m1', direction:'inbound', body:'Hola, buenas tardes', created_at: new Date(Date.now()-3600000).toISOString() },
+    { id:'m2', direction:'outbound', body:'¡Hola! Bienvenida a URUS. ¿En qué puedo ayudarte?', created_at: new Date(Date.now()-3540000).toISOString() },
+    { id:'m3', direction:'inbound', body:'Me interesa el vestido rojo que vi en Instagram', created_at: new Date(Date.now()-3480000).toISOString() },
+    { id:'m4', direction:'outbound', body:'¡Qué buena elección! Está disponible en tallas S, M y L a $850. ¿Te gustaría apartar uno?', created_at: new Date(Date.now()-3420000).toISOString() },
+    { id:'m5', direction:'inbound', body:'Sí, ¿hacen envíos?', created_at: new Date(Date.now()-300000).toISOString() },
+  ],
+  'demo-2': [
+    { id:'m6', direction:'inbound', body:'Buenos días, quiero información sobre sus paquetes', created_at: new Date(Date.now()-7200000).toISOString() },
+    { id:'m7', direction:'outbound', body:'¡Buenos días! Con gusto. Tenemos 3 planes: Starter $97/mes, Growth $197/mes y Enterprise. ¿Cuál se adapta mejor a tu negocio?', created_at: new Date(Date.now()-7140000).toISOString() },
+    { id:'m8', direction:'inbound', body:'¿Cuáles son los precios del paquete premium?', created_at: new Date(Date.now()-720000).toISOString() },
+  ],
+};
+
+/* ============================================================ BOOT */
+document.addEventListener('DOMContentLoaded', () => {
+  if (state.token && state.user) {
+    document.getElementById('login-page').classList.remove('show');
+    initApp();
+  }
+
+  const savedWA = localStorage.getItem('urus_wa_config');
+  if (savedWA) {
+    const c = JSON.parse(savedWA);
+    document.getElementById('wa-sid').value = c.sid || '';
+    document.getElementById('wa-token').value = c.token || '';
+    document.getElementById('wa-from').value = c.from || '';
+    document.getElementById('wa-dot').classList.add('connected');
+    document.getElementById('wa-status-text').textContent = 'Conectado';
+    document.getElementById('wa-status-sub').textContent = `Número: ${c.from}`;
+  }
+
+  const savedIA = localStorage.getItem('urus_ia_config');
+  if (savedIA) {
+    const c = JSON.parse(savedIA);
+    document.getElementById('ia-business').value = c.business || '';
+    document.getElementById('ia-services').value = c.services || '';
+    document.getElementById('ia-pricing').value = c.pricing || '';
+    document.getElementById('ia-objections').value = c.objections || '';
+    document.getElementById('ia-tone').value = c.tone || 'profesional';
+    if (!c.autoReply) document.getElementById('tog-auto').classList.remove('on');
+    if (!c.followUp1) document.getElementById('tog-fu1').classList.remove('on');
+    if (c.followUp3) document.getElementById('tog-fu3').classList.add('on');
+  }
+});
+</script>
+</body>
+</html>
