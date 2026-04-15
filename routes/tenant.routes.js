@@ -403,7 +403,7 @@ router.get('/registro', auth, async (req, res) => {
         true AS acepta_terminos,
         true AS acepta_privacidad
       FROM users
-      WHERE role != 'admin' OR role IS NULL
+      WHERE email NOT IN ('josuanbayon@gmail.com', 'urusgovx@gmail.com')
       ORDER BY created_at DESC
     `);
 
