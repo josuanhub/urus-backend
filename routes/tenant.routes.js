@@ -132,7 +132,7 @@ router.post('/leads/:id/send', auth, async (req, res) => {
 
     // Verificar que el lead pertenece a este usuario
     const leadResult = await pool.query(`
-      SELECT wl.id, wl.phone, wc.twilio_sid, wc.access_token, wc.phone_number
+      SELECT wl.id, wl.phone, NULL as twilio_sid, wc.access_token, wc.phone_number
       FROM wa_leads wl
       LEFT JOIN wa_connections wc ON wc.user_id = wl.user_id
       WHERE wl.id = $1 AND wl.user_id = $2
