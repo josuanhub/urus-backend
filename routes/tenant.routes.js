@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -36,7 +36,6 @@ function auth(req, res, next) {
 
 // ══════════════════════════════════════════════════════════════════════
 // GET /v1/tenant/leads
-// Lista los leads del usuario autenticado únicamente
 // ══════════════════════════════════════════════════════════════════════
 router.get('/leads', auth, async (req, res) => {
   try {
@@ -78,14 +77,12 @@ router.get('/leads', auth, async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════════════
 // GET /v1/tenant/leads/:id/messages
-// Mensajes de un lead — solo si pertenece al usuario
 // ══════════════════════════════════════════════════════════════════════
 router.get('/leads/:id/messages', auth, async (req, res) => {
   try {
     const pool = getPool();
     const { id } = req.params;
 
-    // Verificar que el lead pertenece a este usuario
     const leadResult = await pool.query(`
       SELECT id, name, phone, status, score, last_message,
              business_name, city, notes, updated_at
@@ -118,44 +115,7 @@ router.get('/leads/:id/messages', auth, async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════════════
 // POST /v1/tenant/leads/:id/send
-// Enviar mensaje a un lead del usuario
 // ══════════════════════════════════════════════════════════════════════
-
-router.post('/wa-config', auth, async (req, res) => {
-  try {
-    const pool = getPool();
-    console.log("USER DEBUG:", req.user);
-    const userId = req.user.sub;
-
-    const {
-      access_token,
-      phone_number,
-      business_name
-    } = req.body;
-
-    if (!access_token || !phone_number) {
-      return res.status(400).json({ ok: false, error: 'missing_fields' });
-    }
-
-   await pool.query(`
-      INSERT INTO wa_connections (user_id, access_token, phone_number, business_name, status, connected_at, updated_at)
-      VALUES ($1, $2, $3, $4, 'connected', now(), now())
-      ON CONFLICT (user_id) DO UPDATE SET
-        access_token = EXCLUDED.access_token,
-        phone_number = EXCLUDED.phone_number,
-        business_name = EXCLUDED.business_name,
-        status = 'connected',
-        connected_at = now(),
-        updated_at = now()
-    `, [userId, access_token, phone_number, business_name]);
-    return res.json({ ok: true });
-
-  } catch (err) {
-    console.error('WA_CONFIG_ERROR', err);
-    return res.status(500).json({ ok: false, error: err.message, full: err });
-  }
-});
-
 router.post('/leads/:id/send', auth, async (req, res) => {
   try {
     const pool = getPool();
@@ -166,7 +126,6 @@ router.post('/leads/:id/send', auth, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'missing_message' });
     }
 
-    // Verificar que el lead pertenece a este usuario
     const leadResult = await pool.query(`
       SELECT wl.id, wl.phone, NULL as twilio_sid, wc.access_token, wc.phone_number
       FROM wa_leads wl
@@ -180,8 +139,6 @@ router.post('/leads/:id/send', auth, async (req, res) => {
     }
 
     const lead = leadResult.rows[0];
-
-    // Usar Twilio del cliente si tiene, sino usar el del sistema
     const twilio = require('twilio');
     const accountSid = lead.twilio_sid || process.env.TWILIO_ACCOUNT_SID;
     const authToken = lead.access_token || process.env.TWILIO_AUTH_TOKEN;
@@ -193,15 +150,13 @@ router.post('/leads/:id/send', auth, async (req, res) => {
 
     const client = twilio(accountSid, authToken);
     const clean = lead.phone.replace(/\D/g, '');
-    const toFormatted = `+${clean}`;
 
     await client.messages.create({
       from: `whatsapp:${fromNumber}`,
-      to: `whatsapp:${toFormatted}`,
+      to: `whatsapp:+${clean}`,
       body: message.slice(0, 4000),
     });
 
-    // Guardar mensaje en DB
     await pool.query(`
       INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
       VALUES ($1, 'outbound', 'whatsapp', 'text', $2)
@@ -221,7 +176,6 @@ router.post('/leads/:id/send', auth, async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════════════
 // GET /v1/tenant/metrics
-// KPIs del dashboard del usuario
 // ══════════════════════════════════════════════════════════════════════
 router.get('/metrics', auth, async (req, res) => {
   try {
@@ -234,7 +188,6 @@ router.get('/metrics', auth, async (req, res) => {
         COUNT(*) FILTER (WHERE status = 'CLOSED' AND updated_at >= date_trunc('month', now())) AS cerrados_mes,
         COUNT(*) FILTER (WHERE last_message IS NOT NULL) AS con_conversacion,
         COUNT(*) FILTER (WHERE status = 'NEW' AND last_message IS NOT NULL) AS sin_respuesta,
-        
         COUNT(*) AS total
       FROM wa_leads
       WHERE user_id = $1
@@ -260,7 +213,6 @@ router.get('/metrics', auth, async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════════════
 // GET /v1/tenant/wa-config
-// Config de WhatsApp del usuario
 // ══════════════════════════════════════════════════════════════════════
 router.get('/wa-config', auth, async (req, res) => {
   try {
@@ -281,49 +233,45 @@ router.get('/wa-config', auth, async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════════════
 // POST /v1/tenant/wa-config
-// Guardar credenciales de WhatsApp del usuario
 // ══════════════════════════════════════════════════════════════════════
 router.post('/wa-config', auth, async (req, res) => {
   try {
     const pool = getPool();
-    const { twilio_sid, twilio_token, phone_number, business_name } = req.body;
+    console.log("USER DEBUG:", req.user);
+    const userId = req.user.sub || req.user.id;
 
-    if (!twilio_sid || !twilio_token || !phone_number) {
+    const { access_token, phone_number, business_name, twilio_sid, twilio_token } = req.body;
+
+    // Soporte para ambos formatos (WA directo o Twilio)
+    const finalSid = twilio_sid || null;
+    const finalToken = twilio_token || access_token;
+
+    if (!finalToken || !phone_number) {
       return res.status(400).json({ ok: false, error: 'missing_fields' });
     }
 
-    // Verificar credenciales con Twilio
-    try {
-      const twilio = require('twilio');
-      const client = twilio(twilio_sid, twilio_token);
-      await client.api.accounts(twilio_sid).fetch();
-    } catch {
-      return res.status(400).json({ ok: false, error: 'invalid_twilio_credentials' });
-    }
-
     await pool.query(`
-      INSERT INTO wa_connections (user_id, business_name, phone_number, twilio_sid, access_token, status, connected_at)
-      VALUES ($1, $2, $3, $4, $5, 'connected', now())
+      INSERT INTO wa_connections (user_id, access_token, phone_number, business_name, twilio_sid, status, connected_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, 'connected', now(), now())
       ON CONFLICT (user_id) DO UPDATE SET
-        business_name = $2,
-        phone_number = $3,
-        twilio_sid = $4,
-        access_token = $5,
+        access_token = EXCLUDED.access_token,
+        phone_number = EXCLUDED.phone_number,
+        business_name = EXCLUDED.business_name,
+        twilio_sid = EXCLUDED.twilio_sid,
         status = 'connected',
         connected_at = now(),
         updated_at = now()
-    `, [req.user.id, business_name, phone_number, twilio_sid, twilio_token]);
+    `, [userId, finalToken, phone_number, business_name, finalSid]);
 
-    res.json({ ok: true, message: 'WhatsApp conectado exitosamente' });
+    return res.json({ ok: true });
   } catch (err) {
-    console.error('TENANT_WA_CONFIG_ERROR', err);
-    res.status(500).json({ ok: false, error: 'server_error' });
+    console.error('WA_CONFIG_ERROR', err);
+    return res.status(500).json({ ok: false, error: err.message, full: err });
   }
 });
 
 // ══════════════════════════════════════════════════════════════════════
 // PUT /v1/tenant/leads/:id/status
-// Actualizar estado de un lead
 // ══════════════════════════════════════════════════════════════════════
 router.put('/leads/:id/status', auth, async (req, res) => {
   try {
@@ -350,7 +298,6 @@ router.put('/leads/:id/status', auth, async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════════════
 // POST /v1/tenant/webhook/:userId
-// Webhook específico por cliente — recibe mensajes de su Twilio
 // ══════════════════════════════════════════════════════════════════════
 router.post('/webhook/:userId', async (req, res) => {
   try {
@@ -363,7 +310,6 @@ router.post('/webhook/:userId', async (req, res) => {
     const phone = From.replace('whatsapp:', '').replace(/\D/g, '');
     const cleanPhone = `+${phone}`;
 
-    // Buscar o crear lead asignado a este usuario
     let leadResult = await pool.query(`
       SELECT id FROM wa_leads WHERE phone = $1 AND user_id = $2 LIMIT 1
     `, [cleanPhone, userId]);
@@ -383,7 +329,6 @@ router.post('/webhook/:userId', async (req, res) => {
       `, [leadId, Body.slice(0, 500)]);
     }
 
-    // Guardar mensaje entrante
     await pool.query(`
       INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
       VALUES ($1, 'inbound', 'whatsapp', 'text', $2)
@@ -396,6 +341,9 @@ router.post('/webhook/:userId', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// POST /v1/tenant/registro  — Crear nuevo cliente (público, sin auth)
+// ══════════════════════════════════════════════════════════════════════
 router.post('/registro', async (req, res) => {
   try {
     const pool = getPool();
@@ -414,12 +362,99 @@ router.post('/registro', async (req, res) => {
     const result = await pool.query(`
       INSERT INTO users (email, password_hash, nombre, empresa, telefono, industria, empleados, descripcion, firma, plan, acceso_habilitado, pago_confirmado)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, false)
+      ON CONFLICT (email) DO NOTHING
       RETURNING id, email
     `, [email, hash, nombre, empresa, telefono, industria, empleados, descripcion, firma, plan || 'starter']);
+
+    if (!result.rows[0]) {
+      return res.status(409).json({ ok: false, error: 'email_already_exists' });
+    }
 
     res.json({ ok: true, id: result.rows[0].id });
   } catch (err) {
     console.error('REGISTRO_ERROR', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// GET /v1/tenant/registro  — Listar clientes registrados (solo admin)
+// ══════════════════════════════════════════════════════════════════════
+router.get('/registro', auth, async (req, res) => {
+  try {
+    const pool = getPool();
+
+    const result = await pool.query(`
+      SELECT
+        id,
+        nombre,
+        empresa,
+        email,
+        telefono,
+        industria,
+        empleados,
+        descripcion,
+        firma,
+        plan,
+        acceso_habilitado,
+        pago_confirmado,
+        created_at AS fecha_registro,
+        NULL AS monto_pagado,
+        true AS acepta_terminos,
+        true AS acepta_privacidad
+      FROM users
+      WHERE role != 'admin' OR role IS NULL
+      ORDER BY created_at DESC
+    `);
+
+    res.json({
+      ok: true,
+      registros: result.rows,
+      total: result.rows.length
+    });
+  } catch (err) {
+    console.error('GET_REGISTRO_ERROR', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// PATCH /v1/tenant/registro/:id/pago  — Confirmar pago manualmente
+// ══════════════════════════════════════════════════════════════════════
+router.patch('/registro/:id/pago', auth, async (req, res) => {
+  try {
+    const pool = getPool();
+    const { id } = req.params;
+
+    await pool.query(`
+      UPDATE users SET pago_confirmado = true, updated_at = NOW()
+      WHERE id = $1
+    `, [id]);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('PATCH_PAGO_ERROR', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// PATCH /v1/tenant/registro/:id/acceso  — Habilitar/revocar acceso
+// ══════════════════════════════════════════════════════════════════════
+router.patch('/registro/:id/acceso', auth, async (req, res) => {
+  try {
+    const pool = getPool();
+    const { id } = req.params;
+    const { acceso_habilitado } = req.body;
+
+    await pool.query(`
+      UPDATE users SET acceso_habilitado = $2, updated_at = NOW()
+      WHERE id = $1
+    `, [id, !!acceso_habilitado]);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('PATCH_ACCESO_ERROR', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
