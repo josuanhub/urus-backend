@@ -150,7 +150,7 @@ router.post('/wa-config', auth, async (req, res) => {
 
   } catch (err) {
     console.error('WA_CONFIG_ERROR', err);
-    return res.status(500).json({ ok: false });
+    return res.status(500).json({ ok: false, error: err.message, full: err });
   }
 });
 
