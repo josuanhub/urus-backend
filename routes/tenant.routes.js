@@ -395,4 +395,32 @@ router.post('/webhook/:userId', async (req, res) => {
   }
 });
 
+router.post('/registro', async (req, res) => {
+  try {
+    const pool = getPool();
+    const {
+      nombre, empresa, telefono, email, password,
+      industria, empleados, descripcion, firma, plan
+    } = req.body;
+
+    if (!nombre || !email || !password) {
+      return res.status(400).json({ ok: false, error: 'missing_fields' });
+    }
+
+    const bcrypt = require('bcrypt');
+    const hash = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(`
+      INSERT INTO users (email, password_hash, nombre, empresa, telefono, industria, empleados, descripcion, firma, plan, acceso_habilitado, pago_confirmado)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, false)
+      RETURNING id, email
+    `, [email, hash, nombre, empresa, telefono, industria, empleados, descripcion, firma, plan || 'starter']);
+
+    res.json({ ok: true, id: result.rows[0].id });
+  } catch (err) {
+    console.error('REGISTRO_ERROR', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;
