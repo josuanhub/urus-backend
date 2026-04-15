@@ -120,6 +120,40 @@ router.get('/leads/:id/messages', auth, async (req, res) => {
 // POST /v1/tenant/leads/:id/send
 // Enviar mensaje a un lead del usuario
 // ══════════════════════════════════════════════════════════════════════
+
+router.post('/wa-config', auth, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+
+    const {
+      access_token,
+      phone_number,
+      business_name
+    } = req.body;
+
+    if (!access_token || !phone_number) {
+      return res.status(400).json({ ok: false, error: 'missing_fields' });
+    }
+
+    await pool.query(`
+      INSERT INTO wa_connections (user_id, access_token, phone_number, business_name)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        access_token = EXCLUDED.access_token,
+        phone_number = EXCLUDED.phone_number,
+        business_name = EXCLUDED.business_name
+    `, [userId, access_token, phone_number, business_name]);
+
+    return res.json({ ok: true });
+
+  } catch (err) {
+    console.error('WA_CONFIG_ERROR', err);
+    return res.status(500).json({ ok: false });
+  }
+});
+
 router.post('/leads/:id/send', auth, async (req, res) => {
   try {
     const pool = getPool();
