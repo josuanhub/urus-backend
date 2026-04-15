@@ -2061,7 +2061,7 @@ function buildOutboundTemplate({ niche, fullName, businessName }) {
 
 // ---------- Auth ----------
 function signToken(user) {
-  return jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
+ return jwt.sign({ id: user.id, email: user.email, role: user.role || 'admin' }, JWT_SECRET, { expiresIn: "30d" });
 }
 
 function authRequired(req, res, next) {
@@ -2072,7 +2072,7 @@ function authRequired(req, res, next) {
   }
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.user = { id: payload.sub, email: payload.email };
+    req.user = { id: payload.id, email: payload.email };
     return next();
   } catch (e) {
     return res.status(401).json({ error: "Invalid token" });
