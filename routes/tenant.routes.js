@@ -234,6 +234,7 @@ router.get('/metrics', auth, async (req, res) => {
         COUNT(*) FILTER (WHERE status = 'CLOSED' AND updated_at >= date_trunc('month', now())) AS cerrados_mes,
         COUNT(*) FILTER (WHERE last_message IS NOT NULL) AS con_conversacion,
         COUNT(*) FILTER (WHERE status = 'NEW' AND last_message IS NOT NULL) AS sin_respuesta,
+        
         COUNT(*) AS total
       FROM wa_leads
       WHERE user_id = $1
@@ -407,7 +408,7 @@ router.post('/registro', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'missing_fields' });
     }
 
-    const bcrypt = require('bcrypt');
+    const bcrypt = require('bcryptjs');
     const hash = await bcrypt.hash(password, 10);
 
     const result = await pool.query(`
