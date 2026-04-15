@@ -152,7 +152,7 @@ router.post('/leads/:id/send', auth, async (req, res) => {
     const clean = lead.phone.replace(/\D/g, '');
 
     await client.messages.create({
-      from: `whatsapp:${fromNumber}`,
+     from: `whatsapp:+12603006906`,
       to: `whatsapp:+${clean}`,
       body: message.slice(0, 4000),
     });
