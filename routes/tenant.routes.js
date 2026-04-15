@@ -125,7 +125,7 @@ router.post('/wa-config', auth, async (req, res) => {
   try {
     const pool = getPool();
     console.log("USER DEBUG:", req.user);
-    const userId = req.user.id;
+    const userId = req.user.sub;
 
     const {
       access_token,
