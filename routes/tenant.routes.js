@@ -137,16 +137,17 @@ router.post('/wa-config', auth, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'missing_fields' });
     }
 
-    await pool.query(`
-      INSERT INTO wa_connections (user_id, access_token, phone_number, business_name)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (user_id)
-      DO UPDATE SET
+   await pool.query(`
+      INSERT INTO wa_connections (user_id, access_token, phone_number, business_name, status, connected_at, updated_at)
+      VALUES ($1, $2, $3, $4, 'connected', now(), now())
+      ON CONFLICT (user_id) DO UPDATE SET
         access_token = EXCLUDED.access_token,
         phone_number = EXCLUDED.phone_number,
-        business_name = EXCLUDED.business_name
+        business_name = EXCLUDED.business_name,
+        status = 'connected',
+        connected_at = now(),
+        updated_at = now()
     `, [userId, access_token, phone_number, business_name]);
-
     return res.json({ ok: true });
 
   } catch (err) {
