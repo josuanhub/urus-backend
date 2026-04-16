@@ -459,4 +459,34 @@ router.patch('/registro/:id/acceso', auth, async (req, res) => {
   }
 });
 
+router.post('/clientes/:id/confirmar-pago', auth, async (req, res) => {
+  try {
+    const pool = getPool();
+    await pool.query(`UPDATE users SET pago_confirmado = true WHERE id = $1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/clientes/:id/activar', auth, async (req, res) => {
+  try {
+    const pool = getPool();
+    await pool.query(`UPDATE users SET acceso_habilitado = true WHERE id = $1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/clientes/:id/desactivar', auth, async (req, res) => {
+  try {
+    const pool = getPool();
+    await pool.query(`UPDATE users SET acceso_habilitado = false WHERE id = $1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;
