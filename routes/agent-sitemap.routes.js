@@ -1,37 +1,48 @@
 /**
  * URUS VERIFY — Sitemap Dinámico + Robots.txt
  * Para el motor de SEO de agentes IA
+ * Soporta múltiples dominios: urusverify.com, agentverse.biz, agentrust.co
  *
  * GET /sitemap.xml  → sitemap completo con todas las páginas SEO
  * GET /robots.txt   → robots optimizado para Googlebot
  */
-
 const express = require("express");
 const router = express.Router();
-
-const SITE_URL = (process.env.GSC_SITE_URL || "https://urusverify.com").replace(/\/$/, "");
 
 function db() {
   if (global.__URUS_DB__) return global.__URUS_DB__;
   throw new Error("DB pool not initialized");
 }
 
-// Cache en memoria — 1 hora
-let sitemapCache = null;
-let sitemapCacheAt = 0;
+// Cache en memoria por hostname — 1 hora
+let sitemapCache = {};
+let sitemapCacheAt = {};
 const TTL = 60 * 60 * 1000;
 
 function esc(s) {
   return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+function getSiteUrl(req) {
+  const host = req.hostname;
+  // Forzar www en urusverify
+  if (host === "urusverify.com") return "https://www.urusverify.com";
+  if (host === "agentverse.biz") return "https://www.agentverse.biz";
+  if (host === "agentrust.co") return "https://www.agentrust.co";
+  // Fallback para Railway o desarrollo
+  return (process.env.GSC_SITE_URL || `https://${host}`).replace(/\/$/, "");
+}
+
 router.get("/sitemap.xml", async (req, res) => {
   try {
+    const SITE_URL = getSiteUrl(req);
+    const host = req.hostname;
     const now = Date.now();
-    if (sitemapCache && now - sitemapCacheAt < TTL) {
+
+    if (sitemapCache[host] && now - sitemapCacheAt[host] < TTL) {
       res.set("Content-Type", "application/xml; charset=utf-8");
       res.set("Cache-Control", "public, max-age=3600");
-      return res.send(sitemapCache);
+      return res.send(sitemapCache[host]);
     }
 
     const pool = db();
@@ -55,7 +66,6 @@ router.get("/sitemap.xml", async (req, res) => {
     `);
 
     const freqMap = { agent: "daily", ecosystem: "weekly", ranking: "hourly", comparison: "monthly", guide: "monthly" };
-
     const dynamic = result.rows.map(r => ({
       loc: `${SITE_URL}/${r.slug}`,
       lastmod: r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 10) : undefined,
@@ -64,7 +74,6 @@ router.get("/sitemap.xml", async (req, res) => {
     }));
 
     const allUrls = [...statics, ...dynamic];
-
     const entries = allUrls.map(u => `  <url>
     <loc>${esc(u.loc)}</loc>
     ${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ""}
@@ -77,12 +86,13 @@ router.get("/sitemap.xml", async (req, res) => {
 ${entries}
 </urlset>`;
 
-    sitemapCache = xml;
-    sitemapCacheAt = now;
+    sitemapCache[host] = xml;
+    sitemapCacheAt[host] = now;
 
     res.set("Content-Type", "application/xml; charset=utf-8");
     res.set("Cache-Control", "public, max-age=3600");
     return res.send(xml);
+
   } catch (e) {
     console.error("SITEMAP_ERR", e);
     res.status(500).type("text").send("Sitemap error");
@@ -90,39 +100,34 @@ ${entries}
 });
 
 router.get("/sitemap-invalidate", (req, res) => {
-  sitemapCache = null;
-  sitemapCacheAt = 0;
-  res.json({ ok: true });
+  sitemapCache = {};
+  sitemapCacheAt = {};
+  res.json({ ok: true, message: "Cache cleared for all domains" });
 });
 
 router.get("/robots.txt", (req, res) => {
+  const SITE_URL = getSiteUrl(req);
   res.type("text/plain").send(`User-agent: *
 Allow: /
-
 Allow: /agent/
 Allow: /ecosystem/
 Allow: /ranking/
 Allow: /compare/
 Allow: /guide/
 Allow: /sitemap.xml
-
 Disallow: /v1/
 Disallow: /seo/seed
 Disallow: /seo/gsc/submit
 Disallow: /webhook
 Disallow: /auth/
 Disallow: /admin/
-
 User-agent: AhrefsBot
 Crawl-delay: 10
-
 User-agent: SemrushBot
 Crawl-delay: 10
-
 Sitemap: ${SITE_URL}/sitemap.xml
 `);
 });
 
-// Exportar para que seo.routes pueda invalidar el cache
 module.exports = router;
-module.exports.invalidate = () => { sitemapCache = null; sitemapCacheAt = 0; };
+module.exports.invalidate = () => { sitemapCache = {}; sitemapCacheAt = {}; };
