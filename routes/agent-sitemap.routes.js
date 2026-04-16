@@ -24,17 +24,19 @@ function esc(s) {
 }
 
 function getSiteUrl(req) {
+  const domain = req.query.domain;
   const host = req.headers['x-forwarded-host'] || req.hostname;
-  if (host.includes("urusverify.com")) return "https://www.urusverify.com";
-  if (host.includes("agentverse.biz")) return "https://www.agentverse.biz";
-  if (host.includes("agentrust.co")) return "https://www.agentrust.co";
+  const check = domain || host;
+  if (check.includes("urusverify.com")) return "https://www.urusverify.com";
+  if (check.includes("agentverse.biz")) return "https://www.agentverse.biz";
+  if (check.includes("agentrust.co")) return "https://www.agentrust.co";
   return (process.env.GSC_SITE_URL || `https://${host}`).replace(/\/$/, "");
 }
 
 router.get("/sitemap.xml", async (req, res) => {
   try {
     const SITE_URL = getSiteUrl(req);
-    const host = req.headers['x-forwarded-host'] || req.hostname;
+    const host = req.query.domain || req.headers['x-forwarded-host'] || req.hostname;
     const now = Date.now();
 
     if (sitemapCache[host] && now - sitemapCacheAt[host] < TTL) {
