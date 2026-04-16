@@ -24,19 +24,17 @@ function esc(s) {
 }
 
 function getSiteUrl(req) {
-  const host = req.hostname;
-  // Forzar www en urusverify
-  if (host === "urusverify.com") return "https://www.urusverify.com";
-  if (host === "agentverse.biz") return "https://www.agentverse.biz";
-  if (host === "agentrust.co") return "https://www.agentrust.co";
-  // Fallback para Railway o desarrollo
+  const host = req.headers['x-forwarded-host'] || req.hostname;
+  if (host.includes("urusverify.com")) return "https://www.urusverify.com";
+  if (host.includes("agentverse.biz")) return "https://www.agentverse.biz";
+  if (host.includes("agentrust.co")) return "https://www.agentrust.co";
   return (process.env.GSC_SITE_URL || `https://${host}`).replace(/\/$/, "");
 }
 
 router.get("/sitemap.xml", async (req, res) => {
   try {
     const SITE_URL = getSiteUrl(req);
-    const host = req.hostname;
+    const host = req.headers['x-forwarded-host'] || req.hostname;
     const now = Date.now();
 
     if (sitemapCache[host] && now - sitemapCacheAt[host] < TTL) {
@@ -49,13 +47,13 @@ router.get("/sitemap.xml", async (req, res) => {
 
     // Páginas estáticas
     const statics = [
-      { loc: SITE_URL + "/",                changefreq: "daily",   priority: "1.0" },
-      { loc: SITE_URL + "/ranking/dominant", changefreq: "hourly",  priority: "0.95" },
-      { loc: SITE_URL + "/ranking/verified", changefreq: "daily",   priority: "0.9" },
-      { loc: SITE_URL + "/ranking/high-signal", changefreq: "daily",priority: "0.85" },
-      { loc: SITE_URL + "/ranking/emerging", changefreq: "daily",   priority: "0.8" },
-      { loc: SITE_URL + "/privacy",          changefreq: "yearly",  priority: "0.3" },
-      { loc: SITE_URL + "/terms",            changefreq: "yearly",  priority: "0.3" },
+      { loc: SITE_URL + "/",                   changefreq: "daily",  priority: "1.0" },
+      { loc: SITE_URL + "/ranking/dominant",    changefreq: "hourly", priority: "0.95" },
+      { loc: SITE_URL + "/ranking/verified",    changefreq: "daily",  priority: "0.9" },
+      { loc: SITE_URL + "/ranking/high-signal", changefreq: "daily",  priority: "0.85" },
+      { loc: SITE_URL + "/ranking/emerging",    changefreq: "daily",  priority: "0.8" },
+      { loc: SITE_URL + "/privacy",             changefreq: "yearly", priority: "0.3" },
+      { loc: SITE_URL + "/terms",               changefreq: "yearly", priority: "0.3" },
     ];
 
     // Páginas dinámicas desde DB
