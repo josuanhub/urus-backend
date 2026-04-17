@@ -489,4 +489,43 @@ router.post('/clientes/:id/desactivar', auth, async (req, res) => {
   }
 });
 
+router.post('/registro/checkout', async (req, res) => {
+  try {
+    const pool = getPool();
+    const { registro_id, email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requerido' });
+
+    let stripeCustomerId;
+    const r = await pool.query('SELECT stripe_customer_id FROM users WHERE email = $1', [email]);
+    if (r.rowCount > 0 && r.rows[0].stripe_customer_id) {
+      stripeCustomerId = r.rows[0].stripe_customer_id;
+    } else {
+      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+      const customer = await stripe.customers.create({
+        email,
+        metadata: { registro_id: String(registro_id || '') },
+      });
+      stripeCustomerId = customer.id;
+      await pool.query('UPDATE users SET stripe_customer_id = $1 WHERE email = $2', [stripeCustomerId, email]);
+    }
+
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer: stripeCustomerId,
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      success_url: 'https://urus-hub.vercel.app/registro?success=1',
+      cancel_url: 'https://urus-hub.vercel.app/registro?canceled=1',
+      metadata: { registro_id: String(registro_id || '') },
+    });
+
+    return res.json({ checkout_url: session.url });
+  } catch (err) {
+    console.error('REGISTRO_CHECKOUT_ERROR', err);
+    return res.status(500).json({ error: 'Billing error', message: err.message });
+  }
+});
+
+module.exports = router;
+
 module.exports = router;
