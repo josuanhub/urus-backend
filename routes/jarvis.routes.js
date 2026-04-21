@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const controller = require("../controllers/jarvis.controller");
+const controller = require("./controllers/jarvis.controller");
 
 router.post("/chat", controller.chat);
 router.post("/memory", controller.saveMemory);
