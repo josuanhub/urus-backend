@@ -108,7 +108,7 @@ async function chat(req, res) {
     return res.json({ ok: true, reply });
   } catch (err) {
     console.error("JARVIS_CHAT_ERROR", err);
-    return res.status(500).json({ ok: false, error: "jarvis_chat_failed" });
+    return res.status(500).json({ ok: false, error: "jarvis_chat_failed", detail: err.message });
   }
 }
 
