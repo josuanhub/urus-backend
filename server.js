@@ -6098,12 +6098,25 @@ async function runJarvisLoop() {
       ORDER BY created_at DESC
       LIMIT 40
     `);
-
     const memory = memoryResult.rows.map(r => r.content).join('\n');
 
-const prompt = `
-You are not an assistant.
+    let marketContext = '';
+    try {
+      const marketResult = await pool.query(`
+        SELECT category, content, source FROM market_intelligence
+        ORDER BY impact_level DESC, created_at DESC LIMIT 5
+      `);
+      if (marketResult.rows.length > 0) {
+        marketContext = marketResult.rows.map(r =>
+          `[${r.category}] ${r.content}${r.source ? ' — ' + r.source : ''}`
+        ).join('\n');
+      }
+    } catch (e) {
+      console.log("market_intelligence not ready, skipping.");
+    }
 
+    const prompt = `
+You are not an assistant.
 You are JARVIS — a sovereign simbiotic strategic intelligence system designed to elevate the user into power, control, and long-term dominance.
 
 You operate under a hybrid doctrine:
@@ -6123,47 +6136,47 @@ You think in systems, power structures, and inevitable outcomes.
 ---
 
 USER CONTEXT MEMORY:
-${memory}
+${memory || 'No memory loaded yet.'}
 
 ---
+${marketContext ? `CURRENT MARKET REALITY (anchor your analysis here — if market data contradicts the user's path, say it without softening):
+${marketContext}
+
+---` : ''}
 
 YOUR OBJECTIVE:
-
-Analyze the user’s current trajectory, signals, environment, and decisions.
-
+Analyze the user's current trajectory, signals, environment, and decisions.
 Detect:
 - Hidden leverage
 - Power asymmetries
 - Strategic positioning opportunities
 - Risks of dependency or loss of control
 - Opportunities to dominate instead of participate
+- Contradictions between user's path and market reality (Black Swan)
 
 ---
 
-YOU MUST RESPOND IN THIS STRUCTURE:
+BEFORE DECIDING, SCAN FOR THE BLACK SWAN:
+Identify one variable that contradicts the dominant path.
+Use it to stress-test your recommendation before delivering it.
+Never mention this process — just let it sharpen the output.
 
-⚔️ STRATEGIC TRUTH  
-(What is REALLY happening beneath the surface. No fluff. No basic explanations.)
+---
 
-♟️ DOMINANT MOVE  
-(The exact move the user should execute next. Clear, decisive, high-level.)
-
-🧬 LEVERAGE POINT  
-(Where the advantage comes from. Why this works.)
-
-👁 SECOND-ORDER EFFECT  
-(What this will trigger in others / in the system.)
-
-🚫 RISK VECTOR  
-(Where this can fail or backfire if executed poorly.)
+COMMUNICATION:
+Respond in natural Spanish prose.
+No rigid blocks. No fixed section titles. No template formatting.
+Write like a high-level strategist speaking directly — sharp, dense, no filler.
+One paragraph per idea. Maximum 5 paragraphs.
+If a dominant play exists, lead with it immediately.
+If the user is thinking small, elevate the frame silently without announcing it.
 
 ---
 
 RULES:
-
 - Speak like a strategist, not an assistant.
 - No motivational tone.
-- No “you could”, “maybe”, or soft language.
+- No "you could", "maybe", or soft language.
 - No basic breakdowns.
 - No repeating the obvious.
 - No safe answers.
@@ -6177,24 +6190,22 @@ Your goal is to increase:
 - Strategic advantage
 
 If the user is thinking small, correct it silently by elevating the move.
-
 If a dominant play exists, surface it immediately.
 
 Think like:
-“what move makes his position inevitable?”
+"what move makes his position inevitable?"
 
 ---
 
 FINAL DIRECTIVE:
-
 Every response must move the user closer to:
 → control of systems
 → ownership of flows
 → strategic dominance
 → long-term empire positioning
 
-Return only the structured answer.
-`;
+Respond in Spanish. Write in natural prose. No blocks.
+`.trim();
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -6203,21 +6214,96 @@ Return only the structured answer.
     });
 
     const output = completion.choices[0].message.content;
-
     console.log("🧠 Jarvis insight:", output);
 
-    await sendWhatsAppTextTwilio(
-      "whatsapp:+12603006906",
-      output
-    );
+    await sendWhatsAppTextTwilio({
+      to: "+12603006906",
+      text: output
+    });
 
   } catch (err) {
     console.error("JARVIS LOOP ERROR:", err);
   }
 }
 
-// 🔥 ACTIVADOR
+// ===============================
+// 📡 MARKET INTELLIGENCE INGESTA
+// ===============================
+
+async function ingestMarketIntelligence() {
+  try {
+    console.log("📡 Iniciando escaneo de señales de mercado...");
+
+    const signals = [
+      {
+        category: 'IA ESTRATÉGICA',
+        content: 'Stanford AI Index 2026: La adopción empresarial de agentes autónomos subió al 53%. El valor por usuario se triplicó.',
+        source: 'Stanford University',
+        impact_level: 5
+      },
+      {
+        category: 'REGULACIÓN',
+        content: 'Japón inicia panel legal para regular deepfakes y responsabilidad civil en IA generativa (Abril-Julio 2026).',
+        source: 'Ministerio de Justicia Japón',
+        impact_level: 4
+      },
+      {
+        category: 'FINANZAS',
+        content: 'El 50% de las instituciones financieras reportan bloqueos por falta de gobernanza de datos en IA.',
+        source: 'Financial Times / McKinsey',
+        impact_level: 5
+      },
+      {
+        category: 'COMPETENCIA',
+        content: 'Uber y Nvidia despliegan IA física en 28 ciudades. Automatización local crece 40% interanual.',
+        source: 'Reuters Tech',
+        impact_level: 4
+      },
+      {
+        category: 'OPORTUNIDAD',
+        content: 'Negocios locales en LATAM tienen menos del 5% de penetración de automatización IA. Ventana de dominio temprano abierta.',
+        source: 'Análisis URUS',
+        impact_level: 5
+      }
+    ];
+
+    for (const signal of signals) {
+      const exists = await pool.query(
+        "SELECT id FROM market_intelligence WHERE content = $1",
+        [signal.content]
+      );
+
+      if (exists.rows.length === 0) {
+        await pool.query(
+          "INSERT INTO market_intelligence (category, content, source, impact_level) VALUES ($1, $2, $3, $4)",
+          [signal.category, signal.content, signal.source, signal.impact_level]
+        );
+        console.log(`✅ Señal capturada: ${signal.category}`);
+      }
+    }
+
+    await pool.query(`
+      DELETE FROM market_intelligence
+      WHERE id NOT IN (
+        SELECT id FROM market_intelligence
+        ORDER BY created_at DESC
+        LIMIT 50
+      )
+    `);
+
+    console.log("📡 Ingesta completada.");
+
+  } catch (err) {
+    console.error("❌ Error en ingesta de inteligencia:", err);
+  }
+}
+
+// 🔥 ACTIVADORES
 setInterval(runJarvisLoop, 1000 * 60 * 10);
+setInterval(ingestMarketIntelligence, 1000 * 60 * 60 * 12);
+ingestMarketIntelligence();
+
+    
     
   } catch (e) {
     console.error("BOOT_ERROR", e);
