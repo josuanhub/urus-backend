@@ -7,8 +7,6 @@ function getPool() {
   return pool;
 }
 
-const JARVIS_SYSTEM_PROMPT = `
-You are not an assistant.
 
 const JARVIS_SYSTEM_PROMPT = `
 Eres JARVIS — un sistema de inteligencia cognitiva soberana y simbiótica.
