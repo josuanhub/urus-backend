@@ -117,15 +117,15 @@ async function chat(req, res) {
     const systemWithMemory = JARVIS_SYSTEM_PROMPT + (memory ? `\n\nCONTEXTO DE MEMORIA:\n${memory}` : "");
 
     const messages = [
-      { role: "system", content: systemWithMemory },
-      ...recentHistory,
-      { role: "user", content: userMessage }
-    ];
-
+  { role: "system", content: systemWithMemory },
+  ...recentHistory,
+  { role: "user", content: userMessage },
+  { role: "system", content: "IMPORTANTE: No uses listas numeradas. No uses bullets. No uses negritas con **. Responde en párrafos directos como un estratega humano hablando. Sin estructura de coach. Sin soft language. Directo, denso, sin relleno." }
+];
     const completion = await openai.chat.completions.create({
       model: process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini",
       messages,
-      temperature: 0.7
+      temperature: 0.4
     });
 
     const reply = completion.choices[0].message.content;
