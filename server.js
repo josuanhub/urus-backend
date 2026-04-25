@@ -269,7 +269,7 @@ async function sendWhatsAppTextTwilio({ to, text }) {
     const msg = await twilioClient.messages.create({
       from: TWILIO_WHATSAPP_FROM,
       to: `whatsapp:${formatted}`,
-      body: String(text || "").slice(0, 4000),
+     body: String(text || "").slice(0, 1500),
     });
 
     return { ok: true, data: msg };
