@@ -1420,14 +1420,13 @@ function readFile(file, dest) {
     const content = e.target.result;
     const truncated = content.substring(0, 8000); // limit context
 
-   if (dest === 'attach') {
+  if (dest === 'attach') {
   attachedFiles.push({ name: file.name, content: truncated });
   renderAttached();
   sendAsMemory(file.name, truncated);
+} else {
+  sendAsMemory(file.name, truncated);
 }
-      // Send as memory to backend
-      sendAsMemory(file.name, truncated);
-    }
   };
 
   reader.onerror = () => {
