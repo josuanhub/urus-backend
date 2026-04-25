@@ -6218,7 +6218,7 @@ Respond in Spanish. Write in natural prose. No blocks.
 
     await sendWhatsAppTextTwilio({
       to: "+19395851479",
-      text: output
+     text: output.slice(0, 1500)
     });
 
   } catch (err) {
