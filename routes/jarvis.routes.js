@@ -6,5 +6,6 @@ router.post("/chat", controller.chat);
 router.post("/memory", controller.saveMemory);
 router.get("/memory", controller.getMemory);
 router.get("/health", controller.health);
+router.post("/embed-existing", controller.embedExistingMemory);
 
 module.exports = router;
