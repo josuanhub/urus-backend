@@ -6217,7 +6217,7 @@ Respond in Spanish. Write in natural prose. No blocks.
     console.log("🧠 Jarvis insight:", output);
 
     await sendWhatsAppTextTwilio({
-      to: "+12603006906",
+      to: "+19395851479",
       text: output
     });
 
