@@ -6234,54 +6234,54 @@ async function ingestMarketIntelligence() {
   try {
     console.log("📡 Iniciando escaneo de señales de mercado...");
 
-    const signals = [
-      {
-        category: 'IA ESTRATÉGICA',
-        content: 'Stanford AI Index 2026: La adopción empresarial de agentes autónomos subió al 53%. El valor por usuario se triplicó.',
-        source: 'Stanford University',
-        impact_level: 5
-      },
-      {
-        category: 'REGULACIÓN',
-        content: 'Japón inicia panel legal para regular deepfakes y responsabilidad civil en IA generativa (Abril-Julio 2026).',
-        source: 'Ministerio de Justicia Japón',
-        impact_level: 4
-      },
-      {
-        category: 'FINANZAS',
-        content: 'El 50% de las instituciones financieras reportan bloqueos por falta de gobernanza de datos en IA.',
-        source: 'Financial Times / McKinsey',
-        impact_level: 5
-      },
-      {
-        category: 'COMPETENCIA',
-        content: 'Uber y Nvidia despliegan IA física en 28 ciudades. Automatización local crece 40% interanual.',
-        source: 'Reuters Tech',
-        impact_level: 4
-      },
-      {
-        category: 'OPORTUNIDAD',
-        content: 'Negocios locales en LATAM tienen menos del 5% de penetración de automatización IA. Ventana de dominio temprano abierta.',
-        source: 'Análisis URUS',
-        impact_level: 5
-      }
+    const NEWS_API_KEY = process.env.NEWS_API_KEY;
+    if (!NEWS_API_KEY) {
+      console.log("⚠️ NEWS_API_KEY no configurada, usando señales manuales.");
+      return;
+    }
+
+    // Temas estratégicos para Jarvis
+    const queries = [
+      "artificial intelligence governance",
+      "AI regulation government",
+      "Puerto Rico technology",
+      "fintech AI Latin America",
+      "autonomous agents enterprise"
     ];
 
-    for (const signal of signals) {
-      const exists = await pool.query(
-        "SELECT id FROM market_intelligence WHERE content = $1",
-        [signal.content]
-      );
+    for (const q of queries) {
+      try {
+        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(q)}&language=es&sortBy=publishedAt&pageSize=3&apiKey=${NEWS_API_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
 
-      if (exists.rows.length === 0) {
-        await pool.query(
-          "INSERT INTO market_intelligence (category, content, source, impact_level) VALUES ($1, $2, $3, $4)",
-          [signal.category, signal.content, signal.source, signal.impact_level]
-        );
-        console.log(`✅ Señal capturada: ${signal.category}`);
+        if (data.status !== "ok" || !data.articles) continue;
+
+        for (const article of data.articles) {
+          if (!article.title || !article.description) continue;
+
+          const content = `[${q.toUpperCase()}] ${article.title}. ${article.description}. Fuente: ${article.source?.name || "NewsAPI"}. Fecha: ${article.publishedAt?.split("T")[0] || "hoy"}`;
+
+          // Evitar duplicados
+          const exists = await pool.query(
+            "SELECT id FROM market_intelligence WHERE content = $1",
+            [content]
+          );
+
+          if (exists.rows.length === 0) {
+            await pool.query(
+              "INSERT INTO market_intelligence (category, content, source, impact_level) VALUES ($1, $2, $3, $4)",
+              [q.toUpperCase(), content, article.source?.name || "NewsAPI", 4]
+            );
+            console.log(`✅ Señal capturada: ${article.title.substring(0, 50)}...`);
+          }
+        }
+      } catch (e) {
+        console.error(`❌ Error query "${q}":`, e.message);
       }
     }
 
+    // Limpiar señales viejas — mantener solo las últimas 50
     await pool.query(`
       DELETE FROM market_intelligence
       WHERE id NOT IN (
@@ -6297,7 +6297,7 @@ async function ingestMarketIntelligence() {
     console.error("❌ Error en ingesta de inteligencia:", err);
   }
 }
-
+    
 // 🔥 ACTIVADORES
 setInterval(runJarvisLoop, 1000 * 60 * 10);
 setInterval(ingestMarketIntelligence, 1000 * 60 * 60 * 12);
