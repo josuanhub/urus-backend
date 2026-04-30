@@ -39,6 +39,8 @@ const OpenAI = require("openai").default;
 const twilio = require("twilio");
 const MessagingResponse = require("twilio").twiml.MessagingResponse;
 const moltbookRoutes = require("./routes/moltbook.routes");
+const RSSParser = require("rss-parser");
+const rssParser = new RSSParser();
 const app = express();
 
 
