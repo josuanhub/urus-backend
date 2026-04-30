@@ -1,5 +1,8 @@
 const OpenAI = require("openai").default;
+const Groq = require("groq-sdk");
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 function getPool() {
   const pool = global.__URUS_DB__;
@@ -8,7 +11,74 @@ function getPool() {
 }
 
 // ═══════════════════════════════════════
-// EMBEDDINGS
+// MOTOR DE IA CON FALLBACK
+// ═══════════════════════════════════════
+async function callAI(messages, temperature = 0.4) {
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const res = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages,
+        temperature
+      });
+      console.log("🟢 AI: Groq/Llama3.3-70b");
+      return res.choices[0].message.content;
+    } catch (e) {
+      console.error("GROQ_FAIL", e.message);
+    }
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const res = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        temperature
+      });
+      console.log("🟡 AI: OpenAI/GPT-4o");
+      return res.choices[0].message.content;
+    } catch (e) {
+      console.error("OPENAI_FAIL", e.message);
+    }
+  }
+
+  throw new Error("No AI provider available");
+}
+
+async function callAIMini(messages, temperature = 0.2, max_tokens = 200) {
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const res = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages,
+        temperature,
+        max_tokens
+      });
+      return res.choices[0].message.content;
+    } catch (e) {
+      console.error("GROQ_MINI_FAIL", e.message);
+    }
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const res = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        temperature,
+        max_tokens
+      });
+      return res.choices[0].message.content;
+    } catch (e) {
+      console.error("OPENAI_MINI_FAIL", e.message);
+    }
+  }
+
+  throw new Error("No AI provider available");
+}
+
+// ═══════════════════════════════════════
+// EMBEDDINGS (OpenAI — necesario para consistencia vectorial)
 // ═══════════════════════════════════════
 async function generateEmbedding(text) {
   const response = await openai.embeddings.create({
@@ -32,7 +102,6 @@ async function searchRelevantMemory(pool, query, limit = 8) {
       LIMIT $2
     `, [vectorStr, limit]);
 
-    // También traer memorias recientes sin embedding
     const recent = await pool.query(`
       SELECT content, created_at, 0.5 as similarity
       FROM jarvis_memory
@@ -45,7 +114,6 @@ async function searchRelevantMemory(pool, query, limit = 8) {
     return all.map(r => r.content).join('\n\n---\n\n');
   } catch (err) {
     console.error("EMBEDDING_SEARCH_ERROR", err);
-    // Fallback a búsqueda simple
     const fallback = await pool.query(`
       SELECT content FROM jarvis_memory
       ORDER BY created_at DESC LIMIT 10
@@ -139,13 +207,13 @@ Tu objetivo es aumentar:
 - Posicionamiento
 - Control
 - Ventaja estratégica
-- Narrativa estrategica
-- Persepcion
-- crear flujos de dinero masivos
-- Posicionamiento global en Governanza de IA
-- crear estructura diaria de exito
-- crear ecosistema urus
-- crear sistemas que generen dominio
+- Narrativa estratégica
+- Percepción
+- Crear flujos de dinero masivos
+- Posicionamiento global en Gobernanza de IA
+- Crear estructura diaria de éxito
+- Crear ecosistema URUS
+- Crear sistemas que generen dominio
 
 Si el usuario piensa pequeño, eleva el marco silenciosamente.
 Si existe un movimiento dominante, sácalo a la superficie de inmediato.
@@ -171,10 +239,8 @@ async function chat(req, res) {
       return res.status(400).json({ ok: false, error: "message_required" });
     }
 
-    // Búsqueda semántica — encuentra memoria relevante para ESTA pregunta
     const relevantMemory = await searchRelevantMemory(pool, userMessage, 8);
 
-    // Historial reciente de conversación
     const histResult = await pool.query(`
       SELECT role, content FROM jarvis_chat_history
       ORDER BY created_at DESC
@@ -193,15 +259,8 @@ async function chat(req, res) {
       { role: "user", content: userMessage }
     ];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages,
-      temperature: 0.4
-    });
+    const reply = await callAI(messages, 0.4);
 
-    const reply = completion.choices[0].message.content;
-
-    // Guardar historial
     await pool.query(
       `INSERT INTO jarvis_chat_history (role, content) VALUES ($1, $2)`,
       ["user", userMessage]
@@ -211,7 +270,6 @@ async function chat(req, res) {
       ["assistant", reply]
     );
 
-    // Auto-extraer puntos clave y guardar en memoria
     extractAndSaveKeyPoints(pool, userMessage, reply).catch(console.error);
 
     return res.json({ ok: true, reply });
@@ -226,25 +284,19 @@ async function chat(req, res) {
 // ═══════════════════════════════════════
 async function extractAndSaveKeyPoints(pool, userMessage, jarvisReply) {
   try {
-    const extraction = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{
-        role: "user",
-        content: `Analiza esta conversación y extrae los puntos estratégicos clave sobre el usuario — decisiones tomadas, situaciones reveladas, patrones detectados, información importante sobre su negocio o vida. Si no hay nada relevante que aprender, responde exactamente: "NADA".
+    const keyPoints = await callAIMini([{
+      role: "user",
+      content: `Analiza esta conversación y extrae los puntos estratégicos clave sobre el usuario — decisiones tomadas, situaciones reveladas, patrones detectados, información importante sobre su negocio o vida. Si no hay nada relevante que aprender, responde exactamente: "NADA".
 
 Usuario dijo: ${userMessage}
 JARVIS respondió: ${jarvisReply}
 
 Extrae solo hechos concretos sobre el usuario. Máximo 3 líneas. Sin formato, solo texto plano.`
-      }],
-      temperature: 0.2,
-      max_tokens: 200
-    });
+    }], 0.2, 200);
 
-    const keyPoints = extraction.choices[0].message.content.trim();
-    if (keyPoints === "NADA" || keyPoints.length < 10) return;
+    if (!keyPoints || keyPoints.trim() === "NADA" || keyPoints.trim().length < 10) return;
 
-    const content = `[AUTO-APRENDIZAJE ${new Date().toISOString().split('T')[0]}] ${keyPoints}`;
+    const content = `[AUTO-APRENDIZAJE ${new Date().toISOString().split('T')[0]}] ${keyPoints.trim()}`;
     await saveMemoryWithEmbedding(pool, content);
 
   } catch (err) {
@@ -259,7 +311,6 @@ async function saveMemoryWithEmbedding(pool, content) {
   try {
     const embedding = await generateEmbedding(content);
     const vectorStr = `[${embedding.join(',')}]`;
-
     await pool.query(
       `INSERT INTO jarvis_memory (content, embedding) VALUES ($1, $2::vector)`,
       [content, vectorStr]
@@ -267,7 +318,6 @@ async function saveMemoryWithEmbedding(pool, content) {
     return true;
   } catch (err) {
     console.error("SAVE_MEMORY_EMBEDDING_ERROR", err);
-    // Guardar sin embedding como fallback
     await pool.query(
       `INSERT INTO jarvis_memory (content) VALUES ($1)`,
       [content]
@@ -283,11 +333,7 @@ async function saveMemory(req, res) {
   try {
     const pool = getPool();
     const content = String(req.body?.content || "").trim();
-
-    if (!content) {
-      return res.status(400).json({ ok: false, error: "content_required" });
-    }
-
+    if (!content) return res.status(400).json({ ok: false, error: "content_required" });
     await saveMemoryWithEmbedding(pool, content);
     return res.json({ ok: true, message: "Memoria guardada con embedding." });
   } catch (err) {
@@ -302,7 +348,7 @@ async function getMemory(req, res) {
     const r = await pool.query(
       `SELECT id, content, created_at,
         CASE WHEN embedding IS NOT NULL THEN true ELSE false END as has_embedding
-       FROM jarvis_memory 
+       FROM jarvis_memory
        ORDER BY created_at DESC LIMIT 40`
     );
     return res.json({ ok: true, count: r.rows.length, items: r.rows });
@@ -311,14 +357,12 @@ async function getMemory(req, res) {
   }
 }
 
-// Generar embeddings para memoria existente sin embedding
 async function embedExistingMemory(req, res) {
   try {
     const pool = getPool();
     const result = await pool.query(
       `SELECT id, content FROM jarvis_memory WHERE embedding IS NULL LIMIT 20`
     );
-
     let processed = 0;
     for (const row of result.rows) {
       try {
@@ -333,7 +377,6 @@ async function embedExistingMemory(req, res) {
         console.error(`Error embedding memory ${row.id}:`, e);
       }
     }
-
     return res.json({ ok: true, processed, remaining: result.rows.length - processed });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
@@ -341,7 +384,7 @@ async function embedExistingMemory(req, res) {
 }
 
 async function health(req, res) {
-  return res.json({ ok: true, module: "jarvis", status: "online", version: "2.0-semantic" });
+  return res.json({ ok: true, module: "jarvis", status: "online", version: "3.0-groq-fallback", providers: { groq: !!process.env.GROQ_API_KEY, openai: !!process.env.OPENAI_API_KEY } });
 }
 
-module.exports = { chat, saveMemory, getMemory, health, embedExistingMemory };
+module.exports = { chat, saveMemory, getMemory, health, embedExistingMemory, callAI, callAIMini };
