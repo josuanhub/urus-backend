@@ -6414,10 +6414,21 @@ REGLAS: No describas, interpreta. Todo termina en decisión. En español. Máxim
   
     
 // 🔥 ACTIVADORES
-setInterval(runJarvisLoop, 1000 * 60 * 10);
+setInterval(runJarvisLoop, 1000 * 60 * 60 * 2);
 setInterval(ingestMarketIntelligence, 1000 * 60 * 60 * 12);
 ingestMarketIntelligence();
 
+// Briefing 7AM diario
+const now = new Date();
+const target7am = new Date();
+target7am.setHours(7, 0, 0, 0);
+if (target7am <= now) target7am.setDate(target7am.getDate() + 1);
+const msUntil7am = target7am - now;
+setTimeout(() => {
+  generateDailyBriefing();
+  setInterval(generateDailyBriefing, 24 * 60 * 60 * 1000);
+}, msUntil7am);
+    
     
     
   } catch (e) {
