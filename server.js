@@ -6338,6 +6338,80 @@ async function ingestMarketIntelligence() {
     console.error("❌ Error en ingesta de inteligencia:", err);
   }
 }
+    // ══════════════════════════════════════
+// 🧠 URUS DAILY BRIEFING — 7AM
+// ══════════════════════════════════════
+async function generateDailyBriefing() {
+  try {
+    console.log("🧠 Generando URUS Daily Briefing...");
+
+    const result = await pool.query(`
+      SELECT category, content, source, created_at
+      FROM market_intelligence
+      ORDER BY created_at DESC
+      LIMIT 15
+    `);
+
+    if (result.rows.length === 0) {
+      console.log("⚠️ Sin señales para briefing.");
+      return;
+    }
+
+    const newsContext = result.rows.map(r => `[${r.category}] ${r.content}`).join('\n\n');
+
+    const prompt = `
+Eres un sistema de inteligencia estratégica operando para URUS — infraestructura de gobernanza de IA para instituciones y gobiernos en Puerto Rico y LATAM.
+
+Tu función no es resumir noticias. Es convertir señales en decisiones.
+
+SEÑALES DEL MERCADO HOY:
+${newsContext}
+
+GENERA EL BRIEFING ESTRATÉGICO URUS:
+
+URUS DAILY BRIEFING — ${new Date().toLocaleDateString('es-PR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+
+TOP 3 SEÑALES DE PODER:
+1. [SEÑAL]: Qué significa realmente + Implicación para URUS
+2. [SEÑAL]: Qué significa realmente + Implicación para URUS  
+3. [SEÑAL]: Qué significa realmente + Implicación para URUS
+
+RADAR:
+🔴 Inmediato (0-30 días):
+🟠 Corto plazo (30-90 días):
+🟡 Medio plazo (90-180 días):
+
+CONCLUSIÓN: (1 párrafo. Qué exige esto de URUS ahora.)
+
+REGLAS: No describas, interpreta. Todo termina en decisión. En español. Máximo 1400 caracteres.
+`.trim();
+
+    const briefing = await callAI([{ role: "user", content: prompt }], 0.6);
+    console.log("🧠 BRIEFING generado.");
+
+    // Guardar en DB
+    try {
+      await pool.query(
+        `INSERT INTO jarvis_alerts (type, content, created_at) VALUES ('daily_briefing', $1, NOW())`,
+        [briefing]
+      );
+    } catch (e) {
+      console.error("BRIEFING_SAVE_ERROR:", e.message);
+    }
+
+    // Mandar por WhatsApp
+    await sendWhatsAppTextTwilio({
+      to: "+19395851479",
+      text: briefing.slice(0, 1500)
+    });
+
+    console.log("✅ Briefing enviado por WhatsApp.");
+
+  } catch (err) {
+    console.error("❌ BRIEFING_ERROR:", err);
+  }
+}
+  
     
 // 🔥 ACTIVADORES
 setInterval(runJarvisLoop, 1000 * 60 * 10);
