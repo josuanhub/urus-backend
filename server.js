@@ -6236,60 +6236,99 @@ async function ingestMarketIntelligence() {
   try {
     console.log("📡 Iniciando escaneo de señales de mercado...");
 
+    // ══════════════════════════════════
+    // FUENTE 1 — NewsAPI
+    // ══════════════════════════════════
     const NEWS_API_KEY = process.env.NEWS_API_KEY;
-    if (!NEWS_API_KEY) {
-      console.log("⚠️ NEWS_API_KEY no configurada, usando señales manuales.");
-      return;
-    }
+    if (NEWS_API_KEY) {
+      const queries = [
+        "AI governance regulation 2026",
+        "artificial intelligence government policy",
+        "Puerto Rico artificial intelligence",
+        "AI agents enterprise automation",
+        "fintech AI Latin America regulation"
+      ];
 
-    // Temas estratégicos para Jarvis
-    const queries = [
-      "artificial intelligence governance",
-      "AI regulation government",
-      "Puerto Rico technology",
-      "fintech AI Latin America",
-      "autonomous agents enterprise"
-    ];
+      for (const q of queries) {
+        try {
+          const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(q)}&language=en&sortBy=publishedAt&pageSize=3&apiKey=${NEWS_API_KEY}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.status !== "ok" || !data.articles) continue;
 
-    for (const q of queries) {
-      try {
-        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(q)}&language=es&sortBy=publishedAt&pageSize=3&apiKey=${NEWS_API_KEY}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.status !== "ok" || !data.articles) continue;
-
-        for (const article of data.articles) {
-          if (!article.title || !article.description) continue;
-
-          const content = `[${q.toUpperCase()}] ${article.title}. ${article.description}. Fuente: ${article.source?.name || "NewsAPI"}. Fecha: ${article.publishedAt?.split("T")[0] || "hoy"}`;
-
-          // Evitar duplicados
-          const exists = await pool.query(
-            "SELECT id FROM market_intelligence WHERE content = $1",
-            [content]
-          );
-
-          if (exists.rows.length === 0) {
-            await pool.query(
-              "INSERT INTO market_intelligence (category, content, source, impact_level) VALUES ($1, $2, $3, $4)",
-              [q.toUpperCase(), content, article.source?.name || "NewsAPI", 4]
-            );
-            console.log(`✅ Señal capturada: ${article.title.substring(0, 50)}...`);
+          for (const article of data.articles) {
+            if (!article.title || !article.description) continue;
+            const content = `[${q.toUpperCase()}] ${article.title}. ${article.description}. Source: ${article.source?.name || "NewsAPI"}. Date: ${article.publishedAt?.split("T")[0] || "today"}`;
+            const exists = await pool.query("SELECT id FROM market_intelligence WHERE content = $1", [content]);
+            if (exists.rows.length === 0) {
+              await pool.query(
+                "INSERT INTO market_intelligence (category, content, source, impact_level) VALUES ($1, $2, $3, $4)",
+                [q.toUpperCase(), content, article.source?.name || "NewsAPI", 4]
+              );
+              console.log(`✅ NewsAPI: ${article.title.substring(0, 60)}...`);
+            }
           }
+        } catch (e) {
+          console.error(`❌ NewsAPI query "${q}":`, e.message);
         }
-      } catch (e) {
-        console.error(`❌ Error query "${q}":`, e.message);
       }
     }
 
-    // Limpiar señales viejas — mantener solo las últimas 50
+    // ══════════════════════════════════
+    // FUENTE 2 — RSS FEEDS
+    // ══════════════════════════════════
+    const RSS_FEEDS = [
+      { url: "https://feeds.reuters.com/reuters/technologyNews", category: "REUTERS TECH" },
+      { url: "https://techcrunch.com/feed/", category: "TECHCRUNCH" },
+      { url: "https://venturebeat.com/feed/", category: "VENTUREBEAT" },
+      { url: "https://www.technologyreview.com/feed/", category: "MIT TECH REVIEW" },
+      { url: "https://news.google.com/rss/search?q=artificial+intelligence+government&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE NEWS AI GOV" },
+      { url: "https://news.google.com/rss/search?q=AI+governance+regulation&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE NEWS AI REG" },
+      { url: "https://news.google.com/rss/search?q=Puerto+Rico+technology&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE NEWS PR TECH" }
+    ];
+
+    const AI_KEYWORDS = [
+      "artificial intelligence", "AI", "machine learning", "agents",
+      "automation", "governance", "government", "regulation", "policy",
+      "enterprise", "infrastructure", "technology", "fintech", "Puerto Rico",
+      "municipal", "institutional", "autonomous", "decision"
+    ];
+
+    for (const feed of RSS_FEEDS) {
+      try {
+        const parsed = await rssParser.parseURL(feed.url);
+        const items = parsed.items.slice(0, 5);
+
+        for (const item of items) {
+          if (!item.title) continue;
+          const text = (item.title + " " + (item.contentSnippet || "")).toLowerCase();
+          const isRelevant = AI_KEYWORDS.some(kw => text.includes(kw.toLowerCase()));
+          if (!isRelevant) continue;
+
+          const content = `[${feed.category}] ${item.title}. ${(item.contentSnippet || "").substring(0, 200)}. Source: ${feed.category}. Date: ${item.pubDate ? new Date(item.pubDate).toISOString().split("T")[0] : "today"}`;
+          const exists = await pool.query("SELECT id FROM market_intelligence WHERE content = $1", [content]);
+          if (exists.rows.length === 0) {
+            await pool.query(
+              "INSERT INTO market_intelligence (category, content, source, impact_level) VALUES ($1, $2, $3, $4)",
+              [feed.category, content, feed.category, 4]
+            );
+            console.log(`✅ RSS ${feed.category}: ${item.title.substring(0, 60)}...`);
+          }
+        }
+      } catch (e) {
+        console.error(`❌ RSS feed ${feed.category}:`, e.message);
+      }
+    }
+
+    // ══════════════════════════════════
+    // LIMPIEZA — mantener últimas 100
+    // ══════════════════════════════════
     await pool.query(`
       DELETE FROM market_intelligence
       WHERE id NOT IN (
         SELECT id FROM market_intelligence
         ORDER BY created_at DESC
-        LIMIT 50
+        LIMIT 100
       )
     `);
 
