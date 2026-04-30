@@ -6278,7 +6278,6 @@ async function ingestMarketIntelligence() {
     // FUENTE 2 — RSS FEEDS
     // ══════════════════════════════════
     const RSS_FEEDS = [
-      { url: "https://feeds.reuters.com/reuters/technologyNews.rss", category: "REUTERS TECH" },
       { url: "https://techcrunch.com/feed/", category: "TECHCRUNCH" },
       { url: "https://venturebeat.com/feed/", category: "VENTUREBEAT" },
       { url: "https://www.technologyreview.com/feed/", category: "MIT TECH REVIEW" },
