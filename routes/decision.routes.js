@@ -16,7 +16,7 @@ router.post("/run", async (req, res) => {
     };
 
     // 🧠 LLAMADA A TU IA (usa tu función actual)
-    const output = await global.callAI({
+    const output = "Respuesta de prueba desde Decision Layer";
       system: `
 Eres JARVIS.
 
