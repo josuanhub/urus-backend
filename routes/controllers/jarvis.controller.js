@@ -279,6 +279,46 @@ async function chat(req, res) {
   }
 }
 
+async function buildContext(pool, userMessage) {
+  // 1. buscar memoria relevante (ya existente)
+  const memories = await searchRelevantMemory(pool, userMessage, 8);
+
+  if (!memories || memories.length === 0) {
+    return "";
+  }
+
+  // 2. convertir a texto simple
+  const memoryText = memories
+    .map(m => m.content || m)
+    .join("\n---\n");
+
+  // 3. FILTRAR (mini inteligencia)
+  const filtered = await callAImini([
+    {
+      role: "system",
+      content: "Selecciona SOLO la información más relevante para la pregunta. Máximo 3 puntos clave."
+    },
+    {
+      role: "user",
+      content: `Pregunta:\n${userMessage}\n\nMemoria:\n${memoryText}`
+    }
+  ]);
+
+  // 4. RESUMIR (compresión)
+  const summary = await callAImini([
+    {
+      role: "system",
+      content: "Resume esta información en máximo 5 líneas estratégicas útiles."
+    },
+    {
+      role: "user",
+      content: filtered
+    }
+  ]);
+
+  return summary;
+}
+
 // ═══════════════════════════════════════
 // JARVIS EXECUTE (ORQUESTADOR)
 // ═══════════════════════════════════════
