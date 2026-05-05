@@ -281,17 +281,20 @@ async function chat(req, res) {
 }
 
 async function buildContext(pool, userMessage) {
-  // 1. buscar memoria relevante (ya existente)
-  const memories = await searchRelevantMemory(pool, userMessage, 8);
+  // línea 284–293 (reemplazo completo)
+const rawMemories = await searchRelevantMemory(pool, userMessage, 8);
 
-  if (!memories || memories.length === 0) {
-    return "";
-  }
+const memories = Array.isArray(rawMemories)
+  ? rawMemories
+  : rawMemories?.rows || [];
 
-  // 2. convertir a texto simple
-  const memoryText = memories
-    .map(m => m.content || m)
-    .join("\n---\n");
+if (memories.length === 0) {
+  return "";
+}
+
+const memoryText = memories
+  .map(m => m.content || m)
+  .join("\n---\n");
 
   // 3. FILTRAR (mini inteligencia)
   const filtered = await callAImini([
