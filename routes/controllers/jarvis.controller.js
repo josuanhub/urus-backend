@@ -470,6 +470,40 @@ async function embedExistingMemory(req, res) {
   }
 }
 
+async function execute(req, res) {
+  try {
+    const { instruction } = req.body;
+
+    if (!instruction) {
+      return res.status(400).json({ ok: false, error: "instruction_required" });
+    }
+
+    const intent = instruction.toLowerCase();
+    let result = null;
+
+    if (intent.includes("noticia") || intent.includes("puerto rico")) {
+      const response = await fetch(`https://newsapi.org/v2/everything?q=puerto%20rico&sortBy=publishedAt&pageSize=5&apiKey=${process.env.NEWS_API_KEY}`);
+      const data = await response.json();
+
+      result = data.articles.map(a => ({
+        title: a.title,
+        source: a.source.name,
+        url: a.url
+      }));
+    }
+
+    if (!result) {
+      result = { message: "No tool matched yet" };
+    }
+
+    return res.json({ ok: true, result });
+
+  } catch (err) {
+    console.error("JARVIS_EXECUTE_ERROR", err);
+    return res.status(500).json({ ok: false, error: "execute_failed" });
+  }
+}
+
 async function health(req, res) {
   return res.json({ ok: true, module: "jarvis", status: "online", version: "3.0-groq-fallback", providers: { groq: !!process.env.GROQ_API_KEY, openai: !!process.env.OPENAI_API_KEY } });
 }
