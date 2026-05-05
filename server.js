@@ -6085,7 +6085,9 @@ ${friction}
     app.listen(PORT, () => {
   console.log(`URUS backend listening on ${PORT}`);
 });
+setInterval(runJarvisLoop, 60000);
 
+    
 // ===============================
 // 🤖 JARVIS LOOP
 // ===============================
