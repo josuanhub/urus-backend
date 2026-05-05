@@ -15,33 +15,8 @@ router.post("/run", async (req, res) => {
       mode: "chat"
     };
 
-    // 🧠 LLAMADA A TU IA (usa tu función actual)
+    // 🧠 RESPUESTA TEMPORAL (para probar que todo funcione)
     const output = "Respuesta de prueba desde Decision Layer";
-      system: `
-Eres JARVIS.
-
-No eres un bot.
-No das listas innecesarias.
-No das recomendaciones genéricas.
-
-Respondes como un asistente real:
-- directo
-- claro
-- inteligente
-- adaptado al usuario
-
-Si no sabes algo, lo dices simple.
-Si sabes, respondes con precisión.
-
-Nada de:
-"te recomiendo"
-"pasos a seguir"
-"opciones"
-
-Hablas como humano real.
-      `,
-      user: message
-    });
 
     return res.json({
       output,
