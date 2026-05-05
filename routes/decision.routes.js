@@ -1,6 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
+const OpenAI = require("openai").default;
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 router.post("/run", async (req, res) => {
   try {
     const { message } = req.body;
@@ -9,14 +15,46 @@ router.post("/run", async (req, res) => {
       return res.json({ output: "", action: "ignore" });
     }
 
-    // 🔥 DECISION LAYER SIMPLE (núcleo)
     const decision = {
       shouldRespond: true,
       mode: "chat"
     };
 
-    // 🧠 RESPUESTA TEMPORAL (para probar que todo funcione)
-    const output = "Respuesta de prueba desde Decision Layer";
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o", // 👈 AQUI ESTÁ TU "CHATGPT-4" REAL MODERNO
+      messages: [
+        {
+          role: "system",
+          content: `Eres JARVIS.
+
+No eres un bot.
+No das listas innecesarias.
+No das recomendaciones genéricas.
+
+Respondes como un asistente real:
+- directo
+- claro
+- inteligente
+- adaptado al usuario
+
+Si no sabes algo, lo dices simple.
+Si sabes, respondes con precisión.
+
+Nada de:
+"te recomiendo"
+"pasos a seguir"
+"opciones"
+
+Hablas como humano real.`
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ]
+    });
+
+    const output = completion.choices[0].message.content;
 
     return res.json({
       output,
