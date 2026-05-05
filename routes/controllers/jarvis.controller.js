@@ -280,6 +280,49 @@ async function chat(req, res) {
 }
 
 // ═══════════════════════════════════════
+// JARVIS EXECUTE (ORQUESTADOR)
+// ═══════════════════════════════════════
+async function execute(req, res) {
+  try {
+    const pool = getPool();
+    const input = String(req.body?.input || "").trim();
+
+    if (!input) {
+      return res.status(400).json({ ok: false, error: "input_required" });
+    }
+
+    const messages = [
+      { role: "system", content: "Eres un motor de análisis operacional. Detecta problemas y propone acciones claras." },
+      { role: "user", content: input }
+    ];
+
+    const analysis = await callAI(messages, 0.3);
+
+    await pool.query(
+      `INSERT INTO jarvis_chat_history (role, content) VALUES ($1, $2)`,
+      ["user", `[EXECUTE] ${input}`]
+    );
+
+    await pool.query(
+      `INSERT INTO jarvis_chat_history (role, content) VALUES ($1, $2)`,
+      ["assistant", analysis]
+    );
+
+    return res.json({
+      ok: true,
+      result: analysis
+    });
+
+  } catch (err) {
+    console.error("JARVIS_EXECUTE_ERROR", err);
+    return res.status(500).json({
+      ok: false,
+      error: "jarvis_execute_failed"
+    });
+  }
+}
+
+// ═══════════════════════════════════════
 // AUTO-APRENDIZAJE
 // ═══════════════════════════════════════
 async function extractAndSaveKeyPoints(pool, userMessage, jarvisReply) {
