@@ -6391,7 +6391,7 @@ async function generateDailyBriefing() {
       SELECT category, content, source, created_at
       FROM market_intelligence
       ORDER BY created_at DESC
-      LIMIT 15
+      LIMIT 3
     `);
 
     if (result.rows.length === 0) {
@@ -6443,8 +6443,8 @@ REGLAS: No describas, interpreta. Todo termina en decisión. En español. Máxim
 
     // Mandar por WhatsApp
     await sendWhatsAppTextTwilio({
-      to: "+19395851479",
-      text: briefing.slice(0, 1500)
+      to: "+12603006906",
+      text: briefing.slice(0, 1400)
     });
 
     console.log("✅ Briefing enviado por WhatsApp.");
