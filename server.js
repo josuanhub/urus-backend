@@ -40,6 +40,7 @@ const OpenAI = require("openai").default;
 const twilio = require("twilio");
 const MessagingResponse = require("twilio").twiml.MessagingResponse;
 const moltbookRoutes = require("./routes/moltbook.routes");
+const decisionRoutes = require("./routes/decision.routes");
 const RSSParser = require("rss-parser");
 const rssParser = new RSSParser();
 const app = express();
@@ -165,6 +166,7 @@ app.post(
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false }));
 app.use("/v1/moltbook", moltbookRoutes);
+app.use("/v1/decision", decisionRoutes);
 app.use("/v1/jarvis", require("./routes/jarvis.routes"));
 app.use("/v1/tenant", require("./routes/tenant.routes"));
 const trustRoutes = require("./routes/trust.routes");
