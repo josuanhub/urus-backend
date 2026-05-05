@@ -6094,6 +6094,45 @@ async function runJarvisLoop() {
   try {
     console.log("🧠 Jarvis loop running...");
 
+const now = new Date();
+const hour = now.getHours();
+const minutes = now.getMinutes();
+const today = now.toDateString();
+
+global.lastBriefingSent = global.lastBriefingSent || null;
+
+// Ejecutar briefing 7:00 AM (UNA SOLA VEZ)
+if (hour === 7 && minutes === 0 && global.lastBriefingSent !== today) {
+  global.lastBriefingSent = today;
+
+  console.log("⏰ Generando briefing diario IA...");
+
+  const prompt = `
+Dame un briefing ejecutivo de noticias sobre Inteligencia Artificial hoy.
+
+Formato:
+- 3 a 5 noticias clave
+- Qué pasó
+- Por qué importa
+- Impacto estratégico
+- implicaciones estratégicas aplicables a URUS
+- Directo, estilo CEO
+`;
+
+  const briefing = await callAI([
+    { role: "system", content: "Eres Jarvis, analista estratégico." },
+    { role: "user", content: prompt }
+  ], 0.4);
+
+  console.log("📊 Briefing generado:", briefing);
+
+  await sendWhatsAppText({
+    to: "12603006906",
+    message: `📊 BRIEFING IA\n\n${briefing}`
+  });
+
+  console.log("✅ Briefing enviado");
+}
     const memoryResult = await pool.query(`
       SELECT content
       FROM jarvis_memory
