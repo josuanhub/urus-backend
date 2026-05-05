@@ -239,7 +239,7 @@ async function chat(req, res) {
       return res.status(400).json({ ok: false, error: "message_required" });
     }
 
-    const relevantMemory = await searchRelevantMemory(pool, userMessage, 8);
+    const contextMemory = await buildContext(pool, userMessage);
 
     const histResult = await pool.query(`
       SELECT role, content FROM jarvis_chat_history
