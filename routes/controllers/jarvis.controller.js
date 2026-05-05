@@ -260,8 +260,38 @@ async function chat(req, res) {
       { role: "user", content: userMessage }
     ];
 
-    const reply = await callAI(messages, 0.4);
+  let reply;
 
+// detectar intención
+const lowerMsg = userMessage.toLowerCase();
+
+if (
+  lowerMsg.includes("noticia") ||
+  lowerMsg.includes("puerto rico") ||
+  lowerMsg.includes("news")
+) {
+  const fakeReq = { body: { instruction: userMessage } };
+
+  const fakeRes = {
+    json: (data) => data
+  };
+
+  const execResult = await execute(fakeReq, fakeRes);
+
+  if (execResult?.ok && execResult.result) {
+    reply = `🔎 Datos en tiempo real:\n\n` +
+      execResult.result
+        .slice(0, 5)
+        .map(a => `• ${a.title} (${a.source})\n${a.url}`)
+        .join("\n\n");
+  } else {
+    reply = "No pude obtener datos en tiempo real.";
+  }
+
+} else {
+  reply = await callAI(messages, 0.4);
+}
+    
     await pool.query(
       `INSERT INTO jarvis_chat_history (role, content) VALUES ($1, $2)`,
       ["user", userMessage]
