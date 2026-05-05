@@ -4562,7 +4562,7 @@ app.get('/v1/jarvis/autonomous', async (req, res) => {
       SELECT content
       FROM jarvis_memory
       ORDER BY created_at DESC
-      LIMIT 40
+      LIMIT 5
     `);
 
     const memory = memoryResult.rows.map(r => r.content).join('\n');
