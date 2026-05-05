@@ -25,6 +25,7 @@
 const express = require("express");
 const path = require('path');
 const cors = require("cors");
+const fetch = require("node-fetch");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
@@ -723,12 +724,22 @@ const updated = await pool.query(
 
 const lastOutbound = lastOutResult.rows?.[0]?.body || "";
 
-const reply = await buildLeadReplyAI({
-  lead: finalLead,
-  signals,
-  lastInbound: text,
-  lastOutbound,
+
+const decisionResponse = await fetch("https://TU-URL/v1/decision/run", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    message: body
+  })
 });
+
+const data = await decisionResponse.json();
+
+if (data.action === "ignore") {
+  return res.status(200).send("ok");
+}
+
+const reply = data.output;
 
     await pool.query(
       `
