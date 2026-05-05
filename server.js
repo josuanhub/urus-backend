@@ -959,13 +959,19 @@ if (!text && req.body.MediaUrl0) {
 
     const lastOutbound = lastOutResult.rows?.[0]?.body || "";
 
-    const reply = await buildLeadReplyAI({
-      lead: finalLead,
-      signals,
-      lastInbound: body,
-      lastOutbound,
-    });
+   const decisionResponse = await fetch("https://urus-backend-production.up.railway.app/v1/decision/run", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: text })
+});
 
+const data = await decisionResponse.json();
+
+if (data.action === "ignore") {
+  return res.status(200).send("ok");
+}
+
+const reply = data.output;
     await pool.query(
       `
       INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
