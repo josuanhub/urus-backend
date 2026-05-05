@@ -6085,9 +6085,10 @@ ${friction}
     app.listen(PORT, () => {
   console.log(`URUS backend listening on ${PORT}`);
 });
-setInterval(() => {
-  runJarvisLoop().catch(err => console.error("JARVIS_LOOP_ERROR", err));
-}, 60000);
+    
+//setInterval(() => {
+  //runJarvisLoop().catch(err => console.error("JARVIS_LOOP_ERROR", err));
+//}, 60000);
 
     
 // ===============================
