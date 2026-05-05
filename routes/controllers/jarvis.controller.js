@@ -251,7 +251,8 @@ async function chat(req, res) {
       content: r.content
     }));
 
-    const systemWithMemory = JARVIS_SYSTEM_PROMPT + (relevantMemory ? `\n\nMEMORIA RELEVANTE PARA ESTA CONVERSACIÓN:\n${relevantMemory}` : "");
+   const systemWithMemory = JARVIS_SYSTEM_PROMPT + 
+(contextMemory ? `\n\nCONTEXTO ESTRATÉGICO:\n${contextMemory}` : "");
 
     const messages = [
       { role: "system", content: systemWithMemory },
