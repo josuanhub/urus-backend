@@ -430,4 +430,4 @@ async function health(req, res) {
   return res.json({ ok: true, module: "jarvis", status: "online", version: "3.0-groq-fallback", providers: { groq: !!process.env.GROQ_API_KEY, openai: !!process.env.OPENAI_API_KEY } });
 }
 
-module.exports = { chat, saveMemory, getMemory, health, embedExistingMemory, callAI, callAIMini };
+module.exports = { chat, execute, saveMemory, getMemory, health, embedExistingMemory, callAI, callAIMini };
