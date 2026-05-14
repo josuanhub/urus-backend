@@ -246,6 +246,25 @@ async function chat(req, res) {
     const pool = getPool();
     const userMessage = String(req.body?.message || "").trim();
 
+    // ═══════════════════════════════
+// EVENT ENGINE
+// ═══════════════════════════════
+
+const detectedEvent = classifyEvent(userMessage);
+
+const routedEvent = routeEvent(detectedEvent);
+
+await saveEvent(pool, {
+  ...detectedEvent,
+  routing: routedEvent
+});
+
+console.log("URUS_EVENT", {
+  event: detectedEvent.event_type,
+  priority: detectedEvent.priority,
+  workflow: routedEvent.workflow
+});
+
     if (!userMessage) {
       return res.status(400).json({ ok: false, error: "message_required" });
     }
