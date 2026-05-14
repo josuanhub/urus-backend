@@ -6272,18 +6272,17 @@ Every response must move the user closer to:
 Respond in Spanish. Write in natural prose. No blocks.
 `.trim();
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.8
-    });
+   const output = await callAI(
+  [{ role: "user", content: prompt }],
+  0.8
+);
 
-    const output = completion.choices[0].message.content;
+  
     console.log("🧠 Jarvis insight:", output);
 
     await sendWhatsAppTextTwilio({
       to: "+19395851479",
-     text: output.slice(0, 1500)
+     text: output.slice(0, 1400)
     });
 
   } catch (err) {
