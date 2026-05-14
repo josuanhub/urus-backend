@@ -6299,6 +6299,70 @@ async function ingestMarketIntelligence() {
   try {
     console.log("📡 Iniciando escaneo de señales de mercado...");
 
+    // =====================================
+// FUENTE 0 — SERPER SEARCH
+// =====================================
+
+if (process.env.SERPER_API_KEY) {
+  try {
+    console.log("🌐 Ejecutando búsqueda Serper...");
+
+    const searches = [
+      "Puerto Rico FEMA funding opportunities",
+      "Puerto Rico CDBG-DR grants",
+      "municipal infrastructure grants Puerto Rico",
+      "Puerto Rico resilience funding",
+      "Puerto Rico flood mitigation grants"
+    ];
+
+    for (const query of searches) {
+      const serperRes = await fetch("https://google.serper.dev/search", {
+        method: "POST",
+        headers: {
+          "X-API-KEY": process.env.SERPER_API_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          q: query,
+          gl: "us",
+          hl: "en"
+        })
+      });
+
+      const serperData = await serperRes.json();
+
+      const organic = serperData.organic || [];
+
+      for (const item of organic.slice(0, 5)) {
+        await pool.query(
+          `
+          INSERT INTO market_intelligence (
+            source,
+            title,
+            content,
+            metadata
+          )
+          VALUES ($1, $2, $3, $4)
+          `,
+          [
+            "serper",
+            item.title || "Untitled",
+            item.snippet || "",
+            JSON.stringify({
+              link: item.link,
+              query
+            })
+          ]
+        );
+      }
+
+      console.log("✅ Serper query completada:", query);
+    }
+  } catch (err) {
+    console.error("SERPER_INGEST_ERROR", err.message);
+  }
+}
+
     // ══════════════════════════════════
     // FUENTE 1 — NewsAPI
     // ══════════════════════════════════
