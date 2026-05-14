@@ -87,29 +87,18 @@ async function generateEmbedding(text) {
 
 async function searchRelevantMemory(pool, query, limit = 8) {
   try {
-    const queryEmbedding = await generateEmbedding(query);
-    const vectorStr = `[${queryEmbedding.join(',')}]`;
-
-    const result = await pool.query(`
-      SELECT content, created_at,
-        1 - (embedding <=> $1::vector) as similarity
-      FROM jarvis_memory
-      WHERE embedding IS NOT NULL
-      ORDER BY embedding <=> $1::vector
-      LIMIT $2
-    `, [vectorStr, limit]);
-
     const recent = await pool.query(`
-      SELECT content, created_at, 0.5 as similarity
-      FROM jarvis_memory
-      WHERE embedding IS NULL
-      ORDER BY created_at DESC
-      LIMIT 5
-    `);
+  SELECT content, created_at
+  FROM jarvis_memory
+  ORDER BY created_at DESC
+  LIMIT 10
+`);
 
-    const all = [...result.rows, ...recent.rows];
-    return all.map(r => r.content).join('\n\n---\n\n');
+return recent.rows
+  .map(r => r.content)
+  .join('\n\n---\n\n');
   } catch (err) {
+    
     console.error("EMBEDDING_SEARCH_ERROR", err);
     const fallback = await pool.query(`
       SELECT content FROM jarvis_memory
