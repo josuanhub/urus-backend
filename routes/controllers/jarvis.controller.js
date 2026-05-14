@@ -81,11 +81,8 @@ async function callAIMini(messages, temperature = 0.2, max_tokens = 200) {
 // EMBEDDINGS (OpenAI — necesario para consistencia vectorial)
 // ═══════════════════════════════════════
 async function generateEmbedding(text) {
-  const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text.substring(0, 8000)
-  });
-  return response.data[0].embedding;
+  console.log("EMBEDDINGS_TEMP_DISABLED");
+  return null;
 }
 
 async function searchRelevantMemory(pool, query, limit = 8) {
