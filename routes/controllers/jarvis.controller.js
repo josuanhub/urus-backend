@@ -1,5 +1,7 @@
 const OpenAI = require("openai").default;
 const Groq = require("groq-sdk");
+const { classifyEvent } = require("../../events/eventClassifier");
+const { routeEvent } = require("../../events/eventRouter");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -8,6 +10,29 @@ function getPool() {
   const pool = global.__URUS_DB__;
   if (!pool) throw new Error("URUS_DB pool no disponible");
   return pool;
+}
+async function saveEvent(pool, eventData) {
+  try {
+
+    await pool.query(
+      `INSERT INTO urus_events (
+        event_type,
+        priority,
+        source,
+        payload
+      ) VALUES ($1, $2, $3, $4)`,
+      [
+        eventData.event_type,
+        eventData.priority,
+        eventData.source,
+        JSON.stringify(eventData)
+      ]
+    );
+
+  } catch (err) {
+
+    console.error("SAVE_EVENT_ERROR", err.message);
+  }
 }
 
 // ═══════════════════════════════════════
