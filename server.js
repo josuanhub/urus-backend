@@ -266,6 +266,78 @@ app.get("/v1/intelligence/top", async (req, res) => {
   }
 });
 
+app.get("/v1/intelligence/summary", async (req, res) => {
+  try {
+
+    const topSignals = await pool.query(`
+      SELECT
+        summary,
+        severity,
+        event_type,
+        created_at
+      FROM opportunity_events
+      ORDER BY severity DESC, created_at DESC
+      LIMIT 10
+    `);
+
+    const topFunding = await pool.query(`
+      SELECT COUNT(*) AS total
+      FROM opportunity_events
+      WHERE event_type = 'FUNDING'
+    `);
+
+    const topGovernment = await pool.query(`
+      SELECT COUNT(*) AS total
+      FROM opportunity_events
+      WHERE event_type = 'GOVERNMENT'
+    `);
+
+    const topAI = await pool.query(`
+      SELECT COUNT(*) AS total
+      FROM opportunity_events
+      WHERE event_type = 'AI'
+    `);
+
+    const latestSignals = await pool.query(`
+      SELECT
+        title,
+        priority_score,
+        signal_type,
+        created_at
+      FROM market_intelligence
+      ORDER BY created_at DESC
+      LIMIT 10
+    `);
+
+    res.json({
+      ok: true,
+
+      totals: {
+        funding: Number(topFunding.rows[0].total || 0),
+        government: Number(topGovernment.rows[0].total || 0),
+        ai: Number(topAI.rows[0].total || 0)
+      },
+
+      top_opportunities: topSignals.rows,
+
+      latest_market_signals: latestSignals.rows
+
+    });
+
+  } catch (err) {
+
+    console.error("INTELLIGENCE_SUMMARY_ERROR", err);
+
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+
+  }
+});
+
+
+
 app.get("/privacy", (req, res) => {
   res.status(200).send(`
     <h1>Privacy Policy</h1>
