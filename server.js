@@ -191,6 +191,44 @@ app.use(express.static(path.join(__dirname, 'public')));
 // META BASIC URLS
 // ==============================
 
+app.get("/v1/intelligence/opportunities", async (req, res) => {
+  try {
+
+    const result = await pool.query(`
+      SELECT
+        id,
+        event_type,
+        severity,
+        status,
+        summary,
+        metadata,
+        created_at
+      FROM opportunity_events
+      ORDER BY severity DESC, created_at DESC
+      LIMIT 100
+    `);
+
+    res.json({
+      ok: true,
+      count: result.rows.length,
+      opportunities: result.rows
+    });
+
+  } catch (err) {
+
+    console.error(
+      "INTELLIGENCE_OPPORTUNITIES_ERROR",
+      err.message
+    );
+
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+
+  }
+});
+
 app.get("/privacy", (req, res) => {
   res.status(200).send(`
     <h1>Privacy Policy</h1>
