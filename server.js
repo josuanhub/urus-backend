@@ -6334,27 +6334,28 @@ if (process.env.SERPER_API_KEY) {
       const organic = serperData.organic || [];
 
       for (const item of organic.slice(0, 5)) {
-        await pool.query(
-          `
-          INSERT INTO market_intelligence (
-            source,
-            title,
-            content,
-            metadata
-          )
-          VALUES ($1, $2, $3, $4)
-          `,
-          [
-            "serper",
-            item.title || "Untitled",
-            item.snippet || "",
-            JSON.stringify({
-              link: item.link,
-              query
-            })
-          ]
-        );
-      }
+      await pool.query(
+`
+INSERT INTO market_intelligence (
+  category,
+  source,
+  title,
+  content,
+  metadata
+)
+VALUES ($1, $2, $3, $4, $5)
+`,
+[
+  "SERPER",
+  "serper",
+  item.title || "Untitled",
+  item.snippet || "",
+  JSON.stringify({
+    link: item.link,
+    query
+  })
+]
+);
 
       console.log("✅ Serper query completada:", query);
     }
