@@ -6329,12 +6329,13 @@ if (process.env.SERPER_API_KEY) {
         })
       });
 
-      const serperData = await serperRes.json();
+     const serperData = await serperRes.json();
 
-      const organic = serperData.organic || [];
+const organic = serperData.organic || [];
 
-      for (const item of organic.slice(0, 5)) {
-await pool.query(
+for (const item of organic.slice(0, 5)) {
+
+  await pool.query(
 `
 INSERT INTO market_intelligence (
   category,
@@ -6356,7 +6357,10 @@ VALUES ($1, $2, $3, $4, $5)
   })
 ]
 );
-      console.log("✅ Serper query completada:", query);
+
+}
+
+console.log("✅ Serper query completada:", query);
     }
   } catch (err) {
     console.error("SERPER_INGEST_ERROR", err.message);
