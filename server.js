@@ -229,6 +229,43 @@ app.get("/v1/intelligence/opportunities", async (req, res) => {
   }
 });
 
+app.get("/v1/intelligence/top", async (req, res) => {
+  try {
+
+    const result = await pool.query(`
+      SELECT
+        id,
+        event_type,
+        severity,
+        summary,
+        metadata,
+        created_at
+      FROM opportunity_events
+      WHERE severity >= 7
+      ORDER BY severity DESC, created_at DESC
+      LIMIT 20
+    `);
+
+    res.json({
+      ok: true,
+      top_signals: result.rows
+    });
+
+  } catch (err) {
+
+    console.error(
+      "TOP_INTELLIGENCE_ERROR",
+      err.message
+    );
+
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+
+  }
+});
+
 app.get("/privacy", (req, res) => {
   res.status(200).send(`
     <h1>Privacy Policy</h1>
