@@ -336,8 +336,6 @@ app.get("/v1/intelligence/summary", async (req, res) => {
   }
 });
 
-
-
 app.get("/privacy", (req, res) => {
   res.status(200).send(`
     <h1>Privacy Policy</h1>
