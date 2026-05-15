@@ -6295,6 +6295,65 @@ Respond in Spanish. Write in natural prose. No blocks.
 // 📡 MARKET INTELLIGENCE INGESTA
 // ===============================
 
+    function scoreMarketSignal(text = "") {
+
+  const t = text.toLowerCase();
+
+  let priority = 1;
+  let urgency = 1;
+  let opportunity = 1;
+  let signalType = "GENERAL";
+
+  // FUNDING
+  if (
+    t.includes("grant") ||
+    t.includes("funding") ||
+    t.includes("fema") ||
+    t.includes("cdbg")
+  ) {
+    priority += 5;
+    urgency += 2;
+    opportunity += 7;
+    signalType = "FUNDING";
+  }
+
+  // GOVERNMENT
+  if (
+    t.includes("government") ||
+    t.includes("federal") ||
+    t.includes("municipal")
+  ) {
+    priority += 3;
+    urgency += 2;
+    signalType = "GOVERNMENT";
+  }
+
+  // AI
+  if (
+    t.includes("ai") ||
+    t.includes("artificial intelligence")
+  ) {
+    priority += 4;
+    opportunity += 4;
+    signalType = "AI";
+  }
+
+  // PUERTO RICO
+  if (
+    t.includes("puerto rico")
+  ) {
+    priority += 4;
+    opportunity += 4;
+  }
+
+  return {
+    priority_score: Math.min(priority, 10),
+    urgency_level: Math.min(urgency, 10),
+    opportunity_level: Math.min(opportunity, 10),
+    signal_type: signalType
+  };
+}
+    
 async function ingestMarketIntelligence() {
   try {
     console.log("📡 Iniciando escaneo de señales de mercado...");
@@ -6334,23 +6393,34 @@ if (process.env.SERPER_API_KEY) {
 const organic = serperData.organic || [];
 
 for (const item of organic.slice(0, 5)) {
-
+  
+const scores = scoreMarketSignal(
+  `${item.title || ""} ${item.snippet || ""}`
+);
   await pool.query(
 `
 INSERT INTO market_intelligence (
   category,
-  source,
-  title,
-  content,
-  metadata
+source,
+title,
+content,
+priority_score,
+urgency_level,
+opportunity_level,
+signal_type,
+metadata
 )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `,
 [
   "SERPER",
   "serper",
   item.title || "Untitled",
   item.snippet || "",
+  scores.priority_score,
+  scores.urgency_level,
+  scores.opportunity_level,
+  scores.signal_type,
   JSON.stringify({
     link: item.link,
     query
