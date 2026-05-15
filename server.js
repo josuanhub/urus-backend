@@ -6334,7 +6334,7 @@ if (process.env.SERPER_API_KEY) {
       const organic = serperData.organic || [];
 
       for (const item of organic.slice(0, 5)) {
-      await pool.query(
+await pool.query(
 `
 INSERT INTO market_intelligence (
   category,
@@ -6356,7 +6356,6 @@ VALUES ($1, $2, $3, $4, $5)
   })
 ]
 );
-
       console.log("✅ Serper query completada:", query);
     }
   } catch (err) {
