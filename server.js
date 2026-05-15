@@ -6393,81 +6393,81 @@ if (process.env.SERPER_API_KEY) {
 const organic = serperData.organic || [];
 
 for (const item of organic.slice(0, 5)) {
-  
-const scores = scoreMarketSignal(
-  `${item.title || ""} ${item.snippet || ""}`
-);
-  await pool.query(
-if (
-  scores.priority_score >= 7 ||
-  scores.opportunity_level >= 7
-) {
+
+  const scores = scoreMarketSignal(
+    `${item.title || ""} ${item.snippet || ""}`
+  );
+
+  if (
+    scores.priority_score >= 7 ||
+    scores.opportunity_level >= 7
+  ) {
+
+    await pool.query(
+      `
+      INSERT INTO opportunity_events (
+        event_type,
+        severity,
+        action_required,
+        status,
+        summary,
+        metadata
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      `,
+      [
+        scores.signal_type || "HIGH_PRIORITY_SIGNAL",
+        scores.priority_score,
+        true,
+        "NEW",
+        item.title || "Strategic opportunity detected",
+        JSON.stringify({
+          source: "serper",
+          query,
+          link: item.link,
+          scores
+        })
+      ]
+    );
+
+    console.log(
+      "🚨 Opportunity Event Created:",
+      item.title
+    );
+  }
 
   await pool.query(
     `
-    INSERT INTO opportunity_events (
-      event_type,
-      severity,
-      action_required,
-      status,
-      summary,
+    INSERT INTO market_intelligence (
+      category,
+      source,
+      title,
+      content,
+      priority_score,
+      urgency_level,
+      opportunity_level,
+      signal_type,
       metadata
     )
-    VALUES ($1, $2, $3, $4, $5, $6)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `,
     [
-      scores.signal_type || "HIGH_PRIORITY_SIGNAL",
+      "SERPER",
+      "serper",
+      item.title || "Untitled",
+      item.snippet || "",
       scores.priority_score,
-      true,
-      "NEW",
-      item.title || "Strategic opportunity detected",
+      scores.urgency_level,
+      scores.opportunity_level,
+      scores.signal_type,
       JSON.stringify({
-        source: "serper",
-        query,
         link: item.link,
-        scores
+        query
       })
     ]
   );
 
-  console.log(
-    "🚨 Opportunity Event Created:",
-    item.title
-  );
 }
-    
-`
-INSERT INTO market_intelligence (
-  category,
-source,
-title,
-content,
-priority_score,
-urgency_level,
-opportunity_level,
-signal_type,
-metadata
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-`,
-[
-  "SERPER",
-  "serper",
-  item.title || "Untitled",
-  item.snippet || "",
-  scores.priority_score,
-  scores.urgency_level,
-  scores.opportunity_level,
-  scores.signal_type,
-  JSON.stringify({
-    link: item.link,
-    query
-  })
-]
-);
-
-}
-
 console.log("✅ Serper query completada:", query);
     }
   } catch (err) {
