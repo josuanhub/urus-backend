@@ -6627,66 +6627,65 @@ for (const item of organic.slice(0, 5)) {
     `${item.title || ""} ${item.snippet || ""}`
   );
 
-  if (
-    scores.priority_score >= 7 ||
-    scores.opportunity_level >= 7
-  ) {
+if (
+  scores.priority_score >= 7 ||
+  scores.opportunity_level >= 7
+) {
 
-    const strategicInsight =
-  generateStrategicInsight({
-    title: item.title,
-    content: item.snippet,
-    signal_type: scores.signal_type
-  });
-    
-    await pool.query(
-      `
-      INSERT INTO opportunity_events (
-        event_type,
-        severity,
-        action_required,
-        status,
-        summary,
-        metadata
-      )
-      VALUES ($1, $2, $3, $4, $5, $6)
-      `,
-      [
-        scores.signal_type || "HIGH_PRIORITY_SIGNAL",
-        scores.priority_score,
-        true,
-        "NEW",
-        item.title || "Strategic opportunity detected",
-        JSON.stringify({
-          source: "serper",
-          query,
-          link: item.link,
-          scores
-        })
-      ]
-    );
+  const strategicInsight =
+    generateStrategicInsight({
+      title: item.title,
+      content: item.snippet,
+      signal_type: scores.signal_type
+    });
 
-    console.log(
-      "🚨 Opportunity Event Created:",
-      item.title
-    );
-  }
+  await pool.query(
+    `
+    INSERT INTO opportunity_events (
+      event_type,
+      severity,
+      action_required,
+      status,
+      summary,
+      metadata
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)
+    `,
+    [
+      scores.signal_type || "HIGH_PRIORITY_SIGNAL",
+      scores.priority_score,
+      true,
+      "NEW",
+      item.title || "Strategic opportunity detected",
+      JSON.stringify({
+        source: "serper",
+        query,
+        link: item.link,
+        scores
+      })
+    ]
+  );
+
+  console.log(
+    "🚨 Opportunity Event Created:",
+    item.title
+  );
 
   await pool.query(
     `
     INSERT INTO market_intelligence (
-   category,
-   source,
-   title,
-   content,
-   priority_score,
-   urgency_level,
-   opportunity_level,
-   signal_type,
-   strategic_summary,
-   recommended_action,
-   strategic_priority,
-   metadata
+      category,
+      source,
+      title,
+      content,
+      priority_score,
+      urgency_level,
+      opportunity_level,
+      signal_type,
+      strategic_summary,
+      recommended_action,
+      strategic_priority,
+      metadata
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     `,
@@ -6710,6 +6709,7 @@ for (const item of organic.slice(0, 5)) {
   );
 
 }
+  
 console.log("✅ Serper query completada:", query);
     }
   } catch (err) {
