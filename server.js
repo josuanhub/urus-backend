@@ -6499,9 +6499,6 @@ Respond in Spanish. Write in natural prose. No blocks.
   };
 }
 
-
-    
-    
 async function ingestMarketIntelligence() {
   try {
     console.log("📡 Iniciando escaneo de señales de mercado...");
