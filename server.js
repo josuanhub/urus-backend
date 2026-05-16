@@ -6711,6 +6711,9 @@ if (
 }
   
 console.log("✅ Serper query completada:", query);
+  }
+
+}
     
   } catch (err) {
     console.error("SERPER_INGEST_ERROR", err.message);
