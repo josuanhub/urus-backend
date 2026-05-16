@@ -6498,6 +6498,9 @@ Respond in Spanish. Write in natural prose. No blocks.
     signal_type: signalType
   };
 }
+
+
+    
     
 async function ingestMarketIntelligence() {
   try {
@@ -6548,6 +6551,13 @@ for (const item of organic.slice(0, 5)) {
     scores.opportunity_level >= 7
   ) {
 
+    const strategicInsight =
+  generateStrategicInsight({
+    title: item.title,
+    content: item.snippet,
+    signal_type: scores.signal_type
+  });
+    
     await pool.query(
       `
       INSERT INTO opportunity_events (
