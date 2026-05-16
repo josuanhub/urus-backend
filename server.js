@@ -6499,6 +6499,90 @@ Respond in Spanish. Write in natural prose. No blocks.
   };
 }
 
+function generateStrategicInsight(signal = {}) {
+
+  const text = `
+    ${signal.title || ""}
+    ${signal.content || ""}
+    ${signal.signal_type || ""}
+  `.toLowerCase();
+
+  // FUNDING + PUERTO RICO
+  if (
+    text.includes("fema") ||
+    text.includes("cdbg") ||
+    text.includes("grant")
+  ) {
+
+    if (text.includes("puerto rico")) {
+      return {
+        strategic_summary:
+          "Puerto Rico municipalities may qualify for resilience and infrastructure-related federal funding opportunities.",
+
+        recommended_action:
+          "Identify municipalities with infrastructure vulnerability and align proposals with federal resilience narratives.",
+
+        strategic_priority: "HIGH"
+      };
+    }
+
+    return {
+      strategic_summary:
+        "Potential federal funding opportunity detected.",
+
+      recommended_action:
+        "Review eligibility requirements and identify matching municipal or infrastructure projects.",
+
+      strategic_priority: "MEDIUM"
+    };
+  }
+
+  // GOVERNMENT
+  if (
+    text.includes("government") ||
+    text.includes("municipal")
+  ) {
+
+    return {
+      strategic_summary:
+        "Government-related operational signal detected.",
+
+      recommended_action:
+        "Monitor procurement, infrastructure, and public funding alignment opportunities.",
+
+      strategic_priority: "MEDIUM"
+    };
+  }
+
+  // AI
+  if (
+    text.includes("ai") ||
+    text.includes("artificial intelligence")
+  ) {
+
+    return {
+      strategic_summary:
+        "AI market acceleration signal detected.",
+
+      recommended_action:
+        "Evaluate AI operationalization and municipal intelligence integration opportunities.",
+
+      strategic_priority: "MEDIUM"
+    };
+  }
+
+  // DEFAULT
+  return {
+    strategic_summary:
+      "General operational signal detected.",
+
+    recommended_action:
+      "Continue monitoring for strategic developments.",
+
+    strategic_priority: "LOW"
+  };
+}
+    
 async function ingestMarketIntelligence() {
   try {
     console.log("📡 Iniciando escaneo de señales de mercado...");
