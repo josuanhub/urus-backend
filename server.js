@@ -6675,17 +6675,20 @@ for (const item of organic.slice(0, 5)) {
   await pool.query(
     `
     INSERT INTO market_intelligence (
-      category,
-      source,
-      title,
-      content,
-      priority_score,
-      urgency_level,
-      opportunity_level,
-      signal_type,
-      metadata
+   category,
+   source,
+   title,
+   content,
+   priority_score,
+   urgency_level,
+   opportunity_level,
+   signal_type,
+   strategic_summary,
+   recommended_action,
+   strategic_priority,
+   metadata
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     `,
     [
       "SERPER",
@@ -6696,6 +6699,9 @@ for (const item of organic.slice(0, 5)) {
       scores.urgency_level,
       scores.opportunity_level,
       scores.signal_type,
+      strategicInsight.strategic_summary,
+      strategicInsight.recommended_action,
+      strategicInsight.strategic_priority,
       JSON.stringify({
         link: item.link,
         query
