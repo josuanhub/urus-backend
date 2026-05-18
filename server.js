@@ -509,6 +509,56 @@ app.get("/v1/organizations/:id/diagnostic", async (req, res) => {
 });
 
 
+app.get("/v1/organizations/:id/tasks", async (req, res) => {
+
+  try {
+
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT
+        id,
+        task_type,
+        title,
+        description,
+        priority,
+        status,
+        assigned_to,
+        due_date,
+        metadata,
+        created_at
+      FROM operational_tasks
+      WHERE organization_id = $1
+      ORDER BY priority DESC, created_at DESC
+      `,
+      [id]
+    );
+
+    res.json({
+      ok: true,
+      organization_id: id,
+      total_tasks: result.rows.length,
+      tasks: result.rows
+    });
+
+  } catch (err) {
+
+    console.error(
+      "ORGANIZATION_TASKS_ERROR",
+      err.message
+    );
+
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+
+  }
+
+});
+
+
 app.post("/v1/organizations/create", async (req, res) => {
 
   try {
