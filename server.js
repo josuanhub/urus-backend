@@ -339,6 +339,73 @@ LIMIT 10
   }
 });
 
+app.post("/v1/organizations/create", async (req, res) => {
+
+  try {
+
+    const {
+      organization_name,
+      organization_type,
+      industry,
+      organization_size,
+      pain_points,
+      systems_used,
+      operational_priorities,
+      operational_risks,
+      metadata
+    } = req.body;
+
+    const result = await pool.query(
+      `
+      INSERT INTO organization_profiles (
+        organization_name,
+        organization_type,
+        industry,
+        organization_size,
+        pain_points,
+        systems_used,
+        operational_priorities,
+        operational_risks,
+        metadata
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING *
+      `,
+      [
+        organization_name,
+        organization_type,
+        industry,
+        organization_size,
+        JSON.stringify(pain_points || []),
+        JSON.stringify(systems_used || []),
+        JSON.stringify(operational_priorities || []),
+        JSON.stringify(operational_risks || []),
+        JSON.stringify(metadata || {})
+      ]
+    );
+
+    res.json({
+      ok: true,
+      organization: result.rows[0]
+    });
+
+  } catch (err) {
+
+    console.error(
+      "ORGANIZATION_CREATE_ERROR",
+      err.message
+    );
+
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+
+  }
+
+});
+
+
 app.get("/privacy", (req, res) => {
   res.status(200).send(`
     <h1>Privacy Policy</h1>
