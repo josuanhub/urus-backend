@@ -339,6 +339,63 @@ LIMIT 10
   }
 });
 
+app.get("/v1/organizations/:id/diagnostic", async (req, res) => {
+
+  try {
+
+    const { id } = req.params;
+
+    const orgResult = await pool.query(
+      `
+      SELECT *
+      FROM organization_profiles
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (!orgResult.rows.length) {
+
+      return res.status(404).json({
+        ok: false,
+        error: "Organization not found"
+      });
+    }
+
+    const org = orgResult.rows[0];
+
+    const diagnosis =
+      generateOperationalDiagnosis(org);
+
+    res.json({
+      ok: true,
+
+      organization: {
+        id: org.id,
+        organization_name: org.organization_name,
+        organization_type: org.organization_type,
+        industry: org.industry
+      },
+
+      diagnosis
+    });
+
+  } catch (err) {
+
+    console.error(
+      "ORGANIZATION_DIAGNOSTIC_ERROR",
+      err.message
+    );
+
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
+
+
 app.post("/v1/organizations/create", async (req, res) => {
 
   try {
