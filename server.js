@@ -46,6 +46,57 @@ const { callAI } = require("./routes/controllers/jarvis.controller");
 const rssParser = new RSSParser();
 const app = express();
 
+function generateOperationalDiagnosis(org) {
+  const painPoints = org.pain_points || [];
+  const systems = org.systems_used || [];
+  const priorities = org.operational_priorities || [];
+  const risks = org.operational_risks || [];
+
+  const diagnostics = [];
+
+  if (systems.includes("Excel")) {
+    diagnostics.push({
+      type: "SYSTEM_FRAGMENTATION",
+      severity: 8,
+      issue: "Critical operations depend on Excel spreadsheets.",
+      impact: "Operational delays and reporting inconsistency.",
+      recommendation: "Centralize operations into unified workflows."
+    });
+  }
+
+  if (systems.includes("WhatsApp")) {
+    diagnostics.push({
+      type: "UNTRACKED_COMMUNICATION",
+      severity: 9,
+      issue: "Operational communication occurs through unmanaged WhatsApp flows.",
+      impact: "Lost requests, no accountability, delayed response cycles.",
+      recommendation: "Implement centralized communication tracking."
+    });
+  }
+
+  if (risks.includes("missed deadlines")) {
+    diagnostics.push({
+      type: "EXECUTION_RISK",
+      severity: 9,
+      issue: "Organization reports missed operational deadlines.",
+      impact: "Reduced execution reliability and public trust.",
+      recommendation: "Deploy automated operational monitoring."
+    });
+  }
+
+  return {
+    organization: org.organization_name,
+    organization_type: org.organization_type,
+    industry: org.industry,
+    diagnostics,
+    operational_score: Math.max(
+      1,
+      10 - diagnostics.length
+    ),
+    generated_at: new Date().toISOString()
+  };
+}
+
 
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
 app.set("trust proxy", 1);
