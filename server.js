@@ -84,11 +84,45 @@ function generateOperationalDiagnosis(org) {
     });
   }
 
+const recommendedTasks = [];
+
+for (const d of diagnostics) {
+
+  if (d.type === "SYSTEM_FRAGMENTATION") {
+    recommendedTasks.push({
+      task_type: "SYSTEM_UPGRADE",
+      title: "Centralize operational systems",
+      description: "Replace fragmented Excel workflows.",
+      priority: 8
+    });
+  }
+
+  if (d.type === "UNTRACKED_COMMUNICATION") {
+    recommendedTasks.push({
+      task_type: "COMMUNICATION_CONTROL",
+      title: "Implement communication tracking",
+      description: "Track operational communication flows.",
+      priority: 9
+    });
+  }
+
+  if (d.type === "EXECUTION_RISK") {
+    recommendedTasks.push({
+      task_type: "EXECUTION_MONITORING",
+      title: "Deploy execution monitoring",
+      description: "Monitor deadlines and operational delivery.",
+      priority: 10
+    });
+  }
+
+}
+  
   return {
     organization: org.organization_name,
     organization_type: org.organization_type,
     industry: org.industry,
     diagnostics,
+    recommended_tasks: recommendedTasks,
     operational_score: Math.max(
       1,
       10 - diagnostics.length
