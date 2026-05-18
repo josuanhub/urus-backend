@@ -6569,6 +6569,134 @@ Respond in Spanish. Write in natural prose. No blocks.
   };
 }
 
+    function generateOperationalDiagnosis(org) {
+
+  let risk_score = 3;
+  let automation_score = 3;
+  let efficiency_score = 3;
+
+  const findings = [];
+  const recommendations = [];
+
+  const systems = org.systems_used || [];
+  const risks = org.operational_risks || [];
+  const priorities = org.operational_priorities || [];
+
+  // RIESGOS
+
+  if (risks.includes("missed deadlines")) {
+    risk_score += 2;
+
+    findings.push(
+      "Operational delays detected across workflows"
+    );
+
+    recommendations.push(
+      "Implement deadline tracking automation"
+    );
+  }
+
+  if (risks.includes("slow reporting")) {
+    risk_score += 2;
+
+    findings.push(
+      "Reporting systems are operating inefficiently"
+    );
+
+    recommendations.push(
+      "Centralize reporting infrastructure"
+    );
+  }
+
+  // SISTEMAS
+
+  if (systems.includes("Excel")) {
+    automation_score += 3;
+
+    findings.push(
+      "Heavy spreadsheet dependency detected"
+    );
+
+    recommendations.push(
+      "Replace spreadsheet workflows with automation pipelines"
+    );
+  }
+
+  if (systems.includes("Email")) {
+    automation_score += 2;
+
+    findings.push(
+      "Communication fragmentation risk detected"
+    );
+
+    recommendations.push(
+      "Deploy centralized operational communication layer"
+    );
+  }
+
+  if (systems.includes("WhatsApp")) {
+    automation_score += 1;
+
+    findings.push(
+      "Informal communication channels detected"
+    );
+
+    recommendations.push(
+      "Implement structured citizen/client workflow system"
+    );
+  }
+
+  // PRIORIDADES
+
+  if (priorities.includes("grant capture")) {
+    efficiency_score += 2;
+
+    findings.push(
+      "Grant acquisition dependency detected"
+    );
+
+    recommendations.push(
+      "Deploy grant opportunity monitoring engine"
+    );
+  }
+
+  if (priorities.includes("citizen response")) {
+    efficiency_score += 2;
+
+    findings.push(
+      "Citizen response pressure detected"
+    );
+
+    recommendations.push(
+      "Automate inbound request classification"
+    );
+  }
+
+  if (priorities.includes("operational efficiency")) {
+    efficiency_score += 3;
+
+    findings.push(
+      "Operational optimization initiative identified"
+    );
+
+    recommendations.push(
+      "Deploy operational intelligence dashboard"
+    );
+  }
+
+  return {
+    risk_score: Math.min(risk_score, 10),
+    automation_score: Math.min(automation_score, 10),
+    efficiency_score: Math.min(efficiency_score, 10),
+
+    findings,
+    recommendations,
+
+    executive_summary:
+      "URUS detected operational inefficiencies, automation gaps, and optimization opportunities inside the organization."
+  };
+}
+    
 function generateStrategicInsight(signal = {}) {
 
   const text = `
