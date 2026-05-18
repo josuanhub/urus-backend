@@ -299,14 +299,17 @@ app.get("/v1/intelligence/summary", async (req, res) => {
     `);
 
     const latestSignals = await pool.query(`
-      SELECT
-        title,
-        priority_score,
-        signal_type,
-        created_at
-      FROM market_intelligence
-      ORDER BY created_at DESC
-      LIMIT 10
+     SELECT
+  title,
+  priority_score,
+  signal_type,
+  strategic_summary,
+  recommended_action,
+  strategic_priority,
+  created_at
+FROM market_intelligence
+ORDER BY created_at DESC
+LIMIT 10
     `);
 
     res.json({
