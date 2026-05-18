@@ -453,6 +453,34 @@ app.get("/v1/organizations/:id/diagnostic", async (req, res) => {
     const diagnosis =
       generateOperationalDiagnosis(org);
 
+    for (const task of diagnosis.recommended_tasks) {
+
+  await pool.query(
+    `
+    INSERT INTO operational_tasks (
+      organization_id,
+      task_type,
+      title,
+      description,
+      priority,
+      metadata
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)
+    `,
+    [
+      id,
+      task.task_type,
+      task.title,
+      task.description,
+      task.priority,
+      JSON.stringify({
+        generated_by: "URUS_DIAGNOSTIC_ENGINE"
+      })
+    ]
+  );
+
+}
+
     res.json({
       ok: true,
 
