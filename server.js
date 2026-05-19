@@ -236,6 +236,7 @@ function generateMunicipalOperationalDiagnosis(profile) {
   strategic_recommendations: recommendations
 };
 
+ }
 
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
 app.set("trust proxy", 1);
