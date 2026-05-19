@@ -131,6 +131,102 @@ for (const d of diagnostics) {
   };
 }
 
+function generateMunicipalOperationalDiagnosis(profile) {
+
+  const findings = [];
+  const funding_opportunities = [];
+  const recommendations = [];
+  const evidence_chains = [];
+
+  // FUNDING DETECTION
+  if (
+    profile?.detected_funding_opportunities?.length > 0
+  ) {
+
+    findings.push({
+      type: "FUNDING_EXECUTION_RISK",
+      severity: 9,
+      title: "Federal funding execution exposure detected.",
+      summary:
+        "Operational conditions may reduce grant execution velocity."
+    });
+
+    funding_opportunities.push({
+      program: "FEMA Flood Mitigation",
+      relevance: "HIGH",
+      strategic_priority: "CRITICAL",
+      operational_dependency: "FAST_EXECUTION"
+    });
+
+    evidence_chains.push({
+      signal_detected:
+        "FEMA mitigation funding deployment",
+
+      cross_reference:
+        "Flood-prone infrastructure zones and resilience requirements.",
+
+      operational_friction: [
+        "manual approvals",
+        "department fragmentation",
+        "execution latency indicators"
+      ],
+
+      strategic_risk:
+        "Grant execution latency may reduce operational readiness."
+    });
+
+    recommendations.push({
+      type: "GRANT_EXECUTION_MONITORING",
+
+      action:
+        "Deploy centralized grant execution monitoring and operational visibility layer."
+    });
+  }
+
+  // CAPITAL LEAKAGE
+  if (
+    profile?.capital_leakage_vectors?.length > 0
+  ) {
+
+    findings.push({
+      type: "CAPITAL_LEAKAGE_EXPOSURE",
+      severity: 8,
+      title: "Potential operational capital leakage detected.",
+
+      summary:
+        "Operational inefficiencies and manual workflows may reduce execution efficiency."
+    });
+
+    recommendations.push({
+      type: "OPERATIONAL_AUTOMATION",
+
+      action:
+        "Implement operational workflow monitoring and approval visibility systems."
+    });
+  }
+
+  return {
+
+    operational_score: 68,
+
+    strategic_risk_level: "CRITICAL",
+
+    signal_confidence: {
+      funding_signal: "HIGH",
+      operational_friction: "MEDIUM",
+      capital_leakage_probability: "MEDIUM"
+    },
+
+    findings,
+
+    funding_opportunities,
+
+    evidence_chains,
+
+    recommendations
+  };
+}
+
 
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
 app.set("trust proxy", 1);
