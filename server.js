@@ -895,6 +895,64 @@ app.post("/v1/organizations/create", async (req, res) => {
 });
 
 
+app.get("/v1/municipalities/:id/operational-report", async (req, res) => {
+
+  try {
+
+    const { id } = req.params;
+
+    const result = await pool.query(`
+      SELECT *
+      FROM organization_profiles
+      WHERE id = $1
+      LIMIT 1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        error: "Municipality not found"
+      });
+    }
+
+    const organization = result.rows[0];
+
+    const metadata =
+      typeof organization.metadata === "string"
+        ? JSON.parse(organization.metadata)
+        : organization.metadata || {};
+
+    const municipalityProfile =
+      metadata.municipality_profile || {};
+
+    const diagnosis =
+      generateMunicipalOperationalDiagnosis(
+        municipalityProfile
+      );
+
+    return res.json({
+      ok: true,
+
+      municipality: organization.organization_name,
+
+      diagnosis
+    });
+
+  } catch (err) {
+
+    console.error(
+      "Municipal operational report error:",
+      err
+    );
+
+    return res.status(500).json({
+      ok: false,
+      error: "Failed to generate operational report"
+    });
+  }
+});
+
+
 app.get("/privacy", (req, res) => {
   res.status(200).send(`
     <h1>Privacy Policy</h1>
