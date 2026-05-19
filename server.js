@@ -351,6 +351,55 @@ app.get("/v1/intelligence/top", async (req, res) => {
   }
 });
 
+app.get("/v1/intelligence/opportunities", async (req, res) => {
+  try {
+
+    const result = await pool.query(`
+      SELECT
+        id,
+        source,
+        title,
+        summary,
+        category,
+        severity,
+        metadata,
+        created_at
+      FROM opportunity_events
+      ORDER BY created_at DESC
+      LIMIT 50
+    `);
+
+    const opportunities = result.rows.map((row) => ({
+      id: row.id,
+      source: row.source,
+      title: row.title,
+      summary: row.summary,
+      category: row.category,
+      severity: row.severity,
+      metadata: row.metadata || {},
+      created_at: row.created_at
+    }));
+
+    return res.json({
+      ok: true,
+      total: opportunities.length,
+      opportunities
+    });
+
+  } catch (err) {
+
+    console.error(
+      "INTELLIGENCE_OPPORTUNITIES_ERROR",
+      err.message
+    );
+
+    return res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
+
 app.get("/v1/intelligence/summary", async (req, res) => {
   try {
 
