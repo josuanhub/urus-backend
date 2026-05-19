@@ -205,27 +205,36 @@ function generateMunicipalOperationalDiagnosis(profile) {
     });
   }
 
-  return {
+ return {
+
+  executive_summary: {
 
     operational_score: 68,
 
     strategic_risk_level: "CRITICAL",
 
-    signal_confidence: {
-      funding_signal: "HIGH",
-      operational_friction: "MEDIUM",
-      capital_leakage_probability: "MEDIUM"
-    },
+    summary:
+      "URUS detected operational conditions that may reduce grant execution readiness and increase administrative friction exposure."
 
-    findings,
+  },
 
-    funding_opportunities,
+  signal_confidence: {
 
-    evidence_chains,
+    funding_signal: "HIGH",
 
-    recommendations
-  };
-}
+    operational_friction: "MEDIUM",
+
+    capital_leakage_probability: "MEDIUM"
+  },
+
+  operational_findings: findings,
+
+  funding_analysis: funding_opportunities,
+
+  evidence_chains,
+
+  strategic_recommendations: recommendations
+};
 
 
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
