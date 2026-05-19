@@ -741,7 +741,8 @@ app.post("/v1/organizations/create", async (req, res) => {
       systems_used,
       operational_priorities,
       operational_risks,
-      metadata
+      metadata,
+      municipality_profile
     } = req.body;
 
     const result = await pool.query(
@@ -769,7 +770,10 @@ app.post("/v1/organizations/create", async (req, res) => {
         JSON.stringify(systems_used || []),
         JSON.stringify(operational_priorities || []),
         JSON.stringify(operational_risks || []),
-        JSON.stringify(metadata || {})
+       JSON.stringify({
+  ...(metadata || {}),
+  municipality_profile: municipality_profile || null
+})
       ]
     );
 
