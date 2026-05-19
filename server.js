@@ -941,12 +941,36 @@ app.get("/v1/municipalities/:id/operational-report", async (req, res) => {
       );
 
     return res.json({
-      ok: true,
 
-      municipality: organization.organization_name,
+  ok: true,
 
-      diagnosis
-    });
+  report_type:
+    "URUS Operational Intelligence Report",
+
+  municipality:
+    organization.organization_name,
+
+  generated_at:
+    new Date().toISOString(),
+
+  executive_summary:
+    diagnosis.executive_summary,
+
+  signal_confidence:
+    diagnosis.signal_confidence,
+
+  operational_findings:
+    diagnosis.operational_findings,
+
+  funding_analysis:
+    diagnosis.funding_analysis,
+
+  evidence_chains:
+    diagnosis.evidence_chains,
+
+  strategic_recommendations:
+    diagnosis.strategic_recommendations
+});
 
   } catch (err) {
 
