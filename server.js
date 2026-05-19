@@ -2315,25 +2315,35 @@ const ingestLimiter = rateLimit({
 
 // CORS cerrado: si no defines CORS_ORIGIN, permite tools (Hoppscotch/Postman) pero bloquea browsers por seguridad.
 // Si defines CORS_ORIGIN, solo permite esos.
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
+app.use(cors({
+  origin: function(origin, callback) {
 
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
+    if (!origin) {
+      return callback(null, true);
+    }
 
-  res.header(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
-  );
+    const allowedOrigins = process.env.CORS_ORIGIN
+      .split(",")
+      .map(o => o.trim().replace(/\/$/, ""));
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
+    const cleanOrigin = origin.replace(/\/$/, "");
 
-  next();
-});
+    const allowed =
+      allowedOrigins.includes(cleanOrigin) ||
+      cleanOrigin.includes("lovable.app") ||
+      cleanOrigin.includes("lovableproject.com");
+
+    if (allowed) {
+      return callback(null, true);
+    }
+
+    console.log("CORS BLOCKED:", origin);
+
+    callback(new Error("Not allowed by CORS"));
+  },
+
+  credentials: true
+}));
 
 function nowISO() {
   return new Date().toISOString();
