@@ -2146,12 +2146,25 @@ const ingestLimiter = rateLimit({
 
 // CORS cerrado: si no defines CORS_ORIGIN, permite tools (Hoppscotch/Postman) pero bloquea browsers por seguridad.
 // Si defines CORS_ORIGIN, solo permite esos.
-app.use(
-  cors({
-    origin: true,
-    credentials: true
-  })
-);
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
 
 function nowISO() {
   return new Date().toISOString();
