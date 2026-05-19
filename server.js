@@ -400,6 +400,128 @@ app.get("/v1/intelligence/opportunities", async (req, res) => {
   }
 });
 
+app.post("/v1/intelligence/analyze-organization/:id", async (req, res) => {
+  try {
+
+    const { id } = req.params;
+
+    const orgResult = await pool.query(
+      `
+      SELECT *
+      FROM organization_profiles
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (!orgResult.rows.length) {
+      return res.status(404).json({
+        ok: false,
+        error: "Organization not found"
+      });
+    }
+
+    const org = orgResult.rows[0];
+
+    const opportunitiesResult = await pool.query(`
+      SELECT
+        id,
+        source,
+        title,
+        summary,
+        category,
+        severity,
+        created_at
+      FROM opportunity_events
+      ORDER BY severity DESC, created_at DESC
+      LIMIT 20
+    `);
+
+    const opportunities = [];
+    const risks = [];
+    const recommended_actions = [];
+
+    for (const event of opportunitiesResult.rows) {
+
+      const text = `
+        ${event.title}
+        ${event.summary}
+      `.toLowerCase();
+
+      if (
+        text.includes("fema") &&
+        org.organization_type?.toLowerCase().includes("municip")
+      ) {
+
+        opportunities.push({
+          type: "FUNDING_ELIGIBILITY",
+          title: event.title,
+          summary: event.summary,
+          severity: event.severity
+        });
+
+        recommended_actions.push({
+          type: "GRANT_RESPONSE",
+          action: "Review FEMA funding eligibility immediately.",
+          priority: 9
+        });
+      }
+
+      if (
+        text.includes("ai") ||
+        text.includes("automation")
+      ) {
+
+        recommended_actions.push({
+          type: "AI_ADOPTION",
+          action: "Evaluate operational AI adoption strategy.",
+          priority: 7
+        });
+      }
+
+      if (
+        event.severity >= 8
+      ) {
+
+        risks.push({
+          type: "EXTERNAL_RISK_SIGNAL",
+          title: event.title,
+          severity: event.severity
+        });
+      }
+    }
+
+    return res.json({
+      ok: true,
+      organization: {
+        id: org.id,
+        organization_name: org.organization_name,
+        organization_type: org.organization_type,
+        industry: org.industry
+      },
+      intelligence: {
+        opportunities,
+        risks,
+        recommended_actions,
+        analyzed_at: new Date().toISOString()
+      }
+    });
+
+  } catch (err) {
+
+    console.error(
+      "ANALYZE_ORGANIZATION_ERROR",
+      err.message
+    );
+
+    return res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
+
 app.get("/v1/intelligence/summary", async (req, res) => {
   try {
 
