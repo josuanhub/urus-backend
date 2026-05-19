@@ -2316,34 +2316,10 @@ const ingestLimiter = rateLimit({
 // CORS cerrado: si no defines CORS_ORIGIN, permite tools (Hoppscotch/Postman) pero bloquea browsers por seguridad.
 // Si defines CORS_ORIGIN, solo permite esos.
 app.use(cors({
-  origin: function(origin, callback) {
-
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    const allowedOrigins = process.env.CORS_ORIGIN
-      .split(",")
-      .map(o => o.trim().replace(/\/$/, ""));
-
-    const cleanOrigin = origin.replace(/\/$/, "");
-
-    const allowed =
-      allowedOrigins.includes(cleanOrigin) ||
-      cleanOrigin.includes("lovable.app") ||
-      cleanOrigin.includes("lovableproject.com");
-
-    if (allowed) {
-      return callback(null, true);
-    }
-
-    console.log("CORS BLOCKED:", origin);
-
-    callback(new Error("Not allowed by CORS"));
-  },
-
+  origin: true,
   credentials: true
 }));
+
 
 function nowISO() {
   return new Date().toISOString();
