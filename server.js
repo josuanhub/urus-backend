@@ -429,7 +429,6 @@ app.post("/v1/intelligence/analyze-organization/:id", async (req, res) => {
         source,
         title,
         summary,
-        category,
         severity,
         created_at
       FROM opportunity_events
