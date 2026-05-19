@@ -371,7 +371,6 @@ app.get("/v1/intelligence/opportunities", async (req, res) => {
 
     const opportunities = result.rows.map((row) => ({
       id: row.id,
-      source: row.source,
       title: row.title,
       summary: row.summary,
       category: row.category,
