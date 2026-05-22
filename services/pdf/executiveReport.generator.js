@@ -713,6 +713,222 @@ https://quickchart.io/chart?c={
   </html>
   `;
 
+  <!-- SCOPE & METHODOLOGY -->
+
+<section class="page">
+
+  <h1>Scope & Methodology</h1>
+
+  <div class="finding-card">
+
+    <div class="finding-text">
+
+      This operational intelligence report was generated using publicly
+      available signals, federal funding indicators, infrastructure risk
+      patterns, regional resilience activity, and operational trend analysis.
+
+      <br><br>
+
+      The system evaluates strategic exposure areas associated with:
+      infrastructure modernization, resilience funding opportunities,
+      emergency management activity, interagency operational coordination,
+      and grant readiness indicators.
+
+      <br><br>
+
+      Analysis is based on aggregated intelligence patterns and should be
+      considered preliminary until validated with direct municipal data,
+      departmental verification, and operational review procedures.
+
+    </div>
+
+  </div>
+
+</section>
+
+<!-- DATA INPUTS -->
+
+<section class="page">
+
+  <h1>Data Inputs & Intelligence Sources</h1>
+
+  <table>
+
+    <thead>
+      <tr>
+        <th>Source Type</th>
+        <th>Category</th>
+        <th>Usage</th>
+      </tr>
+    </thead>
+
+    <tbody>
+
+      <tr>
+        <td>Federal Signals</td>
+        <td>FEMA / HUD / DOE</td>
+        <td>Funding opportunity monitoring</td>
+      </tr>
+
+      <tr>
+        <td>Regional News Intelligence</td>
+        <td>Puerto Rico Media</td>
+        <td>Operational event detection</td>
+      </tr>
+
+      <tr>
+        <td>Infrastructure Indicators</td>
+        <td>Public Risk Signals</td>
+        <td>Exposure analysis</td>
+      </tr>
+
+      <tr>
+        <td>Grant Monitoring</td>
+        <td>Federal Programs</td>
+        <td>Readiness estimation</td>
+      </tr>
+
+      <tr>
+        <td>Strategic Trend Analysis</td>
+        <td>Operational Intelligence</td>
+        <td>Pattern recognition</td>
+      </tr>
+
+    </tbody>
+
+  </table>
+
+</section>
+
+<!-- DISCLAIMER -->
+
+<section class="page">
+
+  <h1>Operational Intelligence Disclaimer</h1>
+
+  <div class="finding-card">
+
+    <div class="finding-text">
+
+      This document is intended exclusively for preliminary operational
+      intelligence assessment and executive strategic orientation.
+
+      <br><br>
+
+      Findings contained within this report are derived from publicly
+      accessible information, regional intelligence signals, funding
+      indicators, and analytical estimation models.
+
+      <br><br>
+
+      Signals identified by the system do not constitute audited municipal
+      conclusions, legal determinations, engineering certifications,
+      financial guarantees, or official governmental findings.
+
+      <br><br>
+
+      All operational conclusions require validation through direct municipal
+      review, administrative verification, technical assessment, and
+      institutional confirmation procedures.
+
+    </div>
+
+  </div>
+
+</section>
+
+<!-- PILOT RECOMMENDATION -->
+
+<section class="page">
+
+  <h1>Recommended Pilot Deployment</h1>
+
+  <div class="finding-card">
+
+    <div class="finding-text">
+
+      Preliminary operational signals suggest that a limited strategic
+      pilot deployment may provide measurable visibility into funding
+      readiness, operational coordination efficiency, infrastructure
+      exposure mapping, and resilience opportunity tracking.
+
+      <br><br>
+
+      Recommended pilot duration:
+
+      <br><br>
+
+      • 14-Day Intelligence Validation Pilot
+      <br>
+      • 30-Day Operational Monitoring Deployment
+      <br>
+      • 60-Day Strategic Funding Intelligence Cycle
+
+      <br><br>
+
+      Pilot deployment objectives may include:
+
+      <br><br>
+
+      • Grant opportunity tracking
+      <br>
+      • Executive operational dashboards
+      <br>
+      • Infrastructure signal monitoring
+      <br>
+      • Risk exposure visualization
+      <br>
+      • Interdepartmental coordination analysis
+
+    </div>
+
+  </div>
+
+</section>
+
+<!-- EXECUTIVE CTA -->
+
+<section class="page cover">
+
+  <div class="gold-line"></div>
+
+  <div style="margin-top:120px;">
+
+    <div class="cover-title">
+      Recommended Next Operational Phase
+    </div>
+
+    <div class="cover-subtitle">
+
+      Executive review is recommended to determine whether
+      operational validation, pilot deployment, or strategic
+      monitoring expansion should proceed.
+
+    </div>
+
+    <div style="margin-top:80px;">
+
+      <div style="
+        border-left:4px solid #c8a96b;
+        padding-left:20px;
+        color:#d6d9df;
+        line-height:1.9;
+      ">
+
+        URUS Operational Intelligence System
+        <br>
+        Strategic Infrastructure Intelligence
+        <br>
+        Executive Decision Support Layer
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+  
   // =========================================
   // PUPPETEER
   // =========================================
