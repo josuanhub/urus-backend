@@ -199,8 +199,9 @@ https://quickchart.io/chart?c={
 }
 
 .metric-value {
-  font-size: 54px;
-  font-weight: 700;
+  font-size: 24px;
+ line-height: 1.1;
+word-break: break-word;
 }
 
 .metric-sub {
