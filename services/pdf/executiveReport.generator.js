@@ -62,7 +62,7 @@ https://quickchart.io/chart?c={
     datasets:[{
       label:'Operational Risk',
      data:${JSON.stringify(operationalRiskSeries)}
-      borderColor:'rgb(201,162,77)',
+      borderColor:'gold'
       fill:false
     }]
   }
@@ -77,7 +77,7 @@ https://quickchart.io/chart?c={
     datasets:[{
       label:'Funding Readiness',
       data:${JSON.stringify(fundingReadinessSeries)}
-      backgroundColor:'rgb(17,24,39)'
+      backgroundColor:'black'
     }]
   }
 }
