@@ -110,6 +110,107 @@ async function generateExecutiveReport(data) {
         color: #374151;
       }
 
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+  margin-top: 50px;
+}
+
+.metric-card {
+  background: #111827;
+  border-radius: 18px;
+  padding: 28px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::after {
+  content: "";
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 120px;
+  height: 120px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+}
+
+.metric-label {
+  font-size: 14px;
+  color: #9ca3af;
+  margin-bottom: 18px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.metric-value {
+  font-size: 54px;
+  font-weight: 700;
+}
+
+.metric-sub {
+  margin-top: 10px;
+  color: #d1d5db;
+  font-size: 14px;
+}
+
+.alert-box {
+  margin-top: 50px;
+  border-left: 6px solid #dc2626;
+  background: #fef2f2;
+  padding: 28px;
+  border-radius: 12px;
+}
+
+.alert-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #991b1b;
+  margin-bottom: 12px;
+}
+
+.alert-text {
+  color: #7f1d1d;
+  line-height: 1.7;
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 40px;
+  margin-top: 50px;
+}
+
+.side-panel {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 28px;
+}
+
+.side-panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.side-stat {
+  margin-bottom: 22px;
+}
+
+.side-stat-label {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.side-stat-value {
+  font-size: 26px;
+  font-weight: 700;
+}
+
       .finding-card {
         border: 1px solid #d1d5db;
         border-radius: 16px;
@@ -234,6 +335,120 @@ async function generateExecutiveReport(data) {
       <div class="summary">
         ${executive_summary}
       </div>
+<div class="metrics-grid">
+
+  <div class="metric-card">
+    <div class="metric-label">
+      Infrastructure Risk
+    </div>
+
+    <div class="metric-value">
+      72%
+    </div>
+
+    <div class="metric-sub">
+      Elevated infrastructure exposure detected.
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-label">
+      Funding Readiness
+    </div>
+
+    <div class="metric-value">
+      84%
+    </div>
+
+    <div class="metric-sub">
+      Active federal funding eligibility signals.
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-label">
+      Coordination Capacity
+    </div>
+
+    <div class="metric-value">
+      41%
+    </div>
+
+    <div class="metric-sub">
+      Cross-department operational fragmentation.
+    </div>
+  </div>
+
+</div>
+
+<div class="alert-box">
+
+  <div class="alert-title">
+    Strategic Operational Alert
+  </div>
+
+  <div class="alert-text">
+    URUS detected operational inefficiencies connected to fragmented workflows,
+    delayed funding coordination, and infrastructure resilience exposure.
+  </div>
+
+</div>
+
+<div class="two-column">
+
+  <div>
+
+    <h2>
+      Executive Intelligence
+    </h2>
+
+    <div class="summary">
+      Current operational indicators suggest the municipality is positioned
+      for federal resilience funding, but internal coordination inefficiencies
+      may reduce execution velocity and grant conversion effectiveness.
+    </div>
+
+  </div>
+
+  <div class="side-panel">
+
+    <div class="side-panel-title">
+      Intelligence Snapshot
+    </div>
+
+    <div class="side-stat">
+      <div class="side-stat-label">
+        FEMA Alignment
+      </div>
+
+      <div class="side-stat-value">
+        HIGH
+      </div>
+    </div>
+
+    <div class="side-stat">
+      <div class="side-stat-label">
+        Infrastructure Stress
+      </div>
+
+      <div class="side-stat-value">
+        MODERATE
+      </div>
+    </div>
+
+    <div class="side-stat">
+      <div class="side-stat-label">
+        Federal Exposure
+      </div>
+
+      <div class="side-stat-value">
+        ACTIVE
+      </div>
+    </div>
+
+  </div>
+
+</div>
 
     </section>
 
