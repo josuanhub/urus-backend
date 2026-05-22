@@ -6893,6 +6893,46 @@ ${friction}
   }
 });
 
+app.post("/v1/reports/generate", async (req, res) => {
+
+  try {
+
+    const {
+      municipality_name,
+      executive_summary,
+      findings,
+      evidence_chains,
+      strategic_recommendations,
+      funding_analysis
+    } = req.body;
+
+    const report = await generateExecutiveReport({
+      municipality_name,
+      executive_summary,
+      findings,
+      evidence_chains,
+      strategic_recommendations,
+      funding_analysis
+    });
+
+    return res.json({
+      ok: true,
+      report
+    });
+
+  } catch (e) {
+
+    console.error("REPORT_GENERATION_ERROR", e);
+
+    return res.status(500).json({
+      ok: false,
+      error: e.message
+    });
+
+  }
+
+});
+
 // ---------- Boot ----------
 (async () => {
   try {
