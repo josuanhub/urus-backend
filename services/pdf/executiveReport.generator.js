@@ -58,7 +58,7 @@ const operationalTrendChart = `
 https://quickchart.io/chart?c={
   type:'line',
   data:{
-    labels:${JSON.stringify(operationalLabels)}
+   labels:${JSON.stringify(operationalLabels).replace(/"/g, "'")}
     datasets:[{
       label:'Operational Risk',
      data:${JSON.stringify(operationalRiskSeries)}
@@ -73,7 +73,7 @@ const fundingReadinessChart = `
 https://quickchart.io/chart?c={
   type:'bar',
   data:{
-    labels:${JSON.stringify(fundingLabels)}
+    labels:${JSON.stringify(fundingLabels).replace(/"/g, "'")}
     datasets:[{
       label:'Funding Readiness',
       data:${JSON.stringify(fundingReadinessSeries)}
