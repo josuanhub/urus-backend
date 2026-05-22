@@ -958,6 +958,124 @@ word-break: break-word;
       `).join("")}
 
     </section>
+<!-- EXECUTIVE PILOT -->
+
+<section class="page">
+
+  <h1>Executive Pilot Recommendation</h1>
+
+  <div class="finding-card">
+
+    <div class="finding-title">
+      Recommended Pilot Structure
+    </div>
+
+    <div class="finding-text">
+
+      Based on preliminary operational intelligence
+      indicators, URUS recommends a limited executive
+      pilot focused on operational visibility,
+      funding coordination assessment, infrastructure
+      prioritization, and municipal response analysis.
+
+      <br><br>
+
+      The objective of the pilot is to validate
+      strategic indicators using real municipal
+      workflows and operational conditions.
+
+    </div>
+
+  </div>
+
+  <div class="finding-card">
+
+    <div class="finding-title">
+      Pilot Scope
+    </div>
+
+    <div class="finding-text">
+
+      Suggested pilot duration:
+
+      <br><br>
+
+      • 14-Day Executive Assessment<br>
+      • 30-Day Operational Intelligence Pilot<br>
+      • 60-Day Strategic Coordination Pilot
+
+      <br><br>
+
+      Pilot deployment may include executive dashboards,
+      operational reporting, funding visibility systems,
+      intelligence scoring, and strategic coordination
+      layers.
+
+    </div>
+
+  </div>
+
+  <div class="finding-card">
+
+    <div class="finding-title">
+      Executive Outcome Objective
+    </div>
+
+    <div class="finding-text">
+
+      The intended outcome is improved executive
+      visibility across operational exposure,
+      funding readiness, infrastructure coordination,
+      and strategic response capacity.
+
+      <br><br>
+
+      Additional institutional validation is recommended
+      before implementing long-term strategic actions.
+
+    </div>
+
+  </div>
+
+  <div
+    style="
+      margin-top:60px;
+      padding:40px;
+      background:#0b1020;
+      border-radius:24px;
+      color:white;
+    "
+  >
+
+    <div
+      style="
+        font-size:38px;
+        font-weight:700;
+        margin-bottom:20px;
+      "
+    >
+      Recommended Next Step
+    </div>
+
+    <div
+      style="
+        font-size:22px;
+        line-height:1.7;
+        opacity:0.9;
+      "
+    >
+
+      Schedule an executive operational intelligence
+      review session to validate findings, identify
+      municipal priorities, and determine feasibility
+      of pilot deployment.
+
+    </div>
+
+  </div>
+
+</section>
+
 
     <!-- RECOMMENDATIONS -->
 
