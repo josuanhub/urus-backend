@@ -29,7 +29,35 @@ async function generateExecutiveReport(data) {
   // =========================================
   // HTML TEMPLATE
   // =========================================
+const operationalTrendChart = `
+https://quickchart.io/chart?c={
+  type:'line',
+  data:{
+    labels:['Jan','Feb','Mar','Apr','May','Jun'],
+    datasets:[{
+      label:'Operational Risk',
+      data:[62,58,71,69,63,52],
+      borderColor:'rgb(201,162,77)',
+      fill:false
+    }]
+  }
+}
+`;
 
+const fundingReadinessChart = `
+https://quickchart.io/chart?c={
+  type:'bar',
+  data:{
+    labels:['Infrastructure','FEMA','Energy','Resilience'],
+    datasets:[{
+      label:'Funding Readiness',
+      data:[84,92,71,88],
+      backgroundColor:'rgb(17,24,39)'
+    }]
+  }
+}
+`;
+  
   const html = `
   <!DOCTYPE html>
   <html>
@@ -524,6 +552,8 @@ async function generateExecutiveReport(data) {
 
     </section>
 
+
+
     <!-- FUNDING TABLE -->
 
     <section class="page">
@@ -569,6 +599,44 @@ async function generateExecutiveReport(data) {
       </table>
 
     </section>
+
+<!-- CHARTS -->
+
+<section class="page">
+
+  <h1>Operational Intelligence Charts</h1>
+
+  <div style="margin-top:50px;">
+
+    <div style="margin-bottom:60px;">
+
+      <h2 style="margin-bottom:20px;">
+        Operational Risk Evolution
+      </h2>
+
+      <img
+        src="${operationalTrendChart}"
+        style="width:100%;border-radius:16px;"
+      />
+
+    </div>
+
+    <div>
+
+      <h2 style="margin-bottom:20px;">
+        Funding Readiness Distribution
+      </h2>
+
+      <img
+        src="${fundingReadinessChart}"
+        style="width:100%;border-radius:16px;"
+      />
+
+    </div>
+
+  </div>
+
+</section>
 
     <!-- EVIDENCE -->
 
