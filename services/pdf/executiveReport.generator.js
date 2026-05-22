@@ -23,10 +23,11 @@ async function generateExecutiveReport(data) {
 
   const filePath = path.join(reportsDir, fileName);
 
-  const doc = new PDFDocument({
-    margin: 60,
-    size: "A4"
-  });
+ const doc = new PDFDocument({
+  margin: 50,
+  size: "A4",
+  bufferPages: true
+});
 
   doc.pipe(fs.createWriteStream(filePath));
 
