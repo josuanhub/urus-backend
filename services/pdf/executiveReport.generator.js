@@ -625,6 +625,75 @@ https://quickchart.io/chart?c={
 
     </section>
 
+<!-- MUNICIPAL MAP -->
+
+<section class="page">
+
+  <h1>Municipal Intelligence Map</h1>
+
+  <div
+    style="
+      margin-top:40px;
+      background:white;
+      border-radius:24px;
+      padding:30px;
+      border:1px solid #dfe4ea;
+    "
+  >
+
+    <img
+      src="https://www.urusverify.com/maps/mapa%20PR.jpeg"
+      style="
+        width:100%;
+        border-radius:18px;
+      "
+    />
+
+  </div>
+
+  <div
+    style="
+      margin-top:30px;
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:20px;
+    "
+  >
+
+    <div class="metric-card">
+      <div class="metric-title">
+        FEMA Exposure
+      </div>
+
+      <div class="metric-value">
+        HIGH
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-title">
+        Funding Readiness
+      </div>
+
+      <div class="metric-value">
+        MODERATE
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-title">
+        Infrastructure Risk
+      </div>
+
+      <div class="metric-value">
+        ACTIVE
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
 <!-- EXECUTIVE VISUAL LAYER -->
 
 <section class="page">
