@@ -44,6 +44,9 @@ const decisionRoutes = require("./routes/decision.routes");
 const RSSParser = require("rss-parser");
 const { callAI } = require("./routes/controllers/jarvis.controller");
 const rssParser = new RSSParser();
+const {
+  generateExecutiveReport
+} = require("./services/pdf/executiveReport.generator");
 const app = express();
 
 function generateOperationalDiagnosis(org) {
