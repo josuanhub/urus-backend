@@ -625,37 +625,161 @@ https://quickchart.io/chart?c={
 
     </section>
 
-<!-- CHARTS -->
+<!-- EXECUTIVE VISUAL LAYER -->
 
 <section class="page">
 
-  <h1>Operational Intelligence Charts</h1>
+  <h1>Operational Intelligence Overview</h1>
 
-  <div style="margin-top:50px;">
+  <div style="margin-top:60px;">
 
-    <div style="margin-bottom:60px;">
+    <!-- CARD 1 -->
 
-      <h2 style="margin-bottom:20px;">
-        Operational Risk Evolution
-      </h2>
+    <div style="
+      border:1px solid #e5e7eb;
+      border-radius:20px;
+      padding:32px;
+      margin-bottom:40px;
+      background:#fafafa;
+    ">
 
-      <img
-        src="${operationalTrendChart}"
-        style="width:100%;border-radius:16px;"
-      />
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        margin-bottom:18px;
+      ">
+
+        <div style="
+          font-size:24px;
+          font-weight:700;
+        ">
+          Infrastructure Stability
+        </div>
+
+        <div style="
+          font-size:24px;
+          font-weight:700;
+        ">
+          72%
+        </div>
+
+      </div>
+
+      <div style="
+        width:100%;
+        height:24px;
+        background:#e5e7eb;
+        border-radius:30px;
+        overflow:hidden;
+      ">
+
+        <div style="
+          width:72%;
+          height:100%;
+          background:#111827;
+        "></div>
+
+      </div>
 
     </div>
 
-    <div>
+    <!-- CARD 2 -->
 
-      <h2 style="margin-bottom:20px;">
-        Funding Readiness Distribution
-      </h2>
+    <div style="
+      border:1px solid #e5e7eb;
+      border-radius:20px;
+      padding:32px;
+      margin-bottom:40px;
+      background:#fafafa;
+    ">
 
-      <img
-        src="${fundingReadinessChart}"
-        style="width:100%;border-radius:16px;"
-      />
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        margin-bottom:18px;
+      ">
+
+        <div style="
+          font-size:24px;
+          font-weight:700;
+        ">
+          Federal Funding Readiness
+        </div>
+
+        <div style="
+          font-size:24px;
+          font-weight:700;
+        ">
+          84%
+        </div>
+
+      </div>
+
+      <div style="
+        width:100%;
+        height:24px;
+        background:#e5e7eb;
+        border-radius:30px;
+        overflow:hidden;
+      ">
+
+        <div style="
+          width:84%;
+          height:100%;
+          background:#c9a24d;
+        "></div>
+
+      </div>
+
+    </div>
+
+    <!-- CARD 3 -->
+
+    <div style="
+      border:1px solid #e5e7eb;
+      border-radius:20px;
+      padding:32px;
+      margin-bottom:40px;
+      background:#fafafa;
+    ">
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        margin-bottom:18px;
+      ">
+
+        <div style="
+          font-size:24px;
+          font-weight:700;
+        ">
+          Operational Coordination Capacity
+        </div>
+
+        <div style="
+          font-size:24px;
+          font-weight:700;
+        ">
+          41%
+        </div>
+
+      </div>
+
+      <div style="
+        width:100%;
+        height:24px;
+        background:#e5e7eb;
+        border-radius:30px;
+        overflow:hidden;
+      ">
+
+        <div style="
+          width:41%;
+          height:100%;
+          background:#7c3aed;
+        "></div>
+
+      </div>
 
     </div>
 
