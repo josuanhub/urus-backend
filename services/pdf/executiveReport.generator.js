@@ -505,6 +505,88 @@ https://quickchart.io/chart?c={
 
     </section>
 
+<!-- SCOPE & METHODOLOGY -->
+
+<section class="page">
+
+  <h1>Scope & Methodology</h1>
+
+  <div class="finding-card">
+
+    <div class="finding-title">
+      Operational Intelligence Scope
+    </div>
+
+    <div class="finding-text">
+
+      This assessment was generated through the URUS
+      Operational Intelligence System using publicly
+      available indicators, infrastructure exposure
+      signals, operational coordination patterns,
+      federal funding activity, and regional resilience
+      analysis.
+
+      <br><br>
+
+      The report does not represent a formal audit,
+      governmental certification, or legal determination.
+      Findings should be interpreted as preliminary
+      operational intelligence requiring institutional
+      validation.
+
+    </div>
+
+  </div>
+
+  <div class="finding-card">
+
+    <div class="finding-title">
+      Intelligence Inputs
+    </div>
+
+    <div class="finding-text">
+
+      Inputs analyzed may include:
+
+      <br><br>
+
+      • Federal funding activity<br>
+      • Public infrastructure exposure indicators<br>
+      • FEMA-related resilience signals<br>
+      • Grant coordination patterns<br>
+      • Municipal operational fragmentation indicators<br>
+      • Public strategic documentation<br>
+      • Regional infrastructure conditions
+
+    </div>
+
+  </div>
+
+  <div class="finding-card">
+
+    <div class="finding-title">
+      Analytical Positioning
+    </div>
+
+    <div class="finding-text">
+
+      URUS positioning is designed to support executive
+      awareness, operational prioritization, strategic
+      planning, and funding readiness evaluation.
+
+      <br><br>
+
+      Signals identified in this report should be
+      interpreted as strategic indicators rather than
+      definitive institutional conclusions.
+
+    </div>
+
+  </div>
+
+</section>
+
+
     <!-- FINDINGS -->
 
     <section class="page">
