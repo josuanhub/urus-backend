@@ -708,12 +708,7 @@ https://quickchart.io/chart?c={
       </div>
 
     </section>
-
-  </body>
-  </html>
-  `;
-
-  <!-- SCOPE & METHODOLOGY -->
+<!-- SCOPE & METHODOLOGY -->
 
 <section class="page">
 
@@ -928,6 +923,12 @@ https://quickchart.io/chart?c={
   </div>
 
 </section>
+
+  </body>
+  </html>
+  `;
+
+  
   
   // =========================================
   // PUPPETEER
