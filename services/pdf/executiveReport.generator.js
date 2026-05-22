@@ -724,7 +724,7 @@ https://quickchart.io/chart?c={
   >
 
     <img
-      src="https://www.urusverify.com/maps/mapa%20PR.jpeg"
+      src="https://www.urusverify.com/public/maps/mapa%20PR.jpeg"
       style="
         width:100%;
         border-radius:18px;
@@ -737,7 +737,7 @@ https://quickchart.io/chart?c={
     style="
       margin-top:30px;
       display:grid;
-      grid-template-columns:1fr 1fr 1fr;
+     grid-template-columns:repeat(3,minmax(0,1fr));
       gap:20px;
     "
   >
