@@ -29,14 +29,39 @@ async function generateExecutiveReport(data) {
   // =========================================
   // HTML TEMPLATE
   // =========================================
+const operationalRiskSeries = [62, 58, 71, 69, 63, 52];
+
+const fundingReadinessSeries = [
+  84,
+  92,
+  71,
+  88
+];
+
+const operationalLabels = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun"
+];
+
+const fundingLabels = [
+  "Infrastructure",
+  "FEMA",
+  "Energy",
+  "Resilience"
+];
+  
 const operationalTrendChart = `
 https://quickchart.io/chart?c={
   type:'line',
   data:{
-    labels:['Jan','Feb','Mar','Apr','May','Jun'],
+    labels:${JSON.stringify(operationalLabels)}
     datasets:[{
       label:'Operational Risk',
-      data:[62,58,71,69,63,52],
+     data:${JSON.stringify(operationalRiskSeries)}
       borderColor:'rgb(201,162,77)',
       fill:false
     }]
@@ -48,10 +73,10 @@ const fundingReadinessChart = `
 https://quickchart.io/chart?c={
   type:'bar',
   data:{
-    labels:['Infrastructure','FEMA','Energy','Resilience'],
+    labels:${JSON.stringify(fundingLabels)}
     datasets:[{
       label:'Funding Readiness',
-      data:[84,92,71,88],
+      data:${JSON.stringify(fundingReadinessSeries)}
       backgroundColor:'rgb(17,24,39)'
     }]
   }
