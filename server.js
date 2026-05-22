@@ -380,6 +380,10 @@ const agentSync = require("./routes/agent-sync.routes");
 app.use("/seo", agentSync);
 // ─────────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(
+  "/generated_reports",
+  express.static(path.join(__dirname, "generated_reports"))
+);
 
 // ==============================
 // META BASIC URLS
