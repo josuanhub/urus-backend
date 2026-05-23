@@ -7454,12 +7454,27 @@ if (process.env.SERPER_API_KEY) {
     console.log("🌐 Ejecutando búsqueda Serper...");
 
     const searches = [
-      "Puerto Rico FEMA funding opportunities",
-      "Puerto Rico CDBG-DR grants",
-      "municipal infrastructure grants Puerto Rico",
-      "Puerto Rico resilience funding",
-      "Puerto Rico flood mitigation grants"
-    ];
+  "Puerto Rico FEMA funding opportunities 2025 2026",
+  "Puerto Rico CDBG-DR grants municipios 2025",
+  "municipal infrastructure grants Puerto Rico",
+  "Puerto Rico resilience funding HMGP 2025",
+  "Puerto Rico flood mitigation grants FEMA",
+  "COR3 Puerto Rico asistencia publica 2025",
+  "Comisionado Residente fondos municipios Puerto Rico",
+  "Puerto Rico IIJA infrastructure law municipios fondos",
+  "Arecibo Puerto Rico fondos federales 2025",
+  "Arecibo alcalde Tito Ramirez presupuesto noticias",
+  "Municipio Arecibo proyectos infraestructura 2025",
+  "Arecibo Puerto Rico fondos FEMA obras puentes",
+  "Puerto Rico inteligencia artificial gobierno municipios 2025",
+  "Instituto AI Puerto Rico Engine-4 Senado",
+  "Puerto Rico AI Congress 2025 gobierno",
+  "GovTech Puerto Rico fondos federales tecnologia",
+  "municipios Puerto Rico fondos FEMA plazo vencer 2025",
+  "Puerto Rico perder fondos federales deadline municipios",
+  "Puerto Rico presupuesto municipal OGP 2024-2025",
+  "Puerto Rico CDBG-DR City-Rev municipios aplicacion",
+];
 
     for (const query of searches) {
       const serperRes = await fetch("https://google.serper.dev/search", {
@@ -7619,21 +7634,40 @@ console.log("✅ Serper query completada:", query);
     // ══════════════════════════════════
     // FUENTE 2 — RSS FEEDS
     // ══════════════════════════════════
-    const RSS_FEEDS = [
-      { url: "https://techcrunch.com/feed/", category: "TECHCRUNCH" },
-      { url: "https://venturebeat.com/feed/", category: "VENTUREBEAT" },
-      { url: "https://www.technologyreview.com/feed/", category: "MIT TECH REVIEW" },
-      { url: "https://news.google.com/rss/search?q=artificial+intelligence+government&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE NEWS AI GOV" },
-      { url: "https://news.google.com/rss/search?q=AI+governance+regulation&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE NEWS AI REG" },
-      { url: "https://news.google.com/rss/search?q=Puerto+Rico+technology&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE NEWS PR TECH" }
-    ];
+   const RSS_FEEDS = [
+  { url: "https://techcrunch.com/feed/", category: "TECHCRUNCH" },
+  { url: "https://venturebeat.com/feed/", category: "VENTUREBEAT" },
+  { url: "https://www.technologyreview.com/feed/", category: "MIT TECH REVIEW" },
+  { url: "https://www.route-fifty.com/feed/", category: "ROUTE_FIFTY_GOVTECH" },
+  { url: "https://www.govtech.com/rss.xml", category: "GOVTECH" },
+  { url: "https://www.metro.pr/feed/", category: "METRO_PR" },
+  { url: "https://www.elvocero.com/feed/", category: "EL_VOCERO_PR" },
+  { url: "https://periodismoinvestigativo.com/feed/", category: "CPI_PR" },
+  { url: "https://www.primerahora.com/arc/outboundfeeds/rss/", category: "PRIMERA_HORA_PR" },
+  { url: "https://www.elnuevodia.com/arc/outboundfeeds/rss/", category: "EL_NUEVO_DIA_PR" },
+  { url: "https://caribbeanbusiness.com/feed/", category: "CARIBBEAN_BUSINESS" },
+  { url: "https://senado.pr.gov/rss.xml", category: "SENADO_PR" },
+  { url: "https://www.ocpr.gov.pr/feed/", category: "CONTRALOR_PR" },
+  { url: "https://news.google.com/rss/search?q=artificial+intelligence+government&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE_NEWS_AI_GOV" },
+  { url: "https://news.google.com/rss/search?q=Puerto+Rico+fondos+FEMA+municipios&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_PR_FEMA" },
+  { url: "https://news.google.com/rss/search?q=Arecibo+Puerto+Rico+fondos+presupuesto&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_ARECIBO" },
+  { url: "https://news.google.com/rss/search?q=Puerto+Rico+inteligencia+artificial+gobierno&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_PR_AI" },
+  { url: "https://news.google.com/rss/search?q=Puerto+Rico+infrastructure+federal+funding+2025&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE_NEWS_PR_FUNDING" },
+  { url: "https://news.google.com/rss/search?q=Comisionado+Residente+Puerto+Rico+fondos&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_COMISIONADO" },
+];
 
     const AI_KEYWORDS = [
-      "artificial intelligence", "AI", "machine learning", "agents",
-      "automation", "governance", "government", "regulation", "policy",
-      "enterprise", "infrastructure", "technology", "fintech", "Puerto Rico",
-      "municipal", "institutional", "autonomous", "decision"
-    ];
+  "artificial intelligence", "inteligencia artificial", "AI", "machine learning",
+  "agents", "automation", "automatización", "GovTech", "gobierno digital",
+  "government", "gobierno", "regulation", "municipal", "municipio",
+  "infrastructure", "infraestructura", "technology", "tecnología",
+  "Puerto Rico", "Arecibo", "FEMA", "CDBG", "HUD", "COR3",
+  "funding", "fondos", "grant", "subvención", "presupuesto",
+  "resilience", "resiliencia", "recovery", "recuperación",
+  "alcalde", "legislatura", "Comisionado Residente", "OGP",
+  "autonomous", "decision", "intelligence", "inteligencia",
+  "institutional", "institucional", "federal", "Congress",
+];
 
     for (const feed of RSS_FEEDS) {
       try {
@@ -7756,7 +7790,7 @@ REGLAS: No describas, interpreta. Todo termina en decisión. En español. Máxim
     
 // 🔥 ACTIVADORES
 setInterval(runJarvisLoop, 1000 * 60 * 60 * 2);
-setInterval(ingestMarketIntelligence, 1000 * 60 * 60 * 12);
+setInterval(ingestMarketIntelligence, 1000 * 60 * 60 * 24);
 ingestMarketIntelligence();
 
 // Briefing 7AM diario
