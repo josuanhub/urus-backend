@@ -47,6 +47,7 @@ const rssParser = new RSSParser();
 const {
   generateExecutiveReport
 } = require("./services/pdf/executiveReport.generator");
+const { generateMunicipalReport } = require("./services/intelligence/municipalReportBuilder");
 const app = express();
 
 function generateOperationalDiagnosis(org) {
@@ -6935,6 +6936,38 @@ app.post("/v1/reports/generate", async (req, res) => {
 
   }
 
+});
+
+app.post("/v1/reports/generate-municipal", async (req, res) => {
+  try {
+    const municipality_name = String(
+      req.body?.municipality_name || "Arecibo"
+    ).trim();
+
+    const result = await generateMunicipalReport(
+      pool,
+      municipality_name,
+      generateExecutiveReport
+    );
+
+    const reportUrl = `${req.protocol}://${req.get("host")}/generated_reports/${result.fileName}`;
+
+    return res.json({
+      ok: true,
+      municipality: municipality_name,
+      fileName: result.fileName,
+      reportUrl,
+      meta: result.meta,
+    });
+
+  } catch (err) {
+    console.error("GENERATE_MUNICIPAL_REPORT_ERROR", err);
+    return res.status(500).json({
+      ok: false,
+      error: "generate_municipal_report_failed",
+      message: err.message
+    });
+  }
 });
 
 // ---------- Boot ----------
