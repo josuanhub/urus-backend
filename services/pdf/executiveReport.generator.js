@@ -916,13 +916,11 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
 </section>
 
 
-
-
 <!-- ══════════════════════════════════════════ -->
 <!-- PROPUESTA DE PILOTO                        -->
 <!-- ══════════════════════════════════════════ -->
 <section class="page">
-  <div class="section-meta">Sección 13 de 15 · Propuesta de Piloto Ejecutivo</div>
+  <div class="section-meta">Sección 14 de 15 · Propuesta de Piloto Ejecutivo</div>
   <h1>Propuesta de Piloto Ejecutivo</h1>
 
   <div class="summary-text" style="margin-bottom:28px;">
@@ -985,7 +983,8 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
   <div class="cover-cta-body">
     Una revisión ejecutiva determinará si procede la validación operacional,
     el despliegue del piloto o la expansión del monitoreo estratégico de fondos federales.
-    El objetivo es transformar las señales preliminares en inteligencia validada y accionable antes de que venzan las ventanas de aplicación federales activas.
+    Cada mes sin sistema de inteligencia operacional representa un costo estimado de
+    ${cost_per_month_low}–${cost_per_month_high}.
   </div>
   <div class="cover-cta-block">
     URUS Operational Intelligence System<br>
