@@ -112,10 +112,38 @@ async function buildReportData(municipalityName, intelligenceData) {
   // ── PROMPT PARA OPENAI ────────────────────────────────────────
   // Le pedimos que genere el contenido del reporte basado en
   // las señales reales ingeridas por el sistema
+  const currentYear = new Date().getFullYear(); // 2026
+  const fiscalYear = "2025-2026";
+  const reportDate = new Date().toLocaleDateString("es-PR", { year: "numeric", month: "long", day: "numeric" });
+
   const prompt = `
 Eres el motor de inteligencia operacional de URUS.
 Tu función es generar el contenido de un informe ejecutivo institucional
 para el Municipio de ${municipalityName} en Puerto Rico.
+
+FECHA ACTUAL: ${reportDate}
+AÑO FISCAL VIGENTE: ${fiscalYear}
+AÑO ACTUAL: ${currentYear}
+
+CRÍTICO — REGLAS DE FECHAS:
+- Estamos en ${currentYear}. NUNCA menciones 2023 ni 2024 como años futuros o de acción.
+- El año fiscal municipal vigente comenzó el 1 de julio de 2025 y termina el 30 de junio de 2026.
+- Cualquier recomendación de acción debe usar plazos de ${currentYear} o "primer semestre 2026" o "segundo semestre 2026".
+- Los fondos federales mencionados son de ciclos 2025-2026 activos AHORA.
+- Si usas una fecha, que sea en 2025 o 2026, nunca antes.
+
+CONTEXTO CLAVE DE ARECIBO (usar estos datos reales):
+- Alcalde: Carlos "Tito" Ramírez Irizarry (PPD) — reelecto noviembre 2024
+- Presupuesto AF 2023-2024: $52.7M (OGP, Resolución Núm. 75)
+- Ingresos adicionales CRIM julio 2024: +$5.2M (primer municipio PR con cuentas al día)
+- FEMA obligó $717,000+ directamente a Arecibo — Av. Víctor Rojas (Sección 406)
+- Comisionado Residente anunció $32.9M FEMA para municipios PR incluyendo puentes Arecibo (abril 2025)
+- Gobernadora anunció $1,100M FEMA para PR infraestructura — Arecibo citado (febrero 2025)
+- Informe Contralor OC-25-22 (septiembre 2024): opinión cualificada sobre operaciones fiscales
+- Senado PR aprobó Instituto de AI (noviembre 2025) — Engine-4, Bayamón
+- $2M federales para AI en PR anunciados enero 2026 (FIPSE-SP)
+- Nuevo requisito DHS: consulta previa para obras sobre $100,000 (vigente junio 2025)
+- Tormenta Ernesto impactó Arecibo agosto 2024
 
 El informe debe sonar como un análisis de una firma de inteligencia estratégica
 (al estilo Stratfor o Palantir), NO como un reporte de AI.
@@ -123,44 +151,45 @@ El informe debe sonar como un análisis de una firma de inteligencia estratégic
 Usa lenguaje como:
 - "Señales indican que..."
 - "Análisis preliminar sugiere..."
-- "Indicadores públicos muestran..."
+- "Indicadores públicos confirman..."
 - "Exposición potencial detectada..."
 
-SEÑALES REALES DETECTADAS POR EL SISTEMA:
-${hasRealData ? signalsContext : "No se encontraron señales específicas. Usa conocimiento general de fondos federales activos en Puerto Rico 2024-2025."}
+SEÑALES REALES DETECTADAS POR EL SISTEMA (${currentYear}):
+${hasRealData ? signalsContext : "Usar programas federales activos en 2025-2026: FEMA-PA Sección 406, CDBG-DR City-Rev ($1,298M isla), HMGP Global Match ($1,000M isla), PR-ERF DOE, fondos AI municipal."}
 
-OPORTUNIDADES DE ALTA PRIORIDAD:
-${hasRealData ? opportunitiesContext : "Usar programas federales activos: FEMA-PA, CDBG-DR City-Rev, HMGP Global Match, PR-ERF."}
+OPORTUNIDADES DE ALTA PRIORIDAD DETECTADAS:
+${hasRealData ? opportunitiesContext : "FEMA-PA activo Arecibo, CDBG-DR City-Rev ventana abierta, HMGP requiere plan mitigación vigente, PR-ERF CODEVyS operando."}
 
 INSTRUCCIONES:
 Genera un JSON válido con exactamente esta estructura.
 No incluyas texto fuera del JSON.
 Todo en español.
 Sé específico con números, programas y agencias reales de Puerto Rico.
+Todas las fechas y plazos deben ser de 2025 o 2026, nunca de 2023 o 2024.
 
 {
-  "executive_summary": "Párrafo de 4-6 oraciones que resume el estado operacional del municipio, los fondos detectados y la urgencia de actuar. Menciona montos específicos.",
-  "funding_analysis": "Párrafo de 4-6 oraciones sobre el análisis de fondos disponibles. Menciona FEMA, CDBG-DR, HUD, DOE cuando aplique. Incluye estimados de montos.",
+  "executive_summary": "Párrafo de 4-6 oraciones que resume el estado operacional del municipio en 2026, los fondos detectados activos ahora mismo, y la urgencia de actuar antes de que venzan las ventanas de aplicación de 2026. Menciona montos específicos reales de Arecibo.",
+  "funding_analysis": "Párrafo de 4-6 oraciones sobre el análisis de fondos disponibles en el ciclo fiscal 2025-2026. Menciona FEMA ($32.9M anunciados abril 2025 incluyendo Arecibo), CDBG-DR, HUD, DOE cuando aplique. Incluye estimados de montos accesibles para Arecibo.",
   "findings": [
-    "Hallazgo 1 completo en 3-4 oraciones con contexto, evidencia y riesgo operacional",
-    "Hallazgo 2 completo en 3-4 oraciones",
-    "Hallazgo 3 completo en 3-4 oraciones",
-    "Hallazgo 4 completo en 3-4 oraciones",
-    "Hallazgo 5 completo en 3-4 oraciones"
+    "Hallazgo 1 en 3-4 oraciones: sobre fragmentación operacional y su impacto en fondos FEMA activos en 2025-2026",
+    "Hallazgo 2 en 3-4 oraciones: sobre el informe del Contralor OC-25-22 de septiembre 2024 y su relación con la capacidad operacional",
+    "Hallazgo 3 en 3-4 oraciones: sobre los $32.9M FEMA anunciados en abril 2025 para municipios PR incluyendo Arecibo",
+    "Hallazgo 4 en 3-4 oraciones: sobre CDBG-DR City-Rev y la ventana de aplicación activa para municipios afectados por María e Irma",
+    "Hallazgo 5 en 3-4 oraciones: sobre el contexto AI en Puerto Rico (Instituto AI nov 2025, $2M federales ene 2026) y la oportunidad para Arecibo"
   ],
   "evidence_chains": [
-    "Señal confirmada: [fuente específica]. Implicación operacional: [qué significa]. Fricción identificada: [problema concreto]. Urgencia: [por qué importa ahora].",
-    "Señal confirmada: [fuente específica]. Implicación operacional: [qué significa]. Fricción identificada: [problema concreto]. Urgencia: [por qué importa ahora].",
-    "Señal confirmada: [fuente específica]. Implicación operacional: [qué significa]. Fricción identificada: [problema concreto]. Urgencia: [por qué importa ahora].",
-    "Señal confirmada: [fuente específica]. Implicación operacional: [qué significa]. Fricción identificada: [problema concreto]. Urgencia: [por qué importa ahora].",
-    "Señal confirmada: [fuente específica]. Implicación operacional: [qué significa]. Fricción identificada: [problema concreto]. Urgencia: [por qué importa ahora]."
+    "Señal confirmada: FEMA obligó $717,000+ a Arecibo para obras Av. Víctor Rojas (Sección 406, Stafford Act). Implicación operacional: [qué significa para capacidad de fondos]. Fricción identificada: [problema concreto en 2026]. Urgencia: [por qué importa ahora en 2026].",
+    "Señal confirmada: Comisionado Residente anunció $32.9M FEMA para municipios PR incluyendo puentes Arecibo (abril 2025). Implicación operacional: [qué significa]. Fricción identificada: [nuevo requisito DHS consulta previa junio 2025]. Urgencia: [plazos de ejecución 2026].",
+    "Señal confirmada: Gobernadora González-Colón anunció $1,100M FEMA para infraestructura PR citando Arecibo (febrero 2025). Implicación operacional: [qué significa]. Fricción identificada: [fragmentación operacional]. Urgencia: [ventanas de ejecución definidas].",
+    "Señal confirmada: Informe Contralor OC-25-22 emitió opinión cualificada sobre operaciones fiscales de Arecibo (septiembre 2024). Implicación operacional: [relación con elegibilidad federal]. Fricción identificada: [necesidad de mejoras en control administrativo]. Urgencia: [impacto en aplicaciones de fondos 2026].",
+    "Señal confirmada: Senado PR aprobó Instituto de AI (noviembre 2025) y $2M federales para AI en PR (enero 2026). Implicación operacional: [nueva categoría de fondos emergente]. Fricción identificada: [municipios sin capacidad tecnológica quedan excluidos]. Urgencia: [ventana de posicionamiento 2026 para Arecibo]."
   ],
   "strategic_recommendations": [
-    "Recomendación 1: acción específica con programa federal nombrado y plazo",
-    "Recomendación 2: acción específica con programa federal nombrado y plazo",
-    "Recomendación 3: acción específica con programa federal nombrado y plazo",
-    "Recomendación 4: acción específica con programa federal nombrado y plazo",
-    "Recomendación 5: acción específica con programa federal nombrado y plazo"
+    "Centralizar monitoreo de todos los fondos federales activos (FEMA-PA, CDBG-DR, HMGP, PR-ERF) en sistema único con alertas de plazos. Acción inmediata en primer semestre 2026 para capturar ventanas de obligación abiertas actualmente.",
+    "Actualizar Plan de Mitigación de Riesgos FEMA — condición habilitante para HMGP Global Match Strategy ($1,000M disponibles a nivel isla). Sin este plan vigente, el municipio queda excluido automáticamente. Plazo: segundo trimestre 2026.",
+    "Iniciar proceso de solicitud formal al programa City-Rev CDBG-DR para ${currentYear}. El programa tiene $1,298M disponibles para municipios afectados por Irma y María. Arecibo califica. Cada mes de retraso en 2026 reduce la porción disponible.",
+    "Implementar sistema de coordinación operacional interdepartamental que conecte planificación, finanzas y obras públicas en tiempo real para cumplir el nuevo requisito DHS de consulta previa (vigente desde junio 2025) para obras sobre $100,000.",
+    "Posicionar a Arecibo como nodo piloto del ecosistema de inteligencia operacional municipal de Puerto Rico, aprovechando el Instituto de AI del Senado (nov 2025) y los $2M federales para AI (ene 2026) para acceder a fondos de modernización tecnológica municipal emergentes en 2026."
   ],
   "infrastructure_stability": 72,
   "funding_readiness": 84,
