@@ -917,78 +917,12 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
 
 
 
-<!-- ══════════════════════════════════════════ -->
-<!-- IMPACTO PROYECTADO Y ROI <- NUEVA          -->
-<!-- ══════════════════════════════════════════ -->
-<section class="page">
-  <div class="section-meta">Sección 13 de 15 · Impacto Proyectado y ROI</div>
-  <h1>Impacto Proyectado y Retorno sobre Inversión</h1>
-
-  <div class="funding-highlight" style="border-left-color:#16a34a;">
-    <div class="funding-highlight-label">Retorno sobre inversión proyectado — Año 1</div>
-    <div class="funding-highlight-amount" style="color:#16a34a;">12x – 34x</div>
-    <div class="funding-highlight-note">
-      Sobre inversión total en URUS (retainer mensual + success fees).
-      Basado en fuga operacional detectada de ${capital_leak_low}–${capital_leak_high} anuales
-      y fondos federales potencialmente accesibles de ${total_federal_available}.
-    </div>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:28px;">
-    <div style="background:#fef2f2;border-radius:14px;padding:22px;border-left:5px solid #dc2626;">
-      <div style="font-size:13px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Sin URUS — Situación actual</div>
-      <div style="font-size:13px;color:#991b1b;margin-bottom:8px;">✗  Fuga mensual: ${cost_per_month_low}–${cost_per_month_high} cada mes</div>
-      <div style="font-size:13px;color:#991b1b;margin-bottom:8px;">✗  2-3 FTEs atrapados en gestión manual de grants</div>
-      <div style="font-size:13px;color:#991b1b;margin-bottom:8px;">✗  Plazos FEMA sin alertas automáticas</div>
-      <div style="font-size:13px;color:#991b1b;margin-bottom:8px;">✗  Sin posición en fondos de modernización AI 2026</div>
-      <div style="font-size:13px;color:#991b1b;margin-bottom:8px;">✗  Municipios vecinos avanzan en los mismos fondos</div>
-      <div style="font-size:13px;color:#991b1b;margin-bottom:8px;">✗  Esperar 3 meses más: $108,000–$183,000 adicionales perdidos</div>
-    </div>
-    <div style="background:#f0fdf4;border-radius:14px;padding:22px;border-left:5px solid #16a34a;">
-      <div style="font-size:13px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Con URUS — Lo que cambia</div>
-      <div style="font-size:13px;color:#166534;margin-bottom:8px;">✓ <strong>Mes 1:</strong> Sistema activo · staff libera 60% del tiempo</div>
-      <div style="font-size:13px;color:#166534;margin-bottom:8px;">✓ <strong>Mes 2:</strong> Primera aplicación sometida · alertas FEMA activas</div>
-      <div style="font-size:13px;color:#166534;margin-bottom:8px;">✓ <strong>Mes 3:</strong> Primer fondo en proceso · Arecibo en prensa</div>
-      <div style="font-size:13px;color:#166534;margin-bottom:8px;">✓ <strong>Mes 6:</strong> ROI demostrable al Contralor y la ciudadanía</div>
-      <div style="font-size:13px;color:#166534;margin-bottom:8px;">✓ <strong>Año 1:</strong> $1.2M–$3.5M potencialmente capturados</div>
-      <div style="font-size:13px;color:#166534;margin-bottom:8px;">✓ <strong>ROI:</strong> 12x–34x sobre inversión total en URUS</div>
-    </div>
-  </div>
-
-  <table style="margin-top:24px;">
-    <thead><tr>
-      <th>Componente</th><th>Valor</th><th>Descripción</th>
-    </tr></thead>
-    <tbody>
-      <tr><td>Retainer mensual</td><td style="color:#c9a24d;font-weight:700;">$5,000–$8,500/mes</td><td style="font-size:12px;color:#6b7280;">Monitoreo, reportes ejecutivos, alertas de fondos, apoyo en aplicaciones</td></tr>
-      <tr><td>Success fee — fondo capturado</td><td style="color:#c9a24d;font-weight:700;">2.5%–5% del monto</td><td style="font-size:12px;color:#6b7280;">Solo aplica cuando el municipio recibe fondos que URUS identificó. Cap: $25,000 por evento</td></tr>
-      <tr><td>Fuga que el sistema protege</td><td style="color:#dc2626;font-weight:700;">${cost_per_month_low}–${cost_per_month_high}/mes</td><td style="font-size:12px;color:#6b7280;">Fondos no capturados + horas-hombre + riesgo FEMA + fragmentación interdepartamental</td></tr>
-      <tr><td>Fondos adicionales potenciales</td><td style="color:#16a34a;font-weight:700;">${total_federal_available}</td><td style="font-size:12px;color:#6b7280;">FEMA-PA, CDBG-DR, HMGP, PR-ERF, Fondos AI municipal 2026</td></tr>
-      <tr><td>Comparables en mercado</td><td style="font-weight:700;">$8,000–$15,000/mes</td><td style="font-size:12px;color:#6b7280;">eCivis, OpenGov, Palantir ($5M+ mínimo) · URUS: premium accesible para municipios medianos</td></tr>
-    </tbody>
-  </table>
-
-  <div class="nota-box" style="margin-top:24px;">
-    <h3>Ejemplo de Success Fee — Caso Concreto</h3>
-    <p>URUS identifica y documenta la aplicación CDBG-DR City-Rev para Arecibo → El municipio captura <strong>$800,000</strong> → URUS cobra <strong>$20,000</strong> (2.5%). El retainer del período se descuenta. El municipio neto: <strong>$780,000</strong> que no hubiera capturado sin el sistema.</p>
-  </div>
-
-  <div class="funding-highlight" style="margin-top:24px;">
-    <div class="funding-highlight-label">La pregunta que cierra</div>
-    <div style="font-size:18px;color:#d1d5db;line-height:1.8;margin-top:10px;">
-      Arecibo fue el primer municipio en PR con las cuentas al día. Eso definió su primera administración.<br/><br/>
-      <strong style="color:#c9a24d;">¿Quiere que Arecibo sea también el primero con inteligencia operacional activa?</strong><br/><br/>
-      <span style="font-size:15px;color:#9ca3af;">Barceloneta y Hatillo también están leyendo las mismas noticias sobre los $32.9M disponibles. El que llegue primero con documentación completa se lleva la mayor parte.</span>
-    </div>
-  </div>
-</section>
-
 
 <!-- ══════════════════════════════════════════ -->
 <!-- PROPUESTA DE PILOTO                        -->
 <!-- ══════════════════════════════════════════ -->
 <section class="page">
-  <div class="section-meta">Sección 14 de 15 · Propuesta de Piloto Ejecutivo</div>
+  <div class="section-meta">Sección 13 de 15 · Propuesta de Piloto Ejecutivo</div>
   <h1>Propuesta de Piloto Ejecutivo</h1>
 
   <div class="summary-text" style="margin-bottom:28px;">
@@ -1051,8 +985,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
   <div class="cover-cta-body">
     Una revisión ejecutiva determinará si procede la validación operacional,
     el despliegue del piloto o la expansión del monitoreo estratégico de fondos federales.
-    Cada mes sin sistema de inteligencia operacional representa un costo estimado de
-    ${cost_per_month_low}–${cost_per_month_high}.
+    El objetivo es transformar las señales preliminares en inteligencia validada y accionable antes de que venzan las ventanas de aplicación federales activas.
   </div>
   <div class="cover-cta-block">
     URUS Operational Intelligence System<br>
