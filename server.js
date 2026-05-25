@@ -6970,6 +6970,95 @@ app.post("/v1/reports/generate-municipal", async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════
+// 🔍 URUS RESEARCH — Investigar cliente en vivo
+// POST /v1/research/business
+// Body: { name, url, industry, problem }
+// ═══════════════════════════════════════
+app.post("/v1/research/business", async (req, res) => {
+  try {
+    const { name, url, industry, problem } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ ok: false, error: "name_required" });
+    }
+
+    console.log(`🔍 Investigando negocio: ${name}`);
+
+    // 1. BUSCAR EN GOOGLE con Serper
+    let searchResults = [];
+    if (process.env.SERPER_API_KEY) {
+      const queries = [
+        `${name} ${industry || ""} Puerto Rico`,
+        `${name} reviews opiniones clientes`,
+        `${url ? url : name} competencia mercado`
+      ];
+
+      for (const q of queries) {
+        try {
+          const r = await fetch("https://google.serper.dev/search", {
+            method: "POST",
+            headers: {
+              "X-API-KEY": process.env.SERPER_API_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ q, gl: "us", hl: "es", num: 5 })
+          });
+          const data = await r.json();
+          const hits = (data.organic || []).slice(0, 3).map(x => `• ${x.title}: ${x.snippet}`);
+          searchResults.push(...hits);
+        } catch (e) {
+          console.error("SERPER_QUERY_ERROR", e.message);
+        }
+      }
+    }
+
+    const context = searchResults.length > 0
+      ? searchResults.join("\n")
+      : "No se encontraron resultados en búsqueda web.";
+
+    // 2. JARVIS ANALIZA todo y genera estrategia
+    const { callAI } = require("./routes/controllers/jarvis.controller");
+
+    const prompt = `Eres JARVIS — inteligencia operacional soberana.
+
+CLIENTE A ANALIZAR:
+Nombre: ${name}
+Web: ${url || "No proporcionada"}
+Industria: ${industry || "No especificada"}
+Problema que quiere resolver: ${problem || "No especificado"}
+
+DATOS REALES ENCONTRADOS EN INTERNET:
+${context}
+
+GENERA UN DIAGNÓSTICO OPERACIONAL COMPLETO:
+
+1. SITUACIÓN REAL — Qué está pasando en este negocio basado en los datos
+2. FUGAS DETECTADAS — Dónde están perdiendo dinero o clientes
+3. 3 OPORTUNIDADES CONCRETAS — Qué puede automatizar o mejorar URUS ahora
+4. LO QUE LE VENDO — Qué propuesta específica le hago hoy
+
+Responde en español. Directo. Sin relleno. Máximo 400 palabras.`;
+
+    const analysis = await callAI([
+      { role: "user", content: prompt }
+    ], 0.3);
+
+    console.log(`✅ Análisis listo para: ${name}`);
+
+    return res.json({
+      ok: true,
+      client: name,
+      sources_found: searchResults.length,
+      analysis
+    });
+
+  } catch (err) {
+    console.error("RESEARCH_ERROR", err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ---------- Boot ----------
 (async () => {
   try {
