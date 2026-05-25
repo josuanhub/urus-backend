@@ -150,7 +150,7 @@ async function generateEmbedding(text) {
 // ═══════════════════════════════════════
 // BÚSQUEDA SEMÁNTICA — con fallback a reciente
 // ═══════════════════════════════════════
-async function searchRelevantMemory(pool, query, limit = 8) {
+async function searchRelevantMemory(pool, query, limit = 3) {
   try {
     // Intentar búsqueda semántica con embedding
     const embedding = await generateEmbedding(query);
@@ -250,7 +250,7 @@ async function chat(req, res) {
     }
 
     // Memoria semántica
-    const memoryText = await searchRelevantMemory(pool, userMessage, 10);
+    const memoryText = await searchRelevantMemory(pool, userMessage, 4);
 
     // Historial reciente
     const histResult = await pool.query(`
