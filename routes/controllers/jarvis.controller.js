@@ -1,19 +1,19 @@
-const OpenAI = require("openai").default;
 const Groq = require("groq-sdk");
+const Anthropic = require("@anthropic-ai/sdk");
 const { classifyEvent } = require("../../events/eventClassifier");
 const { routeEvent } = require("../../events/eventRouter");
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function getPool() {
   const pool = global.__URUS_DB__;
   if (!pool) throw new Error("URUS_DB pool no disponible");
   return pool;
 }
+
 async function saveEvent(pool, eventData) {
   try {
-
     await pool.query(
       `INSERT INTO urus_events (
         event_type,
@@ -28,49 +28,103 @@ async function saveEvent(pool, eventData) {
         JSON.stringify(eventData)
       ]
     );
-
   } catch (err) {
-
     console.error("SAVE_EVENT_ERROR", err.message);
   }
 }
 
 // ═══════════════════════════════════════
-// MOTOR DE IA CON FALLBACK
+// HELPER — Truncar mensajes para Groq (límite 100K tokens)
+// ═══════════════════════════════════════
+function truncateMessages(messages, maxChars = 60000) {
+  let total = 0;
+  const result = [];
+  const sysMsg = messages.find(m => m.role === "system");
+  if (sysMsg) {
+    result.push(sysMsg);
+    total += sysMsg.content.length;
+  }
+  const others = messages.filter(m => m.role !== "system").reverse();
+  for (const msg of others) {
+    const len = (msg.content || "").length;
+    if (total + len > maxChars) break;
+    result.splice(1, 0, msg);
+    total += len;
+  }
+  return result;
+}
+
+// ═══════════════════════════════════════
+// MOTOR DE IA — Claude principal + Groq fallback
 // ═══════════════════════════════════════
 async function callAI(messages, temperature = 0.4) {
+  const systemMsg = messages.find(m => m.role === "system");
+  const userMessages = messages.filter(m => m.role !== "system");
+
+  // 1. Claude Sonnet — 200K contexto, más barato que GPT-4o
+  if (process.env.ANTHROPIC_API_KEY) {
+    try {
+      const res = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1024,
+        system: systemMsg?.content || "Eres JARVIS, inteligencia cognitiva soberana.",
+        messages: userMessages.map(m => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content
+        })),
+        temperature
+      });
+      console.log("🔵 AI: Claude/Sonnet");
+      return res.content[0].text;
+    } catch (e) {
+      console.error("CLAUDE_FAIL", e.message);
+    }
+  }
+
+  // 2. Groq fallback — contexto reducido para evitar error 100K
   if (process.env.GROQ_API_KEY) {
     try {
       const res = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
-        messages,
-        temperature
+        messages: truncateMessages(messages, 60000),
+        temperature,
+        max_tokens: 1024
       });
-      console.log("🟢 AI: Groq/Llama3.3-70b");
+      console.log("🟢 AI: Groq/Llama (fallback)");
       return res.choices[0].message.content;
     } catch (e) {
       console.error("GROQ_FAIL", e.message);
     }
   }
 
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      const res = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        temperature
-      });
-      console.log("🟡 AI: OpenAI/GPT-4o");
-      return res.choices[0].message.content;
-    } catch (e) {
-      console.error("OPENAI_FAIL", e.message);
-    }
-  }
-
   throw new Error("No AI provider available");
 }
 
-async function callAIMini(messages, temperature = 0.2, max_tokens = 200) {
+async function callAIMini(messages, temperature = 0.2, max_tokens = 300) {
+  const systemMsg = messages.find(m => m.role === "system");
+  const userMessages = messages.filter(m => m.role !== "system");
+
+  // 1. Claude Haiku — ultra barato para mini calls
+  if (process.env.ANTHROPIC_API_KEY) {
+    try {
+      const res = await anthropic.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens,
+        system: systemMsg?.content || "Responde de forma concisa y directa.",
+        messages: userMessages.map(m => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content
+        })),
+        temperature
+      });
+      console.log("🔵 AI Mini: Claude/Haiku");
+      return res.content[0].text;
+    } catch (e) {
+      console.error("CLAUDE_MINI_FAIL", e.message);
+    }
+  }
+
+  // 2. Groq fallback
   if (process.env.GROQ_API_KEY) {
     try {
       const res = await groq.chat.completions.create({
@@ -79,23 +133,10 @@ async function callAIMini(messages, temperature = 0.2, max_tokens = 200) {
         temperature,
         max_tokens
       });
+      console.log("🟢 AI Mini: Groq (fallback)");
       return res.choices[0].message.content;
     } catch (e) {
       console.error("GROQ_MINI_FAIL", e.message);
-    }
-  }
-
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      const res = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages,
-        temperature,
-        max_tokens
-      });
-      return res.choices[0].message.content;
-    } catch (e) {
-      console.error("OPENAI_MINI_FAIL", e.message);
     }
   }
 
@@ -103,7 +144,7 @@ async function callAIMini(messages, temperature = 0.2, max_tokens = 200) {
 }
 
 // ═══════════════════════════════════════
-// EMBEDDINGS (OpenAI — necesario para consistencia vectorial)
+// EMBEDDINGS
 // ═══════════════════════════════════════
 async function generateEmbedding(text) {
   console.log("EMBEDDINGS_TEMP_DISABLED");
@@ -123,7 +164,6 @@ return recent.rows
   .map(r => r.content)
   .join('\n\n---\n\n');
   } catch (err) {
-    
     console.error("EMBEDDING_SEARCH_ERROR", err);
     const fallback = await pool.query(`
       SELECT content FROM jarvis_memory
@@ -246,24 +286,14 @@ async function chat(req, res) {
     const pool = getPool();
     const userMessage = String(req.body?.message || "").trim();
 
-    // ═══════════════════════════════
-// EVENT ENGINE
-// ═══════════════════════════════
-
-const detectedEvent = classifyEvent(userMessage);
-
-const routedEvent = routeEvent(detectedEvent);
-
-await saveEvent(pool, {
-  ...detectedEvent,
-  routing: routedEvent
-});
-
-console.log("URUS_EVENT", {
-  event: detectedEvent.event_type,
-  priority: detectedEvent.priority,
-  workflow: routedEvent.workflow
-});
+    const detectedEvent = classifyEvent(userMessage);
+    const routedEvent = routeEvent(detectedEvent);
+    await saveEvent(pool, { ...detectedEvent, routing: routedEvent });
+    console.log("URUS_EVENT", {
+      event: detectedEvent.event_type,
+      priority: detectedEvent.priority,
+      workflow: routedEvent.workflow
+    });
 
     if (!userMessage) {
       return res.status(400).json({ ok: false, error: "message_required" });
@@ -281,8 +311,8 @@ console.log("URUS_EVENT", {
       content: r.content
     }));
 
-   const systemWithMemory = JARVIS_SYSTEM_PROMPT + 
-(contextMemory ? `\n\nCONTEXTO ESTRATÉGICO:\n${contextMemory}` : "");
+    const systemWithMemory = JARVIS_SYSTEM_PROMPT +
+      (contextMemory ? `\n\nCONTEXTO ESTRATÉGICO:\n${contextMemory}` : "");
 
     const messages = [
       { role: "system", content: systemWithMemory },
@@ -290,38 +320,31 @@ console.log("URUS_EVENT", {
       { role: "user", content: userMessage }
     ];
 
-  let reply;
+    let reply;
+    const lowerMsg = userMessage.toLowerCase();
 
-// detectar intención
-const lowerMsg = userMessage.toLowerCase();
+    if (
+      lowerMsg.includes("noticia") ||
+      lowerMsg.includes("puerto rico") ||
+      lowerMsg.includes("news")
+    ) {
+      const fakeReq = { body: { instruction: userMessage } };
+      const fakeRes = { json: (data) => data };
+      const execResult = await execute(fakeReq, fakeRes);
 
-if (
-  lowerMsg.includes("noticia") ||
-  lowerMsg.includes("puerto rico") ||
-  lowerMsg.includes("news")
-) {
-  const fakeReq = { body: { instruction: userMessage } };
+      if (execResult?.ok && execResult.result) {
+        reply = `🔎 Datos en tiempo real:\n\n` +
+          execResult.result
+            .slice(0, 5)
+            .map(a => `• ${a.title} (${a.source})\n${a.url}`)
+            .join("\n\n");
+      } else {
+        reply = "No pude obtener datos en tiempo real.";
+      }
+    } else {
+      reply = await callAI(messages, 0.4);
+    }
 
-  const fakeRes = {
-    json: (data) => data
-  };
-
-  const execResult = await execute(fakeReq, fakeRes);
-
-  if (execResult?.ok && execResult.result) {
-    reply = `🔎 Datos en tiempo real:\n\n` +
-      execResult.result
-        .slice(0, 5)
-        .map(a => `• ${a.title} (${a.source})\n${a.url}`)
-        .join("\n\n");
-  } else {
-    reply = "No pude obtener datos en tiempo real.";
-  }
-
-} else {
-  reply = await callAI(messages, 0.4);
-}
-    
     await pool.query(
       `INSERT INTO jarvis_chat_history (role, content) VALUES ($1, $2)`,
       ["user", userMessage]
@@ -341,23 +364,21 @@ if (
 }
 
 async function buildContext(pool, userMessage) {
-  // línea 284–293 (reemplazo completo)
-const rawMemories = await searchRelevantMemory(pool, userMessage, 8);
+  const rawMemories = await searchRelevantMemory(pool, userMessage, 8);
 
-const memories = Array.isArray(rawMemories)
-  ? rawMemories
-  : rawMemories?.rows || [];
+  const memories = Array.isArray(rawMemories)
+    ? rawMemories
+    : rawMemories?.rows || [];
 
-if (memories.length === 0) {
-  return "";
-}
+  if (memories.length === 0) {
+    return "";
+  }
 
-const memoryText = memories
-  .map(m => m.content || m)
-  .join("\n---\n");
+  const memoryText = memories
+    .map(m => m.content || m)
+    .join("\n---\n");
 
-  // 3. FILTRAR (mini inteligencia)
-  const filtered = await callAImini([
+  const filtered = await callAIMini([
     {
       role: "system",
       content: "Selecciona SOLO la información más relevante para la pregunta. Máximo 3 puntos clave."
@@ -368,8 +389,7 @@ const memoryText = memories
     }
   ]);
 
-  // 4. RESUMIR (compresión)
-  const summary = await callAImini([
+  const summary = await callAIMini([
     {
       role: "system",
       content: "Resume esta información en máximo 5 líneas estratégicas útiles."
@@ -406,23 +426,16 @@ async function execute(req, res) {
       `INSERT INTO jarvis_chat_history (role, content) VALUES ($1, $2)`,
       ["user", `[EXECUTE] ${input}`]
     );
-
     await pool.query(
       `INSERT INTO jarvis_chat_history (role, content) VALUES ($1, $2)`,
       ["assistant", analysis]
     );
 
-    return res.json({
-      ok: true,
-      result: analysis
-    });
+    return res.json({ ok: true, result: analysis });
 
   } catch (err) {
     console.error("JARVIS_EXECUTE_ERROR", err);
-    return res.status(500).json({
-      ok: false,
-      error: "jarvis_execute_failed"
-    });
+    return res.status(500).json({ ok: false, error: "jarvis_execute_failed" });
   }
 }
 
@@ -452,7 +465,7 @@ Extrae solo hechos concretos sobre el usuario. Máximo 3 líneas. Sin formato, s
 }
 
 // ═══════════════════════════════════════
-// GUARDAR MEMORIA CON EMBEDDING
+// GUARDAR MEMORIA
 // ═══════════════════════════════════════
 async function saveMemoryWithEmbedding(pool, content) {
   try {
@@ -530,42 +543,17 @@ async function embedExistingMemory(req, res) {
   }
 }
 
-async function execute(req, res) {
-  try {
-    const { instruction } = req.body;
-
-    if (!instruction) {
-      return res.status(400).json({ ok: false, error: "instruction_required" });
-    }
-
-    const intent = instruction.toLowerCase();
-    let result = null;
-
-    if (intent.includes("noticia") || intent.includes("puerto rico")) {
-      const response = await fetch(`https://newsapi.org/v2/everything?q=puerto%20rico&sortBy=publishedAt&pageSize=5&apiKey=${process.env.NEWS_API_KEY}`);
-      const data = await response.json();
-
-      result = data.articles.map(a => ({
-        title: a.title,
-        source: a.source.name,
-        url: a.url
-      }));
-    }
-
-    if (!result) {
-      result = { message: "No tool matched yet" };
-    }
-
-    return res.json({ ok: true, result });
-
-  } catch (err) {
-    console.error("JARVIS_EXECUTE_ERROR", err);
-    return res.status(500).json({ ok: false, error: "execute_failed" });
-  }
-}
-
 async function health(req, res) {
-  return res.json({ ok: true, module: "jarvis", status: "online", version: "3.0-groq-fallback", providers: { groq: !!process.env.GROQ_API_KEY, openai: !!process.env.OPENAI_API_KEY } });
+  return res.json({
+    ok: true,
+    module: "jarvis",
+    status: "online",
+    version: "4.0-claude-primary",
+    providers: {
+      claude: !!process.env.ANTHROPIC_API_KEY,
+      groq: !!process.env.GROQ_API_KEY
+    }
+  });
 }
 
-module.exports = { chat, execute, saveMemory, getMemory, health, embedExistingMemory, callAI, callAIMini };
+module.exports = { chat, execute, saveMemory, getMemory, health, embedExistingMemory, callAI, callAIMini, truncateMessages };
