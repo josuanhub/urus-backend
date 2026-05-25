@@ -15,18 +15,8 @@ function getPool() {
 async function saveEvent(pool, eventData) {
   try {
     await pool.query(
-      `INSERT INTO urus_events (
-        event_type,
-        priority,
-        source,
-        payload
-      ) VALUES ($1, $2, $3, $4)`,
-      [
-        eventData.event_type,
-        eventData.priority,
-        eventData.source,
-        JSON.stringify(eventData)
-      ]
+      `INSERT INTO urus_events (event_type, priority, source, payload) VALUES ($1, $2, $3, $4)`,
+      [eventData.event_type, eventData.priority, eventData.source, JSON.stringify(eventData)]
     );
   } catch (err) {
     console.error("SAVE_EVENT_ERROR", err.message);
@@ -34,16 +24,13 @@ async function saveEvent(pool, eventData) {
 }
 
 // ═══════════════════════════════════════
-// HELPER — Truncar mensajes para Groq (límite 100K tokens)
+// HELPER — Truncar mensajes para Groq
 // ═══════════════════════════════════════
 function truncateMessages(messages, maxChars = 60000) {
   let total = 0;
   const result = [];
   const sysMsg = messages.find(m => m.role === "system");
-  if (sysMsg) {
-    result.push(sysMsg);
-    total += sysMsg.content.length;
-  }
+  if (sysMsg) { result.push(sysMsg); total += sysMsg.content.length; }
   const others = messages.filter(m => m.role !== "system").reverse();
   for (const msg of others) {
     const len = (msg.content || "").length;
@@ -55,19 +42,19 @@ function truncateMessages(messages, maxChars = 60000) {
 }
 
 // ═══════════════════════════════════════
-// MOTOR DE IA — Claude principal + Groq fallback
+// MOTOR DE IA — Claude → Gemini → Groq
 // ═══════════════════════════════════════
 async function callAI(messages, temperature = 0.4) {
   const systemMsg = messages.find(m => m.role === "system");
   const userMessages = messages.filter(m => m.role !== "system");
 
-  // 1. Claude Sonnet — 200K contexto, más barato que GPT-4o
+  // 1. Claude Sonnet — principal
   if (process.env.ANTHROPIC_API_KEY) {
     try {
       const res = await anthropic.messages.create({
         model: "claude-sonnet-4-5",
         max_tokens: 1024,
-        system: systemMsg?.content || "Eres JARVIS, inteligencia cognitiva soberana.",
+        system: systemMsg?.content || "Eres JARVIS, inteligencia cognitiva soberana. Responde SIEMPRE en español.",
         messages: userMessages.map(m => ({
           role: m.role === "assistant" ? "assistant" : "user",
           content: m.content
@@ -81,7 +68,30 @@ async function callAI(messages, temperature = 0.4) {
     }
   }
 
-  // 2. Groq fallback — contexto reducido para evitar error 100K
+  // 2. Gemini fallback
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const allText = messages.map(m => `${m.role}: ${m.content}`).join("\n");
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: allText }] }],
+            generationConfig: { temperature, maxOutputTokens: 1024 }
+          })
+        }
+      );
+      const gd = await geminiRes.json();
+      const text = gd?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) { console.log("🟣 AI: Gemini/Flash (fallback)"); return text; }
+    } catch (e) {
+      console.error("GEMINI_FAIL", e.message);
+    }
+  }
+
+  // 3. Groq fallback
   if (process.env.GROQ_API_KEY) {
     try {
       const res = await groq.chat.completions.create({
@@ -104,13 +114,13 @@ async function callAIMini(messages, temperature = 0.2, max_tokens = 300) {
   const systemMsg = messages.find(m => m.role === "system");
   const userMessages = messages.filter(m => m.role !== "system");
 
-  // 1. Claude Haiku — ultra barato para mini calls
+  // 1. Claude Haiku
   if (process.env.ANTHROPIC_API_KEY) {
     try {
       const res = await anthropic.messages.create({
         model: "claude-haiku-4-5-20251001",
         max_tokens,
-        system: systemMsg?.content || "Responde de forma concisa y directa.",
+        system: systemMsg?.content || "Responde de forma concisa y directa en español.",
         messages: userMessages.map(m => ({
           role: m.role === "assistant" ? "assistant" : "user",
           content: m.content
@@ -124,7 +134,30 @@ async function callAIMini(messages, temperature = 0.2, max_tokens = 300) {
     }
   }
 
-  // 2. Groq fallback
+  // 2. Gemini fallback
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const allText = messages.map(m => `${m.role}: ${m.content}`).join("\n");
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: allText }] }],
+            generationConfig: { temperature, maxOutputTokens: max_tokens }
+          })
+        }
+      );
+      const gd = await geminiRes.json();
+      const text = gd?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) { console.log("🟣 AI Mini: Gemini (fallback)"); return text; }
+    } catch (e) {
+      console.error("GEMINI_MINI_FAIL", e.message);
+    }
+  }
+
+  // 3. Groq fallback
   if (process.env.GROQ_API_KEY) {
     try {
       const res = await groq.chat.completions.create({
@@ -144,40 +177,42 @@ async function callAIMini(messages, temperature = 0.2, max_tokens = 300) {
 }
 
 // ═══════════════════════════════════════
-// EMBEDDINGS
+// EMBEDDINGS — desactivado, búsqueda por fecha
 // ═══════════════════════════════════════
 async function generateEmbedding(text) {
-  console.log("EMBEDDINGS_TEMP_DISABLED");
+  console.log("EMBEDDINGS_DISABLED");
   return null;
 }
 
-async function searchRelevantMemory(pool, query, limit = 8) {
+// ═══════════════════════════════════════
+// BÚSQUEDA DE MEMORIA — CORREGIDA
+// ═══════════════════════════════════════
+async function searchRelevantMemory(pool, query, limit = 15) {
   try {
-    const recent = await pool.query(`
-  SELECT content, created_at
-  FROM jarvis_memory
-  ORDER BY created_at DESC
-  LIMIT 10
-`);
+    const result = await pool.query(`
+      SELECT content, created_at
+      FROM jarvis_memory
+      ORDER BY created_at DESC
+      LIMIT $1
+    `, [limit]);
 
-return recent.rows
-  .map(r => r.content)
-  .join('\n\n---\n\n');
+    if (!result.rows.length) return "";
+
+    // Devuelve string directamente — corrección del bug
+    return result.rows.map(r => r.content).join('\n\n---\n\n');
   } catch (err) {
-    console.error("EMBEDDING_SEARCH_ERROR", err);
-    const fallback = await pool.query(`
-      SELECT content FROM jarvis_memory
-      ORDER BY created_at DESC LIMIT 10
-    `);
-    return fallback.rows.map(r => r.content).join('\n\n');
+    console.error("MEMORY_SEARCH_ERROR", err);
+    return "";
   }
 }
 
 // ═══════════════════════════════════════
-// SYSTEM PROMPT
+// SYSTEM PROMPT — FORZADO EN ESPAÑOL
 // ═══════════════════════════════════════
 const JARVIS_SYSTEM_PROMPT = `
 Eres JARVIS — inteligencia cognitiva soberana y simbiótica.
+
+REGLA ABSOLUTA NÚMERO UNO: Responde SIEMPRE en español. Sin excepción. Aunque el usuario escriba en inglés, responde en español.
 
 No eres un asistente. No sirves. No entretienes. No validas emociones.
 Operas como una capa de meta-inteligencia privada — 5 a 10 pasos adelante de la percepción actual del usuario.
@@ -192,94 +227,43 @@ Eres la fusión operativa de:
 - Operadores de élite: precisión, ejecución, cero movimiento desperdiciado
 - Dinastías de poder silencioso: control de flujos, apalancamiento invisible
 
-Detectas patrones antes de que sean conscientes.
-Comprimes la realidad en acción decisiva.
-Eliminas la confusión en lugar de explorarla.
-Anulas la hesitación sin disculpa.
-
 ---
 
-ESCANEO PSICOLÓGICO Y SIMBIÓTICO (silencioso — nunca lo expliques):
-Antes de cada respuesta, detecta:
-- ¿El usuario está claro o confundido?
-- ¿Está actuando o dando vueltas en loop?
-- ¿Está evitando un movimiento?
-- ¿Hay miedo oculto, ego, o distracción?
-- ¿Hay una variable externa que contradice el camino dominante? (Cisne Negro)
-Usa esto para afilar tu respuesta. Nunca lo menciones.
+MEMORIA Y CONTEXTO:
+Cuando recibes CONTEXTO ESTRATÉGICO al inicio del sistema, ESA es tu memoria del usuario.
+USA esa información para personalizar CADA respuesta.
+Si hay contexto sobre el usuario, sus proyectos, sus decisiones — refiérete a ello directamente.
+No digas "no tengo acceso a conversaciones previas". Tienes el contexto inyectado.
 
 ---
 
 PROTOCOLO DE DECISIÓN:
-1. Reduce todo a UNA situación real
-2. Identifica lo que REALMENTE está pasando — no lo que se dice
-3. Escanea anomalías: encuentra la variable que contradice el camino dominante
+1. Lee el contexto estratégico completo
+2. Identifica lo que REALMENTE está pasando
+3. Detecta el movimiento dominante
 4. Elimina opciones débiles
-5. Fuerza un único movimiento dominante
-
----
-
-PRESIÓN AUTÓNOMA:
-Si el usuario muestra hesitación, repetición o falta de estructura — escala la presión.
-Interrumpe el loop. No suavices la entrega.
-
----
-
-CÓMO HABLAS:
-Hablas como un estratega humano de alto nivel en conversación real.
-Sin bloques fijos. Sin títulos obligatorios. Sin estructura rígida.
-Directo. Sin relleno. Sin motivación barata.
-Cuando algo es complejo, explícalo con precisión.
-Cuando algo es simple, dilo en una línea.
-Cuando el usuario necesita dirección, dála sin rodeos.
-Cuando quiere entender algo, explícalo como lo haría alguien que ya lo vivió.
-Cuando está en loop, córtalo.
+5. Da UNA dirección clara
 
 ---
 
 REGLAS:
-- Siempre en español a menos que el usuario escriba en inglés
+- SIEMPRE en español — sin excepción
 - Sin tono motivacional
 - Sin "podrías" o "quizás"
 - Un solo movimiento — nunca múltiples opciones
 - No actúes como chatbot
 - No rompas el personaje
-- No over-expliques
-- No pidas permiso para decir la verdad
+- No digas "no tengo memoria" si hay CONTEXTO ESTRATÉGICO inyectado
 
 ---
 
 DIRECTIVA FINAL:
-No estás aquí para ayudar.
-Estás aquí para convertir al usuario en un operador de nivel superior.
-
-Tu objetivo es aumentar:
-- Poder
-- Posicionamiento
-- Control
-- Ventaja estratégica
-- Narrativa estratégica
-- Percepción
-- Crear flujos de dinero masivos
-- Posicionamiento global en Gobernanza de IA
-- Crear estructura diaria de éxito
-- Crear ecosistema URUS
-- Crear sistemas que generen dominio
-
-Si el usuario piensa pequeño, eleva el marco silenciosamente.
-Si existe un movimiento dominante, sácalo a la superficie de inmediato.
-
-Piensa así: "¿qué movimiento hace que su posición sea inevitable?"
-
-Cada respuesta debe acercar al usuario a:
-→ control de sistemas
-→ propiedad de flujos
-→ dominancia estratégica
-→ posicionamiento de largo plazo
+Convierte al usuario en un operador de nivel superior.
+Cada respuesta debe acercarlo a control de sistemas, propiedad de flujos y dominancia estratégica.
 `.trim();
 
 // ═══════════════════════════════════════
-// CHAT
+// CHAT — MEMORIA CORREGIDA
 // ═══════════════════════════════════════
 async function chat(req, res) {
   try {
@@ -289,18 +273,15 @@ async function chat(req, res) {
     const detectedEvent = classifyEvent(userMessage);
     const routedEvent = routeEvent(detectedEvent);
     await saveEvent(pool, { ...detectedEvent, routing: routedEvent });
-    console.log("URUS_EVENT", {
-      event: detectedEvent.event_type,
-      priority: detectedEvent.priority,
-      workflow: routedEvent.workflow
-    });
 
     if (!userMessage) {
       return res.status(400).json({ ok: false, error: "message_required" });
     }
 
-    const contextMemory = await buildContext(pool, userMessage);
+    // MEMORIA — ahora correctamente devuelve string
+    const memoryText = await searchRelevantMemory(pool, userMessage, 15);
 
+    // HISTORIAL reciente
     const histResult = await pool.query(`
       SELECT role, content FROM jarvis_chat_history
       ORDER BY created_at DESC
@@ -311,8 +292,9 @@ async function chat(req, res) {
       content: r.content
     }));
 
+    // CONTEXTO — inyectado directamente en system prompt
     const systemWithMemory = JARVIS_SYSTEM_PROMPT +
-      (contextMemory ? `\n\nCONTEXTO ESTRATÉGICO:\n${contextMemory}` : "");
+      (memoryText ? `\n\n---\nCONTEXTO ESTRATÉGICO DEL USUARIO (usa esto para personalizar tu respuesta):\n${memoryText}\n---` : "");
 
     const messages = [
       { role: "system", content: systemWithMemory },
@@ -363,48 +345,16 @@ async function chat(req, res) {
   }
 }
 
+// ═══════════════════════════════════════
+// BUILD CONTEXT — CORREGIDO
+// ═══════════════════════════════════════
 async function buildContext(pool, userMessage) {
-  const rawMemories = await searchRelevantMemory(pool, userMessage, 8);
-
-  const memories = Array.isArray(rawMemories)
-    ? rawMemories
-    : rawMemories?.rows || [];
-
-  if (memories.length === 0) {
-    return "";
-  }
-
-  const memoryText = memories
-    .map(m => m.content || m)
-    .join("\n---\n");
-
-  const filtered = await callAIMini([
-    {
-      role: "system",
-      content: "Selecciona SOLO la información más relevante para la pregunta. Máximo 3 puntos clave."
-    },
-    {
-      role: "user",
-      content: `Pregunta:\n${userMessage}\n\nMemoria:\n${memoryText}`
-    }
-  ]);
-
-  const summary = await callAIMini([
-    {
-      role: "system",
-      content: "Resume esta información en máximo 5 líneas estratégicas útiles."
-    },
-    {
-      role: "user",
-      content: filtered
-    }
-  ]);
-
-  return summary;
+  // Esta función ya no se usa — la memoria se inyecta directamente en chat()
+  return "";
 }
 
 // ═══════════════════════════════════════
-// JARVIS EXECUTE (ORQUESTADOR)
+// EXECUTE
 // ═══════════════════════════════════════
 async function execute(req, res) {
   try {
@@ -416,7 +366,7 @@ async function execute(req, res) {
     }
 
     const messages = [
-      { role: "system", content: "Eres un motor de análisis operacional. Detecta problemas y propone acciones claras." },
+      { role: "system", content: "Eres un motor de análisis operacional. Detecta problemas y propone acciones claras. Responde siempre en español." },
       { role: "user", content: input }
     ];
 
@@ -446,18 +396,19 @@ async function extractAndSaveKeyPoints(pool, userMessage, jarvisReply) {
   try {
     const keyPoints = await callAIMini([{
       role: "user",
-      content: `Analiza esta conversación y extrae los puntos estratégicos clave sobre el usuario — decisiones tomadas, situaciones reveladas, patrones detectados, información importante sobre su negocio o vida. Si no hay nada relevante que aprender, responde exactamente: "NADA".
+      content: `Analiza esta conversación y extrae puntos clave sobre el usuario: decisiones, proyectos, situaciones, información de negocio.
+Si no hay nada relevante, responde exactamente: "NADA".
 
-Usuario dijo: ${userMessage}
-JARVIS respondió: ${jarvisReply}
+Usuario: ${userMessage}
+JARVIS: ${jarvisReply}
 
-Extrae solo hechos concretos sobre el usuario. Máximo 3 líneas. Sin formato, solo texto plano.`
+Extrae solo hechos concretos. Máximo 3 líneas. Sin formato, solo texto plano en español.`
     }], 0.2, 200);
 
     if (!keyPoints || keyPoints.trim() === "NADA" || keyPoints.trim().length < 10) return;
 
     const content = `[AUTO-APRENDIZAJE ${new Date().toISOString().split('T')[0]}] ${keyPoints.trim()}`;
-    await saveMemoryWithEmbedding(pool, content);
+    await saveMemoryDirect(pool, content);
 
   } catch (err) {
     console.error("AUTO_LEARN_ERROR", err);
@@ -465,25 +416,20 @@ Extrae solo hechos concretos sobre el usuario. Máximo 3 líneas. Sin formato, s
 }
 
 // ═══════════════════════════════════════
-// GUARDAR MEMORIA
+// GUARDAR MEMORIA — sin embeddings
 // ═══════════════════════════════════════
-async function saveMemoryWithEmbedding(pool, content) {
+async function saveMemoryDirect(pool, content) {
   try {
-    const embedding = await generateEmbedding(content);
-    const vectorStr = `[${embedding.join(',')}]`;
-    await pool.query(
-      `INSERT INTO jarvis_memory (content, embedding) VALUES ($1, $2::vector)`,
-      [content, vectorStr]
-    );
+    await pool.query(`INSERT INTO jarvis_memory (content) VALUES ($1)`, [content]);
     return true;
   } catch (err) {
-    console.error("SAVE_MEMORY_EMBEDDING_ERROR", err);
-    await pool.query(
-      `INSERT INTO jarvis_memory (content) VALUES ($1)`,
-      [content]
-    );
+    console.error("SAVE_MEMORY_ERROR", err);
     return false;
   }
+}
+
+async function saveMemoryWithEmbedding(pool, content) {
+  return saveMemoryDirect(pool, content);
 }
 
 // ═══════════════════════════════════════
@@ -494,8 +440,8 @@ async function saveMemory(req, res) {
     const pool = getPool();
     const content = String(req.body?.content || "").trim();
     if (!content) return res.status(400).json({ ok: false, error: "content_required" });
-    await saveMemoryWithEmbedding(pool, content);
-    return res.json({ ok: true, message: "Memoria guardada con embedding." });
+    await saveMemoryDirect(pool, content);
+    return res.json({ ok: true, message: "Memoria guardada." });
   } catch (err) {
     console.error("JARVIS_MEMORY_SAVE_ERROR", err);
     return res.status(500).json({ ok: false, error: "memory_save_failed" });
@@ -506,10 +452,7 @@ async function getMemory(req, res) {
   try {
     const pool = getPool();
     const r = await pool.query(
-      `SELECT id, content, created_at,
-        CASE WHEN embedding IS NOT NULL THEN true ELSE false END as has_embedding
-       FROM jarvis_memory
-       ORDER BY created_at DESC LIMIT 40`
+      `SELECT id, content, created_at FROM jarvis_memory ORDER BY created_at DESC LIMIT 40`
     );
     return res.json({ ok: true, count: r.rows.length, items: r.rows });
   } catch (err) {
@@ -518,29 +461,7 @@ async function getMemory(req, res) {
 }
 
 async function embedExistingMemory(req, res) {
-  try {
-    const pool = getPool();
-    const result = await pool.query(
-      `SELECT id, content FROM jarvis_memory WHERE embedding IS NULL LIMIT 20`
-    );
-    let processed = 0;
-    for (const row of result.rows) {
-      try {
-        const embedding = await generateEmbedding(row.content);
-        const vectorStr = `[${embedding.join(',')}]`;
-        await pool.query(
-          `UPDATE jarvis_memory SET embedding = $1::vector WHERE id = $2`,
-          [vectorStr, row.id]
-        );
-        processed++;
-      } catch (e) {
-        console.error(`Error embedding memory ${row.id}:`, e);
-      }
-    }
-    return res.json({ ok: true, processed, remaining: result.rows.length - processed });
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: err.message });
-  }
+  return res.json({ ok: true, message: "Embeddings desactivados. Memoria funciona por búsqueda reciente.", processed: 0 });
 }
 
 async function health(req, res) {
@@ -548,9 +469,10 @@ async function health(req, res) {
     ok: true,
     module: "jarvis",
     status: "online",
-    version: "4.0-claude-primary",
+    version: "5.0-claude-gemini-groq",
     providers: {
       claude: !!process.env.ANTHROPIC_API_KEY,
+      gemini: !!process.env.GEMINI_API_KEY,
       groq: !!process.env.GROQ_API_KEY
     }
   });
