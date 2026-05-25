@@ -7115,11 +7115,11 @@ Formato:
 
   console.log("📊 Briefing generado:", briefing);
 
-  await sendWhatsAppText({
+ await sendWhatsAppLong({
     to: "12603006906",
-    message: `📊 BRIEFING IA\n\n${briefing}`
-  });
-
+    text: `📊 BRIEFING IA\n\n${briefing}`
+});
+  
   console.log("✅ Briefing enviado");
 }
     const memoryResult = await pool.query(`
