@@ -222,8 +222,8 @@ async function chat(req, res) {
 
     // Inyectar memoria EN el mensaje del usuario — Llama lo acepta sin problema
     const userWithContext = memoryText
-      ? `[PERFIL DE JOSUAN - USA ESTA INFORMACIÓN]:\n${memoryText}\n[/PERFIL]\n\nMensaje: ${userMessage}`
-      : userMessage;
+  ? `[PERFIL DE JOSUAN BAYON]:\n${memoryText}\n[/PERFIL]\n\nIMPORTANTE: Responde en español.\n\nMensaje: ${userMessage}`
+  : `IMPORTANTE: Responde en español.\n\n${userMessage}`;
 
     const messages = [
       { role: "system", content: JARVIS_SYSTEM_PROMPT },
