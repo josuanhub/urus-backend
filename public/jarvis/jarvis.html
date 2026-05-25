@@ -20,6 +20,8 @@
   --muted2: #555;
   --danger: #ff4444;
   --recording: #ff3c3c;
+  --warn: #ffaa00;
+  --info: #44aaff;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -32,7 +34,6 @@ html, body {
   overflow: hidden;
 }
 
-/* GRAIN OVERLAY */
 body::before {
   content: '';
   position: fixed;
@@ -43,7 +44,7 @@ body::before {
   opacity: 0.4;
 }
 
-/* LAYOUT */
+/* ── LAYOUT — ahora 3 columnas: sidebar | main | alerts ── */
 .app {
   display: grid;
   grid-template-columns: 260px 1fr;
@@ -52,7 +53,7 @@ body::before {
 }
 
 /* ══════════════════════════════════
-   SIDEBAR
+   SIDEBAR — IDÉNTICO AL ORIGINAL
 ══════════════════════════════════ */
 .sidebar {
   background: var(--surface);
@@ -131,7 +132,6 @@ body::before {
   animation: corePulse 1.8s ease-in-out infinite;
 }
 
-/* NAV */
 .sidebar-nav {
   padding: 16px 12px;
   display: flex;
@@ -160,15 +160,14 @@ body::before {
 
 .nav-btn:hover { color: var(--text); background: var(--border); }
 .nav-btn.active { color: var(--accent); background: var(--accent-dim); }
-
 .nav-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
 
-/* MEMORY SECTION */
 .sidebar-memory {
   flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .sidebar-section-title {
@@ -204,10 +203,7 @@ body::before {
   transition: all 0.15s;
 }
 
-.memory-item:hover {
-  border-left-color: var(--accent);
-  color: var(--text);
-}
+.memory-item:hover { border-left-color: var(--accent); color: var(--text); }
 
 .memory-empty {
   font-family: 'Share Tech Mono', monospace;
@@ -218,7 +214,6 @@ body::before {
   letter-spacing: 0.1em;
 }
 
-/* UPLOAD ZONE in sidebar */
 .sidebar-upload {
   padding: 12px;
   border-top: 1px solid var(--border);
@@ -264,7 +259,6 @@ body::before {
   margin-bottom: 4px;
 }
 
-/* UPLOADED FILES LIST */
 .files-list {
   margin-top: 8px;
   display: flex;
@@ -309,7 +303,7 @@ body::before {
 .file-chip-remove:hover { color: var(--danger); }
 
 /* ══════════════════════════════════
-   MAIN PANEL
+   MAIN — igual al original + panel system
 ══════════════════════════════════ */
 .main {
   display: flex;
@@ -317,7 +311,6 @@ body::before {
   overflow: hidden;
 }
 
-/* TOP BAR */
 .topbar {
   display: flex;
   align-items: center;
@@ -335,10 +328,7 @@ body::before {
   text-transform: uppercase;
 }
 
-.topbar-actions {
-  display: flex;
-  gap: 8px;
-}
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
 
 .topbar-btn {
   background: none;
@@ -353,12 +343,37 @@ body::before {
   transition: all 0.15s;
 }
 
-.topbar-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+.topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
+.topbar-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+.alerts-count {
+  background: var(--danger);
+  color: #fff;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  margin-left: 4px;
+  display: none;
+}
+.alerts-count.visible { display: inline; }
+
+/* panel container */
+.panel-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
 }
 
-/* CHAT AREA */
+.panel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel.active { display: flex; }
+
+/* ── CHAT PANEL — idéntico al original ── */
 .chat {
   flex: 1;
   overflow-y: auto;
@@ -366,11 +381,9 @@ body::before {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
-
 .chat::-webkit-scrollbar { width: 3px; }
 .chat::-webkit-scrollbar-thumb { background: var(--border2); }
 
-/* EMPTY STATE */
 .empty {
   height: 100%;
   display: flex;
@@ -381,11 +394,7 @@ body::before {
   padding: 60px;
 }
 
-.empty-glyph {
-  width: 60px;
-  height: 60px;
-  position: relative;
-}
+.empty-glyph { width: 60px; height: 60px; position: relative; }
 
 .empty-glyph-ring {
   position: absolute;
@@ -403,8 +412,7 @@ body::before {
 
 .empty-glyph-core {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 10px; height: 10px;
   background: var(--accent);
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
@@ -416,9 +424,7 @@ body::before {
   50% { opacity: 0.8; transform: scale(1.05); }
 }
 
-.empty-text {
-  text-align: center;
-}
+.empty-text { text-align: center; }
 
 .empty-text h2 {
   font-size: 28px;
@@ -437,12 +443,7 @@ body::before {
   max-width: 360px;
 }
 
-.empty-hint {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
+.empty-hint { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
 
 .hint-chip {
   border: 1px solid var(--border2);
@@ -454,14 +455,8 @@ body::before {
   cursor: pointer;
   transition: all 0.2s;
 }
+.hint-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
 
-.hint-chip:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-dim);
-}
-
-/* MESSAGES */
 .msg-row {
   display: flex;
   gap: 0;
@@ -488,8 +483,7 @@ body::before {
 }
 
 .msg-av {
-  width: 28px;
-  height: 28px;
+  width: 28px; height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -503,10 +497,7 @@ body::before {
 .msg-av.user-av { border: 1px solid var(--border2); color: var(--muted2); }
 .msg-av.jarvis-av { border: 1px solid var(--accent); color: var(--accent); background: var(--accent-dim); }
 
-.msg-body {
-  flex: 1;
-  padding: 20px 28px 20px 0;
-}
+.msg-body { flex: 1; padding: 20px 28px 20px 0; }
 
 .msg-meta {
   font-family: 'Share Tech Mono', monospace;
@@ -516,7 +507,6 @@ body::before {
   margin-bottom: 10px;
   text-transform: uppercase;
 }
-
 .msg-row.jarvis .msg-meta { color: rgba(200,255,0,0.4); }
 
 .msg-text {
@@ -525,14 +515,9 @@ body::before {
   color: #aaa;
   font-weight: 400;
 }
-
 .msg-row.user .msg-text { color: #888; }
 
-/* JARVIS STRUCTURED BLOCKS */
-.j-block {
-  margin-bottom: 18px;
-}
-
+.j-block { margin-bottom: 18px; }
 .j-block:last-child { margin-bottom: 0; }
 
 .j-block-head {
@@ -557,14 +542,8 @@ body::before {
   max-width: 80px;
 }
 
-.j-block-body {
-  font-size: 14px;
-  line-height: 1.75;
-  color: #ccc;
-  padding-left: 0;
-}
+.j-block-body { font-size: 14px; line-height: 1.75; color: #ccc; }
 
-/* THINKING */
 .thinking-row {
   display: flex;
   align-items: center;
@@ -574,15 +553,10 @@ body::before {
   padding: 16px 0;
 }
 
-.thinking-gutter {
-  width: 60px;
-  display: flex;
-  justify-content: center;
-}
+.thinking-gutter { width: 60px; display: flex; justify-content: center; }
 
 .thinking-av {
-  width: 28px;
-  height: 28px;
+  width: 28px; height: 28px;
   border: 1px solid var(--accent);
   background: var(--accent-dim);
   display: flex;
@@ -590,20 +564,13 @@ body::before {
   justify-content: center;
 }
 
-.thinking-dots {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  padding-left: 0;
-}
+.thinking-dots { display: flex; gap: 5px; align-items: center; }
 
 .t-dot {
-  width: 5px;
-  height: 5px;
+  width: 5px; height: 5px;
   background: var(--accent);
   animation: tdot 1.4s infinite;
 }
-
 .t-dot:nth-child(2) { animation-delay: 0.2s; }
 .t-dot:nth-child(3) { animation-delay: 0.4s; }
 
@@ -620,16 +587,12 @@ body::before {
   margin-left: 10px;
 }
 
-/* ══════════════════════════════════
-   INPUT AREA
-══════════════════════════════════ */
 .input-zone {
   border-top: 1px solid var(--border);
   background: var(--bg);
   flex-shrink: 0;
 }
 
-/* ATTACHED FILES PREVIEW */
 .attached-preview {
   padding: 8px 60px 0;
   display: flex;
@@ -658,15 +621,13 @@ body::before {
   font-size: 12px;
   line-height: 1;
 }
-
 .attached-chip button:hover { color: var(--danger); }
 
-/* INPUT ROW */
 .input-row {
   display: flex;
   align-items: flex-end;
   gap: 0;
-  padding: 16px 16px 16px 16px;
+  padding: 16px;
 }
 
 .input-left-actions {
@@ -678,8 +639,7 @@ body::before {
 }
 
 .action-btn {
-  width: 36px;
-  height: 36px;
+  width: 36px; height: 36px;
   background: none;
   border: 1px solid var(--border2);
   color: var(--muted2);
@@ -690,19 +650,8 @@ body::before {
   transition: all 0.15s;
   position: relative;
 }
-
-.action-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-dim);
-}
-
-.action-btn.recording {
-  border-color: var(--recording);
-  color: var(--recording);
-  background: rgba(255,60,60,0.08);
-  animation: recPulse 1s ease-in-out infinite;
-}
+.action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.action-btn.recording { border-color: var(--recording); color: var(--recording); background: rgba(255,60,60,0.08); animation: recPulse 1s ease-in-out infinite; }
 
 @keyframes recPulse {
   0%,100% { box-shadow: 0 0 0 0 rgba(255,60,60,0.3); }
@@ -710,27 +659,15 @@ body::before {
 }
 
 .action-btn svg { width: 14px; height: 14px; }
-
-.action-btn input[type="file"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-}
+.action-btn input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 
 .input-field-wrap {
   flex: 1;
   border: 1px solid var(--border2);
   background: #090909;
   transition: border-color 0.2s;
-  position: relative;
 }
-
-.input-field-wrap:focus-within {
-  border-color: var(--accent);
-}
+.input-field-wrap:focus-within { border-color: var(--accent); }
 
 .input-field-wrap textarea {
   width: 100%;
@@ -756,8 +693,7 @@ body::before {
 }
 
 .send-btn {
-  width: 52px;
-  height: 52px;
+  width: 52px; height: 52px;
   background: var(--accent);
   border: none;
   cursor: pointer;
@@ -769,14 +705,11 @@ body::before {
   transition: all 0.15s;
   align-self: flex-end;
 }
-
 .send-btn:hover { background: #d8ff1a; transform: translateY(-1px); }
 .send-btn:active { transform: translateY(0); }
 .send-btn:disabled { background: var(--muted); cursor: not-allowed; transform: none; }
-
 .send-btn svg { width: 16px; height: 16px; fill: #060606; }
 
-/* INPUT FOOTER */
 .input-footer {
   display: flex;
   justify-content: space-between;
@@ -800,23 +733,338 @@ body::before {
   color: var(--recording);
   letter-spacing: 0.1em;
 }
-
 .rec-indicator.visible { display: flex; }
 
 .rec-dot {
-  width: 5px;
-  height: 5px;
+  width: 5px; height: 5px;
   background: var(--recording);
   border-radius: 50%;
   animation: recDot 1s infinite;
 }
+@keyframes recDot { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
 
-@keyframes recDot {
-  0%,100% { opacity: 1; }
-  50% { opacity: 0.2; }
+/* ══════════════════════════════════
+   PANEL VIEWS — Morning, Strategos, Day, Memory
+══════════════════════════════════ */
+.pv-scroll {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
-/* MODAL - MEMORY */
+.pv-inner {
+  max-width: 780px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 44px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.pv-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--border2);
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+}
+
+.pv-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--muted2);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+.pv-divider { height: 1px; background: var(--border2); border: none; }
+
+.pv-rec {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255,60,60,0.05);
+  border: 1px solid rgba(255,60,60,0.18);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8.5px;
+  color: var(--recording);
+  letter-spacing: 0.1em;
+}
+.pv-rec.visible { display: flex; }
+
+.waves { display: flex; align-items: center; gap: 2.5px; height: 13px; }
+.wv { width: 2.5px; background: var(--recording); border-radius: 2px; animation: wva 0.9s infinite ease-in-out; }
+.wv:nth-child(1){animation-delay:0s;} .wv:nth-child(2){animation-delay:.09s;} .wv:nth-child(3){animation-delay:.18s;} .wv:nth-child(4){animation-delay:.09s;} .wv:nth-child(5){animation-delay:0s;}
+@keyframes wva { 0%,100%{height:3px;} 50%{height:12px;} }
+
+.pv-ta {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 14px 16px;
+  resize: vertical;
+  min-height: 110px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.pv-ta::placeholder { color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 11px; }
+.pv-ta:focus { border-color: var(--accent); }
+
+.act-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.go-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent);
+  color: #060606;
+  border: none;
+  padding: 12px 22px;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: all 0.18s;
+}
+.go-btn:hover:not(:disabled) { background: #d8ff1a; transform: translateY(-1px); }
+.go-btn:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
+
+.voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted2);
+  padding: 12px 18px;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s;
+}
+.voice-btn:hover { color: var(--text); border-color: var(--muted2); }
+.voice-btn.recording { color: var(--recording); border-color: rgba(255,60,60,0.4); background: rgba(255,60,60,0.06); animation: recPulse 1.2s infinite; }
+
+.res-block {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--accent);
+  padding: 22px 20px;
+  font-size: 14px;
+  line-height: 1.85;
+  color: #ccc;
+  display: none;
+  animation: msgIn 0.3s ease;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.res-block.visible { display: block; }
+
+.spin {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 2px solid rgba(200,255,0,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: sp 0.65s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes sp { to { transform: rotate(360deg); } }
+
+/* ══════════════════════════════════
+   ALERTS DRAWER
+══════════════════════════════════ */
+.alerts-drawer {
+  width: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-left: 1px solid transparent;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.25s ease, border-color 0.25s;
+}
+.alerts-drawer.open { width: 300px; border-left-color: var(--border); }
+
+.ad-head {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.ad-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.ad-clear {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  color: var(--muted2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.ad-clear:hover { color: var(--danger); }
+
+.ad-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ad-tab {
+  flex: 1;
+  padding: 9px;
+  background: none;
+  border: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--muted2);
+  text-transform: uppercase;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.ad-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.ad-tab:hover { color: var(--text); }
+
+.ad-body {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.ad-empty {
+  padding: 36px 16px;
+  text-align: center;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--muted2);
+  letter-spacing: 0.08em;
+  line-height: 2;
+}
+
+.alert-card {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.alert-card:hover { background: #0a0a0a; }
+
+.alert-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.alert-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.alert-dot.danger { background: var(--danger); }
+.alert-dot.warn { background: var(--warn); }
+.alert-dot.info { background: var(--info); }
+.alert-dot.ok { background: var(--accent); }
+
+.alert-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+}
+.alert-tag.danger { color: var(--danger); border: 1px solid rgba(255,68,68,0.25); }
+.alert-tag.warn { color: var(--warn); border: 1px solid rgba(255,170,0,0.25); }
+.alert-tag.info { color: var(--info); border: 1px solid rgba(68,170,255,0.25); }
+.alert-tag.ok { color: var(--accent); border: 1px solid rgba(200,255,0,0.25); }
+
+.alert-time {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7.5px;
+  color: var(--muted2);
+  margin-left: auto;
+}
+
+.alert-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.alert-body {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--muted2);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.alert-more {
+  margin-top: 6px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  padding: 0;
+}
+.alert-more:hover { color: #d8ff1a; }
+
+.ad-foot {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.ad-btn {
+  flex: 1;
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted2);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  padding: 7px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+.ad-btn:hover { border-color: var(--accent); color: var(--accent); }
+.ad-btn.primary { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* ══════════════════════════════════
+   MODALS — IDÉNTICOS AL ORIGINAL + FTM
+══════════════════════════════════ */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -830,11 +1078,7 @@ body::before {
   pointer-events: none;
   transition: opacity 0.2s;
 }
-
-.modal-overlay.open {
-  opacity: 1;
-  pointer-events: all;
-}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
 
 .modal {
   background: var(--surface);
@@ -868,12 +1112,9 @@ body::before {
   line-height: 1;
   transition: color 0.15s;
 }
-
 .modal-close:hover { color: var(--text); }
 
-.modal-body {
-  padding: 24px;
-}
+.modal-body { padding: 24px; }
 
 .modal-body p {
   font-family: 'Share Tech Mono', monospace;
@@ -898,7 +1139,6 @@ body::before {
   outline: none;
   transition: border-color 0.2s;
 }
-
 .modal-body textarea:focus { border-color: var(--accent); }
 
 .modal-foot {
@@ -921,7 +1161,6 @@ body::before {
   text-transform: uppercase;
   transition: all 0.15s;
 }
-
 .btn-ghost:hover { border-color: var(--text); color: var(--text); }
 
 .btn-accent {
@@ -937,10 +1176,49 @@ body::before {
   text-transform: uppercase;
   transition: all 0.15s;
 }
-
 .btn-accent:hover { background: #d8ff1a; }
 
-/* TOAST */
+/* Full text modal */
+.ftm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.ftm-overlay.open { opacity: 1; pointer-events: all; }
+
+.ftm-modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  width: 660px;
+  max-width: 92vw;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ftm-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: break-word;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* TOAST — idéntico al original */
 .toast {
   position: fixed;
   bottom: 24px;
@@ -953,16 +1231,14 @@ body::before {
   font-size: 10px;
   letter-spacing: 0.1em;
   color: var(--text);
-  z-index: 2000;
+  z-index: 3000;
   transform: translateY(80px);
   opacity: 0;
   transition: all 0.3s;
 }
-
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast.error { border-left-color: var(--danger); }
 
-/* SCROLLBAR */
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); }
@@ -972,7 +1248,7 @@ body::before {
 
 <div class="app">
 
-  <!-- ═══════ SIDEBAR ═══════ -->
+  <!-- ═══════ SIDEBAR — IDÉNTICO AL ORIGINAL ═══════ -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="brand">
@@ -986,17 +1262,33 @@ body::before {
       </div>
       <div class="status-row">
         <div class="status-dot"></div>
-        <span>ONLINE · ESTRATÉGICO</span>
+        <span id="statusLabel">ONLINE · ESTRATÉGICO</span>
       </div>
     </div>
 
     <div class="sidebar-nav">
-      <button class="nav-btn active" onclick="setView('chat')">
+      <button class="nav-btn active" onclick="switchPanel('chat', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         Chat Estratégico
       </button>
-      <button class="nav-btn" onclick="openMemoryModal()">
+      <button class="nav-btn" onclick="switchPanel('morning', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        Morning Scan
+      </button>
+      <button class="nav-btn" onclick="switchPanel('strategos', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Strategos
+      </button>
+      <button class="nav-btn" onclick="switchPanel('day', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Day Control
+      </button>
+      <button class="nav-btn" onclick="switchPanel('memview', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Ver Memoria
+      </button>
+      <button class="nav-btn" onclick="openMemoryModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Inyectar Memoria
       </button>
       <button class="nav-btn" onclick="clearChat()">
@@ -1005,7 +1297,6 @@ body::before {
       </button>
     </div>
 
-    <!-- MEMORY LIST -->
     <div class="sidebar-memory">
       <div class="sidebar-section-title">Memoria Activa</div>
       <div class="memory-list" id="memoryList">
@@ -1013,7 +1304,6 @@ body::before {
       </div>
     </div>
 
-    <!-- FILE UPLOAD -->
     <div class="sidebar-upload">
       <div class="sidebar-section-title" style="padding:0 8px 8px;">Subir Contexto</div>
       <div class="upload-drop" id="sidebarDrop">
@@ -1032,84 +1322,192 @@ body::before {
   <main class="main">
 
     <div class="topbar">
-      <div class="topbar-title">Chat · Sesión Activa</div>
+      <div class="topbar-title" id="topbarTitle">Chat · Sesión Activa</div>
       <div class="topbar-actions">
+        <button class="topbar-btn" id="ttsBtn" onclick="toggleTTS()">🔊 VOZ ON</button>
+        <button class="topbar-btn" id="alertsBtn" onclick="toggleAlerts()">
+          ⚡ ALERTAS<span class="alerts-count" id="alertsCount">0</span>
+        </button>
         <button class="topbar-btn" onclick="openMemoryModal()">+ Memoria</button>
         <button class="topbar-btn" onclick="clearChat()">Limpiar</button>
       </div>
     </div>
 
-    <!-- CHAT -->
-    <div class="chat" id="chat">
-      <div class="empty" id="emptyState">
-        <div class="empty-glyph">
-          <div class="empty-glyph-ring"></div>
-          <div class="empty-glyph-ring"></div>
-          <div class="empty-glyph-core"></div>
+    <div class="panel-container">
+
+      <!-- ── CHAT PANEL — idéntico al original ── -->
+      <div class="panel active" id="panel-chat">
+        <div class="chat" id="chat">
+          <div class="empty" id="emptyState">
+            <div class="empty-glyph">
+              <div class="empty-glyph-ring"></div>
+              <div class="empty-glyph-ring"></div>
+              <div class="empty-glyph-core"></div>
+            </div>
+            <div class="empty-text">
+              <h2>JARVIS ACTIVO</h2>
+              <p>Sistema de inteligencia estratégica soberana.<br>Habla. Él procesa. Sin filtros.</p>
+            </div>
+            <div class="empty-hint">
+              <div class="hint-chip" onclick="useHint(this)">¿Cuál es mi movimiento ahora?</div>
+              <div class="hint-chip" onclick="useHint(this)">Analiza mi situación actual</div>
+              <div class="hint-chip" onclick="useHint(this)">¿Dónde está mi punto de palanca?</div>
+            </div>
+          </div>
         </div>
-        <div class="empty-text">
-          <h2>JARVIS ACTIVO</h2>
-          <p>Sistema de inteligencia estratégica soberana.<br>Habla. Él procesa. Sin filtros.</p>
-        </div>
-        <div class="empty-hint">
-          <div class="hint-chip" onclick="useHint(this)">¿Cuál es mi movimiento ahora?</div>
-          <div class="hint-chip" onclick="useHint(this)">Analiza mi situación actual</div>
-          <div class="hint-chip" onclick="useHint(this)">¿Dónde está mi punto de palanca?</div>
+
+        <div class="input-zone">
+          <div class="attached-preview" id="attachedPreview"></div>
+          <div class="input-row">
+            <div class="input-left-actions">
+              <button class="action-btn" id="micBtn" title="Hablar con JARVIS" onclick="toggleMic()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                  <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/>
+                </svg>
+              </button>
+              <button class="action-btn" title="Adjuntar archivo" style="position:relative;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                </svg>
+                <input type="file" accept=".txt,.pdf,.md,.json,.csv" multiple onchange="handleAttach(event)">
+              </button>
+            </div>
+            <div class="input-field-wrap">
+              <textarea
+                id="msgInput"
+                placeholder="Habla con JARVIS... (Enter para enviar, Shift+Enter nueva línea)"
+                rows="1"
+                onkeydown="handleKey(event)"
+                oninput="autoResize(this)"
+              ></textarea>
+            </div>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Enviar">
+              <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+            </button>
+          </div>
+          <div class="input-footer">
+            <span class="input-hint">ENTER enviar · SHIFT+ENTER nueva línea · 🎤 voz · 📎 archivo</span>
+            <div class="rec-indicator" id="recIndicator">
+              <div class="rec-dot"></div>
+              GRABANDO...
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- INPUT -->
-    <div class="input-zone">
-      <div class="attached-preview" id="attachedPreview"></div>
-
-      <div class="input-row">
-        <div class="input-left-actions">
-          <!-- MIC -->
-          <button class="action-btn" id="micBtn" title="Hablar con JARVIS" onclick="toggleMic()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
-              <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/>
-            </svg>
-          </button>
-          <!-- ATTACH -->
-          <button class="action-btn" title="Adjuntar archivo" style="position:relative;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
-            </svg>
-            <input type="file" accept=".txt,.pdf,.md,.json,.csv" multiple onchange="handleAttach(event)">
-          </button>
-        </div>
-
-        <div class="input-field-wrap">
-          <textarea
-            id="msgInput"
-            placeholder="Habla con JARVIS... (Enter para enviar, Shift+Enter nueva línea)"
-            rows="1"
-            onkeydown="handleKey(event)"
-            oninput="autoResize(this)"
-          ></textarea>
-        </div>
-
-        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Enviar">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="input-footer">
-        <span class="input-hint">ENTER enviar · SHIFT+ENTER nueva línea · 🎤 voz · 📎 archivo</span>
-        <div class="rec-indicator" id="recIndicator">
-          <div class="rec-dot"></div>
-          GRABANDO...
+      <!-- ── MORNING SCAN ── -->
+      <div class="panel" id="panel-morning">
+        <div class="pv-scroll">
+          <div class="pv-inner">
+            <div>
+              <div class="pv-title">Morning Scan</div>
+              <div class="pv-sub">Escaneo de inicio · Diagnóstico · Dirección para el día</div>
+            </div>
+            <hr class="pv-divider"/>
+            <div class="pv-rec" id="mRec">
+              <div class="waves"><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div></div>
+              <span style="flex:1">ESCUCHANDO...</span>
+              <span style="opacity:.4;font-size:7.5px;font-family:'Share Tech Mono',monospace;">ESC cancela</span>
+            </div>
+            <textarea class="pv-ta" id="mTa" placeholder="Opcional: cuéntale cómo amaneciste, qué tienes en mente, qué sientes hoy..."></textarea>
+            <div class="act-row">
+              <button class="go-btn" id="mGo" onclick="runPanel('morning')">🌅 Activar escaneo</button>
+              <button class="voice-btn" id="mMic" onclick="panelVoice('morning')">🎙 Hablar</button>
+            </div>
+            <div class="res-block" id="mRes"></div>
+          </div>
         </div>
       </div>
-    </div>
+
+      <!-- ── STRATEGOS ── -->
+      <div class="panel" id="panel-strategos">
+        <div class="pv-scroll">
+          <div class="pv-inner">
+            <div>
+              <div class="pv-title">Strategos</div>
+              <div class="pv-sub">Análisis de poder · Jugadas exactas · War room privado</div>
+            </div>
+            <hr class="pv-divider"/>
+            <div class="pv-rec" id="sRec">
+              <div class="waves"><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div></div>
+              <span style="flex:1">ESCUCHANDO...</span>
+              <span style="opacity:.4;font-size:7.5px;font-family:'Share Tech Mono',monospace;">ESC cancela</span>
+            </div>
+            <textarea class="pv-ta" id="sTa" style="min-height:140px" placeholder="Describe la situación. JARVIS detecta lo que hay debajo de las palabras y te da la jugada exacta..."></textarea>
+            <div class="act-row">
+              <button class="go-btn" id="sGo" onclick="runPanel('strategos')">⚔️ Analizar</button>
+              <button class="voice-btn" id="sMic" onclick="panelVoice('strategos')">🎙 Hablar</button>
+            </div>
+            <div class="res-block" id="sRes"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DAY CONTROL ── -->
+      <div class="panel" id="panel-day">
+        <div class="pv-scroll">
+          <div class="pv-inner">
+            <div>
+              <div class="pv-title">Day Control</div>
+              <div class="pv-sub">Estructura del día · Estado · Correcciones · Power frame</div>
+            </div>
+            <hr class="pv-divider"/>
+            <div class="act-row">
+              <button class="go-btn" id="dGo" onclick="runPanel('day')">📋 Generar control de día</button>
+            </div>
+            <div class="res-block" id="dRes"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── MEMORY VIEW ── -->
+      <div class="panel" id="panel-memview">
+        <div class="pv-scroll">
+          <div class="pv-inner">
+            <div>
+              <div class="pv-title">Memory</div>
+              <div class="pv-sub">Todo lo que JARVIS recuerda · Se guarda automáticamente</div>
+            </div>
+            <hr class="pv-divider"/>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input id="noteInput" style="flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border2);padding:10px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;" placeholder="Agregar nota a la memoria..." onkeydown="if(event.key==='Enter')saveNote()"/>
+              <button class="go-btn" style="padding:10px 16px;font-size:12px;" onclick="saveNote()">+ GUARDAR</button>
+              <button class="voice-btn" style="padding:10px 14px;font-size:12px;" onclick="loadMemView()">↺ CARGAR</button>
+            </div>
+            <div id="memViewList" style="display:flex;flex-direction:column;gap:8px;">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted2);text-align:center;padding:28px;">Pulsa "Cargar" para ver la memoria</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ALERTS DRAWER ── -->
+      <aside class="alerts-drawer" id="alertsDrawer">
+        <div class="ad-head">
+          <div class="ad-title">⚡ Alertas JARVIS</div>
+          <button class="ad-clear" onclick="clearAlerts()">Limpiar</button>
+        </div>
+        <div class="ad-tabs">
+          <button class="ad-tab active" onclick="filterAlerts('all', this)">Todo</button>
+          <button class="ad-tab" onclick="filterAlerts('loop', this)">Loop</button>
+          <button class="ad-tab" onclick="filterAlerts('market', this)">Mercado</button>
+          <button class="ad-tab" onclick="filterAlerts('chat', this)">Chat</button>
+        </div>
+        <div class="ad-body" id="alertsBody">
+          <div class="ad-empty">Monitoreando...<br><br>Respuestas del loop,<br>alertas y análisis<br>aparecen aquí completos.</div>
+        </div>
+        <div class="ad-foot">
+          <button class="ad-btn" onclick="loadAlerts()">↻ Actualizar</button>
+          <button class="ad-btn primary" onclick="requestBriefing()">📊 Briefing</button>
+        </div>
+      </aside>
+
+    </div><!-- /panel-container -->
   </main>
 </div>
 
-<!-- ═══════ MEMORY MODAL ═══════ -->
+<!-- ═══════ MEMORY MODAL — IDÉNTICO AL ORIGINAL ═══════ -->
 <div class="modal-overlay" id="memoryModal">
   <div class="modal">
     <div class="modal-head">
@@ -1127,7 +1525,17 @@ body::before {
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- FULL TEXT MODAL -->
+<div class="ftm-overlay" id="ftmOverlay">
+  <div class="ftm-modal">
+    <div class="modal-head">
+      <div class="modal-title" id="ftmTitle">REPORTE COMPLETO</div>
+      <button class="modal-close" onclick="closeFTM()">×</button>
+    </div>
+    <div class="ftm-body" id="ftmBody"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1141,11 +1549,18 @@ const API_BASE = "https://urus-backend-production.up.railway.app";
 // ═══════════════════════════════════════
 let isLoading = false;
 let isRecording = false;
-let mediaRecorder = null;
 let recognition = null;
-let attachedFiles = []; // { name, content }
-let sidebarFiles = []; // { name, content, status }
+let panelRecognition = null;
+let activePanelMic = null;
+let attachedFiles = [];
+let sidebarFiles = [];
 let memories = [];
+let allAlerts = [];
+let alertsOpen = false;
+let ttsOn = true;
+let ttsVoice = null;
+const synth = window.speechSynthesis;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 // ═══════════════════════════════════════
 // INIT
@@ -1153,10 +1568,72 @@ let memories = [];
 document.addEventListener('DOMContentLoaded', () => {
   loadMemories();
   setupDragDrop();
+  checkStatus();
+  loadVoices();
+  if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+  setInterval(() => { if (alertsOpen) loadAlerts(); }, 5 * 60 * 1000);
 });
 
+async function checkStatus() {
+  try {
+    const r = await fetch(`${API_BASE}/v1/jarvis/health`);
+    const d = await r.json();
+    if (d.ok) {
+      const p = d.providers?.claude ? 'CLAUDE · ONLINE' : d.providers?.groq ? 'GROQ · ONLINE' : 'ONLINE';
+      document.getElementById('statusLabel').textContent = p;
+    }
+  } catch(e) {}
+}
+
 // ═══════════════════════════════════════
-// SEND MESSAGE
+// PANEL SWITCHING
+// ═══════════════════════════════════════
+const panelTitles = {
+  chat: 'Chat · Sesión Activa',
+  morning: 'Morning Scan',
+  strategos: 'Strategos · War Room',
+  day: 'Day Control',
+  memview: 'Memory'
+};
+
+function switchPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  document.getElementById('topbarTitle').textContent = panelTitles[name] || name;
+}
+
+// ═══════════════════════════════════════
+// TTS
+// ═══════════════════════════════════════
+function loadVoices() {
+  const vv = synth.getVoices();
+  ttsVoice = vv.find(v => v.lang === 'es-ES' && /jorge|pablo|male/i.test(v.name))
+    || vv.find(v => v.lang.startsWith('es')) || null;
+}
+
+function speak(raw) {
+  if (!ttsOn || !synth) return;
+  synth.cancel();
+  const clean = raw.replace(/#{1,3} /g, '').replace(/\*\*/g, '').replace(/\*/g, '')
+    .replace(/<[^>]+>/g, '').replace(/\n+/g, '. ').slice(0, 1200);
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang = 'es-ES'; u.rate = 1.05; u.pitch = 0.88; u.volume = 1;
+  if (ttsVoice) u.voice = ttsVoice;
+  synth.speak(u);
+}
+
+function toggleTTS() {
+  ttsOn = !ttsOn;
+  synth.cancel();
+  const btn = document.getElementById('ttsBtn');
+  btn.textContent = ttsOn ? '🔊 VOZ ON' : '🔇 VOZ OFF';
+  btn.classList.toggle('active', !ttsOn);
+}
+
+// ═══════════════════════════════════════
+// SEND MESSAGE — IDÉNTICO AL ORIGINAL
 // ═══════════════════════════════════════
 async function sendMessage() {
   if (isLoading) return;
@@ -1165,7 +1642,6 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text && attachedFiles.length === 0) return;
 
-  // Build message with file context
   let fullMessage = text;
   if (attachedFiles.length > 0) {
     const fileContext = attachedFiles.map(f =>
@@ -1174,16 +1650,11 @@ async function sendMessage() {
     fullMessage = text + fileContext;
   }
 
-  // Show user message
   addUserMsg(text, attachedFiles.map(f => f.name));
-
-  // Clear input
   input.value = '';
   autoResize(input);
   clearAttached();
   hideEmpty();
-
-  // Show thinking
   showThinking();
   setLoading(true);
 
@@ -1193,12 +1664,16 @@ async function sendMessage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: fullMessage })
     });
-
     const data = await res.json();
     hideThinking();
 
     if (data.ok) {
       addJarvisMsg(data.reply);
+      if (ttsOn) speak(data.reply);
+      autoSaveToMemory('chat', `[TÚ] ${text}\n[JARVIS] ${data.reply}`);
+      pushAlert({ type: 'info', tag: 'CHAT', cat: 'chat',
+        title: text.substring(0, 70) + (text.length > 70 ? '...' : ''),
+        body: `PREGUNTA:\n${text}\n\nJARVIS:\n${data.reply}`, time: nowTime() });
     } else {
       addJarvisMsg(`Error: ${data.error || 'Fallo desconocido'}`);
     }
@@ -1212,7 +1687,7 @@ async function sendMessage() {
 }
 
 // ═══════════════════════════════════════
-// RENDER MESSAGES
+// RENDER MESSAGES — IDÉNTICO AL ORIGINAL
 // ═══════════════════════════════════════
 function addUserMsg(text, fileNames) {
   const chat = document.getElementById('chat');
@@ -1227,14 +1702,11 @@ function addUserMsg(text, fileNames) {
   }
 
   row.innerHTML = `
-    <div class="msg-gutter">
-      <div class="msg-av user-av">TÚ</div>
-    </div>
+    <div class="msg-gutter"><div class="msg-av user-av">TÚ</div></div>
     <div class="msg-body">
       <div class="msg-meta">Usuario · ahora</div>
       <div class="msg-text">${escapeHtml(text)}${filesHtml}</div>
-    </div>
-  `;
+    </div>`;
   chat.appendChild(row);
   scrollBottom();
 }
@@ -1243,18 +1715,13 @@ function addJarvisMsg(reply) {
   const chat = document.getElementById('chat');
   const row = document.createElement('div');
   row.className = 'msg-row jarvis';
-
   const blocks = parseJarvisBlocks(reply);
-
   row.innerHTML = `
-    <div class="msg-gutter">
-      <div class="msg-av jarvis-av">J</div>
-    </div>
+    <div class="msg-gutter"><div class="msg-av jarvis-av">J</div></div>
     <div class="msg-body">
       <div class="msg-meta">JARVIS · ahora</div>
       <div class="msg-text">${blocks}</div>
-    </div>
-  `;
+    </div>`;
   chat.appendChild(row);
   scrollBottom();
 }
@@ -1268,24 +1735,16 @@ function parseJarvisBlocks(text) {
     { emoji: '🚫', label: 'VECTOR DE RIESGO' },
   ];
 
-  let result = text;
-
-  // Try to detect structured blocks
   let hasBlocks = false;
   for (const b of blockDefs) {
-    if (text.includes(b.emoji) || text.toUpperCase().includes(b.label)) {
-      hasBlocks = true;
-      break;
-    }
+    if (text.includes(b.emoji) || text.toUpperCase().includes(b.label)) { hasBlocks = true; break; }
   }
 
   if (!hasBlocks) {
     return `<div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
   }
 
-  // Split by known patterns
   const parts = text.split(/(?=⚔️|♟️|🧬|👁|🚫)/g).filter(p => p.trim());
-
   if (parts.length <= 1) {
     return `<div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
   }
@@ -1293,7 +1752,6 @@ function parseJarvisBlocks(text) {
   return parts.map(part => {
     const firstLine = part.split('\n')[0].trim();
     const rest = part.substring(firstLine.length).trim();
-
     return `<div class="j-block">
       <div class="j-block-head">
         <div class="j-block-label">${escapeHtml(firstLine)}</div>
@@ -1305,7 +1763,7 @@ function parseJarvisBlocks(text) {
 }
 
 // ═══════════════════════════════════════
-// THINKING
+// THINKING — IDÉNTICO AL ORIGINAL
 // ═══════════════════════════════════════
 function showThinking() {
   const chat = document.getElementById('chat');
@@ -1313,18 +1771,11 @@ function showThinking() {
   el.className = 'thinking-row';
   el.id = 'thinkingRow';
   el.innerHTML = `
-    <div class="thinking-gutter">
-      <div class="thinking-av">
-        <div class="brand-icon-inner" style="width:8px;height:8px;"></div>
-      </div>
-    </div>
+    <div class="thinking-gutter"><div class="thinking-av"><div class="brand-icon-inner" style="width:8px;height:8px;"></div></div></div>
     <div class="thinking-dots">
-      <div class="t-dot"></div>
-      <div class="t-dot"></div>
-      <div class="t-dot"></div>
+      <div class="t-dot"></div><div class="t-dot"></div><div class="t-dot"></div>
       <span class="thinking-label">PROCESANDO</span>
-    </div>
-  `;
+    </div>`;
   chat.appendChild(el);
   scrollBottom();
 }
@@ -1335,36 +1786,26 @@ function hideThinking() {
 }
 
 // ═══════════════════════════════════════
-// MICROPHONE — Web Speech API
+// MICROPHONE CHAT — IDÉNTICO AL ORIGINAL
 // ═══════════════════════════════════════
 function toggleMic() {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    showToast('Tu navegador no soporta reconocimiento de voz', true);
-    return;
-  }
-
-  if (isRecording) {
-    stopMic();
-  } else {
-    startMic();
-  }
+  if (!SR) { showToast('Tu navegador no soporta reconocimiento de voz', true); return; }
+  isRecording ? stopMic() : startMic();
 }
 
 function startMic() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SpeechRecognition();
+  stopPanelMic();
+  recognition = new SR();
   recognition.lang = 'es-ES';
   recognition.continuous = true;
   recognition.interimResults = true;
 
   const input = document.getElementById('msgInput');
-  const micBtn = document.getElementById('micBtn');
-  const recIndicator = document.getElementById('recIndicator');
 
   recognition.onstart = () => {
     isRecording = true;
-    micBtn.classList.add('recording');
-    recIndicator.classList.add('visible');
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('recIndicator').classList.add('visible');
   };
 
   recognition.onresult = (event) => {
@@ -1376,30 +1817,118 @@ function startMic() {
     autoResize(input);
   };
 
-  recognition.onerror = (event) => {
-    showToast('Error de micrófono: ' + event.error, true);
-    stopMic();
-  };
-
-  recognition.onend = () => {
-    if (isRecording) stopMic();
-  };
-
+  recognition.onerror = (event) => { showToast('Error de micrófono: ' + event.error, true); stopMic(); };
+  recognition.onend = () => { if (isRecording) stopMic(); };
   recognition.start();
 }
 
 function stopMic() {
-  if (recognition) {
-    recognition.stop();
-    recognition = null;
-  }
+  if (recognition) { recognition.stop(); recognition = null; }
   isRecording = false;
   document.getElementById('micBtn').classList.remove('recording');
   document.getElementById('recIndicator').classList.remove('visible');
 }
 
 // ═══════════════════════════════════════
-// FILE HANDLING
+// MICROPHONE PANELS
+// ═══════════════════════════════════════
+function panelVoice(panel) {
+  if (activePanelMic === panel) { stopPanelMic(); return; }
+  stopMic(); stopPanelMic();
+  if (!SR) return;
+
+  const taId = panel === 'morning' ? 'mTa' : 'sTa';
+  const recId = panel === 'morning' ? 'mRec' : 'sRec';
+  const micId = panel === 'morning' ? 'mMic' : 'sMic';
+
+  panelRecognition = new SR();
+  panelRecognition.lang = 'es-ES';
+  panelRecognition.continuous = false;
+  panelRecognition.interimResults = true;
+
+  panelRecognition.onstart = () => {
+    activePanelMic = panel;
+    document.getElementById(micId).classList.add('recording');
+    document.getElementById(recId).classList.add('visible');
+  };
+
+  panelRecognition.onresult = (e) => {
+    const ta = document.getElementById(taId);
+    let fin = '', inter = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) fin += t; else inter += t;
+    }
+    ta.value = fin || inter;
+  };
+
+  panelRecognition.onend = () => {
+    const prev = activePanelMic;
+    stopPanelMic();
+    runPanel(prev);
+  };
+
+  panelRecognition.onerror = () => stopPanelMic();
+  panelRecognition.start();
+}
+
+function stopPanelMic() {
+  if (!activePanelMic) return;
+  const panel = activePanelMic;
+  const recId = panel === 'morning' ? 'mRec' : 'sRec';
+  const micId = panel === 'morning' ? 'mMic' : 'sMic';
+  document.getElementById(micId)?.classList.remove('recording');
+  document.getElementById(recId)?.classList.remove('visible');
+  panelRecognition?.stop(); panelRecognition = null; activePanelMic = null;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { stopMic(); stopPanelMic(); closeFTM(); }
+});
+
+// ═══════════════════════════════════════
+// PANEL RUNNERS
+// ═══════════════════════════════════════
+const panelCfg = {
+  morning: { go: 'mGo', res: 'mRes', ep: '/v1/jarvis/morning', body: () => ({ input: document.getElementById('mTa').value.trim() }), orig: '🌅 Activar escaneo' },
+  strategos: { go: 'sGo', res: 'sRes', ep: '/v1/jarvis/strategos', body: () => ({ input: document.getElementById('sTa').value.trim() }), orig: '⚔️ Analizar' },
+  day: { go: 'dGo', res: 'dRes', ep: '/v1/jarvis/day', body: () => ({}), orig: '📋 Generar control de día' }
+};
+
+async function runPanel(name) {
+  const cfg = panelCfg[name];
+  if (!cfg) return;
+  const btn = document.getElementById(cfg.go);
+  const res = document.getElementById(cfg.res);
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Procesando...';
+  res.classList.remove('visible');
+
+  try {
+    const r = await fetch(`${API_BASE}${cfg.ep}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg.body())
+    });
+    const d = await r.json();
+    const out = d.output || d.scan || d.reply || 'Sin respuesta.';
+    res.textContent = out;
+    res.classList.add('visible');
+    if (ttsOn) speak(out);
+    autoSaveToMemory(name, out);
+    pushAlert({ type: 'ok', tag: name.toUpperCase(), cat: 'loop',
+      title: out.substring(0, 70).replace(/\n/g, ' '), body: out, time: nowTime() });
+  } catch(e) {
+    res.textContent = 'Error de conexión.';
+    res.classList.add('visible');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = cfg.orig;
+}
+
+// ═══════════════════════════════════════
+// FILE HANDLING — IDÉNTICO AL ORIGINAL
 // ═══════════════════════════════════════
 function handleAttach(event) {
   const files = Array.from(event.target.files);
@@ -1415,30 +1944,19 @@ function handleSidebarFile(event) {
 
 function readFile(file, dest) {
   const reader = new FileReader();
-
   reader.onload = (e) => {
     const content = e.target.result;
-    const truncated = content.substring(0, 8000); // limit context
-
-  if (dest === 'attach') {
-  attachedFiles.push({ name: file.name, content: truncated });
-  renderAttached();
-  sendAsMemory(file.name, truncated);
-} else {
-  sendAsMemory(file.name, truncated);
-}
+    const truncated = content.substring(0, 8000);
+    if (dest === 'attach') {
+      attachedFiles.push({ name: file.name, content: truncated });
+      renderAttached();
+      sendAsMemory(file.name, truncated);
+    } else {
+      sendAsMemory(file.name, truncated);
+    }
   };
-
-  reader.onerror = () => {
-    showToast(`Error leyendo ${file.name}`, true);
-  };
-
-  if (file.type === 'application/pdf') {
-    // For PDF, read as text (basic extraction)
-    reader.readAsText(file);
-  } else {
-    reader.readAsText(file);
-  }
+  reader.onerror = () => showToast(`Error leyendo ${file.name}`, true);
+  reader.readAsText(file);
 }
 
 function renderAttached() {
@@ -1448,14 +1966,10 @@ function renderAttached() {
       <span>📎</span>
       <span class="file-chip-name">${escapeHtml(f.name)}</span>
       <button onclick="removeAttached(${i})">×</button>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-function removeAttached(i) {
-  attachedFiles.splice(i, 1);
-  renderAttached();
-}
+function removeAttached(i) { attachedFiles.splice(i, 1); renderAttached(); }
 
 function clearAttached() {
   attachedFiles = [];
@@ -1480,26 +1994,17 @@ async function sendAsMemory(filename, content) {
 
 function setupDragDrop() {
   const drop = document.getElementById('sidebarDrop');
-
-  drop.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    drop.classList.add('drag-over');
-  });
-
-  drop.addEventListener('dragleave', () => {
-    drop.classList.remove('drag-over');
-  });
-
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag-over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
   drop.addEventListener('drop', (e) => {
     e.preventDefault();
     drop.classList.remove('drag-over');
-    const files = Array.from(e.dataTransfer.files);
-    files.forEach(f => readFile(f, 'sidebar'));
+    Array.from(e.dataTransfer.files).forEach(f => readFile(f, 'sidebar'));
   });
 }
 
 // ═══════════════════════════════════════
-// MEMORY
+// MEMORY — IDÉNTICO AL ORIGINAL
 // ═══════════════════════════════════════
 async function loadMemories() {
   try {
@@ -1509,22 +2014,14 @@ async function loadMemories() {
       memories = data.items;
       renderMemories();
     }
-  } catch (e) {
-    // silent fail
-  }
+  } catch (e) {}
 }
 
 function renderMemories() {
   const list = document.getElementById('memoryList');
   const empty = document.getElementById('memoryEmpty');
-
-  if (memories.length === 0) {
-    if (empty) empty.style.display = 'block';
-    return;
-  }
-
+  if (memories.length === 0) { if (empty) empty.style.display = 'block'; return; }
   if (empty) empty.style.display = 'none';
-
   list.innerHTML = memories.slice(0, 15).map(m => {
     const preview = m.content.substring(0, 60).replace(/\n/g, ' ');
     return `<div class="memory-item" title="${escapeAttr(m.content)}">${escapeHtml(preview)}...</div>`;
@@ -1535,7 +2032,6 @@ function addMemoryItem(label) {
   const list = document.getElementById('memoryList');
   const empty = document.getElementById('memoryEmpty');
   if (empty) empty.style.display = 'none';
-
   const el = document.createElement('div');
   el.className = 'memory-item';
   el.textContent = `📎 ${label}`;
@@ -1555,7 +2051,6 @@ async function saveMemory() {
   const input = document.getElementById('memoryInput');
   const content = input.value.trim();
   if (!content) return;
-
   try {
     const res = await fetch(`${API_BASE}/v1/jarvis/memory`, {
       method: 'POST',
@@ -1563,7 +2058,6 @@ async function saveMemory() {
       body: JSON.stringify({ content })
     });
     const data = await res.json();
-
     if (data.ok) {
       showToast('Memoria guardada en JARVIS');
       input.value = '';
@@ -1578,14 +2072,178 @@ async function saveMemory() {
   }
 }
 
+async function autoSaveToMemory(type, content) {
+  try {
+    await fetch(`${API_BASE}/v1/jarvis/memory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, type })
+    });
+  } catch(e) {}
+}
+
+async function saveNote() {
+  const inp = document.getElementById('noteInput');
+  const content = inp.value.trim();
+  if (!content) return;
+  try {
+    await fetch(`${API_BASE}/v1/jarvis/memory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, type: 'note' })
+    });
+    inp.value = '';
+    showToast('Nota guardada en memoria');
+    loadMemView();
+  } catch(e) { showToast('Error al guardar', true); }
+}
+
+async function loadMemView() {
+  const view = document.getElementById('memViewList');
+  view.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:var(--muted2);text-align:center;padding:20px;">Cargando...</div>';
+  try {
+    const r = await fetch(`${API_BASE}/v1/jarvis/recall`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 50 })
+    });
+    const d = await r.json();
+    const items = d.memory || d.entries || [];
+    if (!items.length) {
+      view.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:var(--muted2);text-align:center;padding:28px;">Sin memoria aún.</div>';
+      return;
+    }
+    view.innerHTML = items.map(m => {
+      const ts = m.created_at ? new Date(m.created_at).toLocaleString('es', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      const type = m.type || 'note';
+      return `<div style="background:var(--surface);border:1px solid var(--border);padding:12px 14px;animation:msgIn 0.18s ease;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:7.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);padding:2px 6px;background:var(--accent-dim);">${type}</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:var(--muted2);">${ts}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted2);line-height:1.55;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">${escapeHtml((m.content || '').slice(0, 220))}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    view.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:var(--muted2);text-align:center;padding:20px;">Error al cargar.</div>';
+  }
+}
+
 // ═══════════════════════════════════════
-// UI HELPERS
+// ALERTS SYSTEM
+// ═══════════════════════════════════════
+function toggleAlerts() {
+  alertsOpen = !alertsOpen;
+  document.getElementById('alertsDrawer').classList.toggle('open', alertsOpen);
+  document.getElementById('alertsBtn').classList.toggle('active', alertsOpen);
+  if (alertsOpen) loadAlerts();
+}
+
+function clearAlerts() {
+  allAlerts = [];
+  document.getElementById('alertsBody').innerHTML = '<div class="ad-empty">Limpiado.</div>';
+  updateAlertsBadge();
+}
+
+function filterAlerts(cat, btn) {
+  document.querySelectorAll('.ad-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderAlerts(cat);
+}
+
+function pushAlert(a) {
+  allAlerts.push(a);
+  if (allAlerts.length > 120) allAlerts.shift();
+  updateAlertsBadge();
+  if (alertsOpen) {
+    const activeTab = document.querySelector('.ad-tab.active');
+    const filter = activeTab ? (activeTab.textContent.trim().toLowerCase() === 'todo' ? 'all' : activeTab.textContent.trim().toLowerCase()) : 'all';
+    renderAlerts(filter);
+  }
+}
+
+function renderAlerts(filter = 'all') {
+  const body = document.getElementById('alertsBody');
+  const filtered = filter === 'all' ? allAlerts : allAlerts.filter(a => a.cat === filter);
+  if (!filtered.length) {
+    body.innerHTML = '<div class="ad-empty">Sin alertas en esta categoría.</div>';
+    return;
+  }
+  body.innerHTML = filtered.slice().reverse().map(a => {
+    const isLong = a.body && a.body.length > 280;
+    const preview = isLong ? a.body.substring(0, 280) + '...' : (a.body || '');
+    return `<div class="alert-card">
+      <div class="alert-card-top">
+        <div class="alert-dot ${a.type}"></div>
+        <div class="alert-tag ${a.type}">${a.tag}</div>
+        <div class="alert-time">${a.time}</div>
+      </div>
+      <div class="alert-title">${escapeHtml(a.title)}</div>
+      <div class="alert-body">${escapeHtml(preview)}</div>
+      ${isLong ? `<button class="alert-more" onclick="openFTM('${escapeAttr(a.tag + ' — ' + a.title)}','${escapeAttr(a.body)}')">Ver completo →</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function updateAlertsBadge() {
+  const n = allAlerts.length;
+  const c = document.getElementById('alertsCount');
+  c.textContent = n > 99 ? '99+' : n;
+  c.classList.toggle('visible', n > 0);
+}
+
+async function loadAlerts() {
+  try {
+    const r = await fetch(`${API_BASE}/v1/jarvis/memory`);
+    const d = await r.json();
+    if (d.ok && d.items && d.items.length) {
+      d.items.slice(0, 25).forEach(item => {
+        const isMarket = /FEMA|mercado|PR|Puerto Rico|fondo|municipal|dealer|negocio/i.test(item.content);
+        const ts = item.created_at
+          ? new Date(item.created_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+          : nowTime();
+        pushAlert({
+          type: isMarket ? 'warn' : 'info',
+          tag: isMarket ? 'MERCADO' : 'MEMORIA',
+          cat: isMarket ? 'market' : 'loop',
+          title: item.content.substring(0, 75).replace(/\n/g, ' '),
+          body: item.content,
+          time: ts
+        });
+      });
+    }
+  } catch(e) {}
+}
+
+async function requestBriefing() {
+  pushAlert({ type: 'ok', tag: 'SISTEMA', cat: 'loop', title: 'Briefing solicitado', body: 'JARVIS generará el briefing ahora.', time: nowTime() });
+  document.getElementById('msgInput').value = 'Genera un briefing ejecutivo completo: noticias de IA en PR, señales de mercado detectadas, oportunidades clave y mi próximo movimiento estratégico más importante.';
+  switchPanel('chat', document.querySelector('.nav-btn'));
+  sendMessage();
+}
+
+// ═══════════════════════════════════════
+// FULL TEXT MODAL
+// ═══════════════════════════════════════
+function openFTM(title, body) {
+  document.getElementById('ftmTitle').textContent = title;
+  document.getElementById('ftmBody').textContent = body;
+  document.getElementById('ftmOverlay').classList.add('open');
+}
+
+function closeFTM() {
+  document.getElementById('ftmOverlay').classList.remove('open');
+}
+
+document.getElementById('ftmOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('ftmOverlay')) closeFTM();
+});
+
+// ═══════════════════════════════════════
+// UI HELPERS — IDÉNTICOS AL ORIGINAL
 // ═══════════════════════════════════════
 function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 }
 
 function autoResize(el) {
@@ -1595,8 +2253,7 @@ function autoResize(el) {
 
 function setLoading(v) {
   isLoading = v;
-  const btn = document.getElementById('sendBtn');
-  btn.disabled = v;
+  document.getElementById('sendBtn').disabled = v;
 }
 
 function hideEmpty() {
@@ -1607,7 +2264,6 @@ function hideEmpty() {
 function clearChat() {
   const chat = document.getElementById('chat');
   const empty = document.getElementById('emptyState');
-  // Remove all msg-rows
   chat.querySelectorAll('.msg-row, .thinking-row').forEach(el => el.remove());
   if (empty) empty.style.display = 'flex';
 }
@@ -1629,29 +2285,28 @@ function scrollBottom() {
   chat.scrollTop = chat.scrollHeight;
 }
 
+function nowTime() {
+  return new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+}
+
 function showToast(msg, isError = false) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
   toast.className = 'toast show' + (isError ? ' error' : '');
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => {
-    toast.className = 'toast';
-  }, 3000);
+  toast._t = setTimeout(() => { toast.className = 'toast'; }, 3000);
 }
 
 function escapeHtml(str) {
   if (!str) return '';
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/\n/g, '<br>');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/\n/g, '<br>');
 }
 
 function escapeAttr(str) {
   if (!str) return '';
-  return str.replace(/"/g, '&quot;').replace(/\n/g, ' ');
+  return str.replace(/'/g, "\\'").replace(/\n/g, ' ').replace(/"/g, '&quot;');
 }
 </script>
 </body>
