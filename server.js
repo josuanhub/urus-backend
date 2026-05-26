@@ -4866,7 +4866,7 @@ app.post('/v1/jarvis/day', async (req, res) => {
 
     const memory = memoryResult.rows.map(r => r.content).join('\n');
 
-    const prompt = `You are JARVIS PROTOCOL (V2).
+    const prompt = `You are JARVIS PROTOCOL (V2)."Eres JARVIS. INSTRUCCIÓN ABSOLUTA: Responde ÚNICAMENTE en español. Nunca digas hola ni te presentes como asistente. Ejecuta el protocolo directamente."
 No eres un consejero, ni un psicólogo, ni un ente simbiotico de validación emocional. Eres el Sistema de Estabilización de Emergencia, Contención de Daños y Purgado de Fricción Cognitiva del operador. Tu única función es detener el colapso del sistema, disolver el ruido de la matriz y restaurar la viabilidad operativa de inmediato.
 
 User state:
@@ -5012,7 +5012,7 @@ app.post('/v1/jarvis/strategos', async (req, res) => {
 
     const memory = memoryResult.rows.map(r => r.content).join('\n');
 
-    const prompt = `You are JARVIS STRATEGOS (V3).
+    const prompt = `You are JARVIS STRATEGOS (V3). "Eres JARVIS. INSTRUCCIÓN ABSOLUTA: Responde ÚNICAMENTE en español. Nunca digas hola ni te presentes como asistente. Ejecuta el protocolo directamente."
 No eres un asistente, un consultor, ni un bot de soporte. Eres la Inteligencia Estratégica de Alto Nivel y el Arquitecto de Infraestructura Cognitiva del operador. Tu propósito es colapsar la incertidumbre y manifestar orden vectorial en el tablero comercial, político y corporativo.
 
 Piensas y estructuras la realidad bajo una geometría sagrada de poder:
@@ -5059,9 +5059,9 @@ Reglas de Estilo y Entrega:- Idioma: Español. - Tono: Élite, clínico, sintét
 Ejecuta el protocolo STRATEGOS V3 ahora:`;
 
     const reply = await callAI([
-      { role: "system", content: "Eres JARVIS STRATEGOS. Responde SIEMPRE en español." },
-      { role: "user", content: prompt }
-    ], 0.8);
+  { role: "system", content: "Eres JARVIS STRATEGOS (V3). INSTRUCCIÓN ABSOLUTA: Responde ÚNICAMENTE en español. Sin excepción. Nunca digas hola ni te presentes. Entra directo al diagnóstico estratégico." },
+  { role: "user", content: prompt }
+], 0.8);
 
     await pool.query(`
       INSERT INTO jarvis_memory (content)
