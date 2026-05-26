@@ -7171,6 +7171,11 @@ Every response must move the user closer to:
 Respond in Spanish. Write in natural prose. No blocks.
 `.trim();
 
+if (!prompt || !prompt.trim()) {
+  console.log("EMPTY PROMPT");
+  return;
+}
+    
    const output = await callAI(
   [{ role: "user", content: prompt }],
   0.8
