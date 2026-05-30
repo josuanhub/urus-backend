@@ -3176,6 +3176,55 @@ await pool.query(`
     ON jarvis_memory(created_at DESC);
   `);
   
+
+  // ==============================
+// DEALER OS — IVAN AUTO IMPORTS
+// ==============================
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS dealer_prospects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    dealer_id TEXT NOT NULL DEFAULT 'ivan_auto_imports',
+    nombre TEXT,
+    telefono TEXT,
+    email TEXT,
+    fuente TEXT DEFAULT 'Facebook DM',
+    vehiculo_interes TEXT,
+    presupuesto NUMERIC,
+    pronto NUMERIC,
+    credito TEXT DEFAULT 'Desconocido',
+    trade_in BOOLEAN DEFAULT false,
+    vehiculo_trade_in TEXT,
+    estado TEXT DEFAULT 'Nuevo',
+    prioridad TEXT DEFAULT 'Media',
+    vendedor TEXT,
+    proxima_accion TEXT,
+    fecha_seguimiento DATE,
+    nota TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+  );
+`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS dealer_inventory (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    dealer_id TEXT NOT NULL DEFAULT 'ivan_auto_imports',
+    marca TEXT,
+    modelo TEXT,
+    año INTEGER,
+    precio NUMERIC,
+    millaje INTEGER,
+    color TEXT,
+    estado TEXT DEFAULT 'Disponible',
+    dias_lote INTEGER DEFAULT 0,
+    nivel_interes TEXT DEFAULT 'Bajo',
+    notas TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+  );
+`);
+
+console.log("✅ Dealer OS tables ready");
+  
   
   console.log("DB schema ensured");
 }
@@ -6990,6 +7039,242 @@ Responde en español. Directo. Sin relleno. Máximo 400 palabras.`;
   } catch (err) {
     console.error("RESEARCH_ERROR", err);
     return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ==============================
+// 🚗 DEALER OS — ENDPOINTS
+// ==============================
+
+function dealerAuth(req, res, next) {
+  const key = req.headers['x-dealer-key'];
+  if (!key || key !== process.env.DEALER_API_KEY) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  next();
+}
+
+// GET prospectos
+app.get('/v1/dealer/prospects', dealerAuth, async (req, res) => {
+  try {
+    const dealer_id = req.query.dealer_id || 'ivan_auto_imports';
+    const estado = req.query.estado || null;
+
+    let query = `
+      SELECT * FROM dealer_prospects
+      WHERE dealer_id = $1
+    `;
+    const params = [dealer_id];
+
+    if (estado) {
+      query += ` AND estado = $2`;
+      params.push(estado);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT 200`;
+
+    const result = await pool.query(query, params);
+
+    return res.json({
+      ok: true,
+      total: result.rows.length,
+      prospects: result.rows
+    });
+  } catch (e) {
+    console.error('DEALER_GET_PROSPECTS_ERROR', e);
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST crear prospecto (ManyChat lo llama cuando llega un lead de Facebook)
+app.post('/v1/dealer/prospects', dealerAuth, async (req, res) => {
+  try {
+    const {
+      dealer_id = 'ivan_auto_imports',
+      nombre = null,
+      telefono = null,
+      email = null,
+      fuente = 'Facebook DM',
+      vehiculo_interes = null,
+      presupuesto = null,
+      pronto = null,
+      credito = 'Desconocido',
+      trade_in = false,
+      vehiculo_trade_in = null,
+      estado = 'Nuevo',
+      prioridad = 'Media',
+      vendedor = null,
+      proxima_accion = null,
+      fecha_seguimiento = null,
+      nota = null
+    } = req.body || {};
+
+    const result = await pool.query(`
+      INSERT INTO dealer_prospects (
+        dealer_id, nombre, telefono, email, fuente,
+        vehiculo_interes, presupuesto, pronto, credito,
+        trade_in, vehiculo_trade_in, estado, prioridad,
+        vendedor, proxima_accion, fecha_seguimiento, nota
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      RETURNING *
+    `, [
+      dealer_id, nombre, telefono, email, fuente,
+      vehiculo_interes, presupuesto, pronto, credito,
+      trade_in, vehiculo_trade_in, estado, prioridad,
+      vendedor, proxima_accion, fecha_seguimiento, nota
+    ]);
+
+    console.log('DEALER_PROSPECT_CREATED', { nombre, telefono, fuente });
+
+    return res.json({
+      ok: true,
+      prospect: result.rows[0]
+    });
+  } catch (e) {
+    console.error('DEALER_CREATE_PROSPECT_ERROR', e);
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// PATCH actualizar estado de prospecto
+app.patch('/v1/dealer/prospects/:id', dealerAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      estado,
+      prioridad,
+      vendedor,
+      proxima_accion,
+      fecha_seguimiento,
+      nota
+    } = req.body || {};
+
+    const result = await pool.query(`
+      UPDATE dealer_prospects
+      SET
+        estado = COALESCE($2, estado),
+        prioridad = COALESCE($3, prioridad),
+        vendedor = COALESCE($4, vendedor),
+        proxima_accion = COALESCE($5, proxima_accion),
+        fecha_seguimiento = COALESCE($6, fecha_seguimiento),
+        nota = COALESCE($7, nota),
+        updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `, [id, estado, prioridad, vendedor, proxima_accion, fecha_seguimiento, nota]);
+
+    if (!result.rows.length) {
+      return res.status(404).json({ ok: false, error: 'prospect_not_found' });
+    }
+
+    return res.json({ ok: true, prospect: result.rows[0] });
+  } catch (e) {
+    console.error('DEALER_UPDATE_PROSPECT_ERROR', e);
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET inventario
+app.get('/v1/dealer/inventory', dealerAuth, async (req, res) => {
+  try {
+    const dealer_id = req.query.dealer_id || 'ivan_auto_imports';
+
+    const result = await pool.query(`
+      SELECT * FROM dealer_inventory
+      WHERE dealer_id = $1
+      ORDER BY created_at DESC
+    `, [dealer_id]);
+
+    return res.json({
+      ok: true,
+      total: result.rows.length,
+      inventory: result.rows
+    });
+  } catch (e) {
+    console.error('DEALER_GET_INVENTORY_ERROR', e);
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST agregar vehículo al inventario
+app.post('/v1/dealer/inventory', dealerAuth, async (req, res) => {
+  try {
+    const {
+      dealer_id = 'ivan_auto_imports',
+      marca,
+      modelo,
+      año,
+      precio,
+      millaje,
+      color,
+      estado = 'Disponible',
+      dias_lote = 0,
+      nivel_interes = 'Bajo',
+      notas = null
+    } = req.body || {};
+
+    const result = await pool.query(`
+      INSERT INTO dealer_inventory (
+        dealer_id, marca, modelo, año, precio,
+        millaje, color, estado, dias_lote, nivel_interes, notas
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      RETURNING *
+    `, [
+      dealer_id, marca, modelo, año, precio,
+      millaje, color, estado, dias_lote, nivel_interes, notas
+    ]);
+
+    return res.json({
+      ok: true,
+      vehicle: result.rows[0]
+    });
+  } catch (e) {
+    console.error('DEALER_CREATE_INVENTORY_ERROR', e);
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST cargar inventario completo de una vez (bulk)
+app.post('/v1/dealer/inventory/bulk', dealerAuth, async (req, res) => {
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+
+    if (!items.length) {
+      return res.status(400).json({ ok: false, error: 'items_required' });
+    }
+
+    const results = [];
+
+    for (const v of items) {
+      const r = await pool.query(`
+        INSERT INTO dealer_inventory (
+          dealer_id, marca, modelo, año, precio,
+          millaje, color, estado, dias_lote, nivel_interes, notas
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        RETURNING *
+      `, [
+        v.dealer_id || 'ivan_auto_imports',
+        v.marca, v.modelo, v.año, v.precio,
+        v.millaje, v.color,
+        v.estado || 'Disponible',
+        v.dias_lote || 0,
+        v.nivel_interes || 'Bajo',
+        v.notas || null
+      ]);
+      results.push(r.rows[0]);
+    }
+
+    return res.json({
+      ok: true,
+      inserted: results.length,
+      inventory: results
+    });
+  } catch (e) {
+    console.error('DEALER_BULK_INVENTORY_ERROR', e);
+    return res.status(500).json({ ok: false, error: e.message });
   }
 });
 
