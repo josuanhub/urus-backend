@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ivan Auto Imports — Dealer OS</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080A0C;
+  --surface: #0F1215;
+  --surface2: #161B20;
+  --surface3: #1E252C;
+  --border: #232B34;
+  --border2: #2E3A45;
+  --gold: #C9A24D;
+  --gold2: #A07C30;
+  --text: #E8EDF2;
+  --text2: #8A9BAC;
+  --text3: #4A5A6A;
+  --red: #E05C5C;
+  --red-bg: #1A0F0F;
+  --yellow: #D4A843;
+  --yellow-bg: #1A1508;
+  --green: #4CAF7D;
+  --green-bg: #0A1612;
+  --blue: #5B9BD5;
+  --blue-bg: #0A1220;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-logo {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo .dealer-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.sidebar-logo .dealer-sub {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sidebar-logo .gold-bar {
+  width: 24px;
+  height: 2px;
+  background: var(--gold);
+  margin-bottom: 10px;
+}
+
+.nav-section {
+  padding: 12px 0;
+  flex: 1;
+}
+
+.nav-label {
+  font-size: 9px;
+  color: var(--text3);
+  font-family: var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0 18px;
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px;
+  font-size: 13px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+}
+
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+
+.nav-item.active {
+  background: var(--surface2);
+  color: var(--gold);
+  border-left-color: var(--gold);
+}
+
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.nav-item.active .nav-icon { opacity: 1; }
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-family: var(--mono);
+}
+
+.sidebar-footer {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-footer .urus-tag {
+  font-size: 9px;
+  color: var(--text3);
+  font-family: var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* MAIN */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topbar {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.topbar-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.topbar-subtitle {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-family: var(--font);
+  transition: all 0.15s;
+}
+
+.btn-primary {
+  background: var(--gold);
+  color: #080A0C;
+}
+
+.btn-primary:hover { background: var(--gold2); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+
+.btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+/* CONTENT */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ALERT */
+.alert {
+  background: var(--red-bg);
+  border: 1px solid #3A1515;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--red);
+}
+
+/* KPI GRID */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.kpi-label {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.kpi-sub {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+.kpi-card.danger .kpi-value { color: var(--red); }
+.kpi-card.warning .kpi-value { color: var(--yellow); }
+.kpi-card.success .kpi-value { color: var(--green); }
+.kpi-card.gold .kpi-value { color: var(--gold); }
+
+/* MAIN GRID */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 14px;
+}
+
+/* CARD */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--mono);
+}
+
+.card-action {
+  font-size: 11px;
+  color: var(--gold);
+  cursor: pointer;
+}
+
+/* LEADS TABLE */
+.leads-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leads-table th {
+  font-size: 9px;
+  color: var(--text3);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.leads-table td {
+  padding: 11px 14px;
+  font-size: 12px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.leads-table tr:last-child td { border-bottom: none; }
+
+.leads-table tr:hover td { background: var(--surface2); cursor: pointer; }
+
+.lead-name {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.lead-vehicle {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+.temp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-family: var(--mono);
+}
+
+.temp-hot { background: var(--red-bg); color: var(--red); border: 1px solid #3A1515; }
+.temp-warm { background: var(--yellow-bg); color: var(--yellow); border: 1px solid #3A2A08; }
+.temp-cold { background: var(--blue-bg); color: var(--blue); border: 1px solid #0F2035; }
+
+.estado-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  background: var(--surface3);
+  color: var(--text2);
+}
+
+.dias-badge {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text3);
+}
+
+.dias-badge.danger { color: var(--red); }
+
+/* FICHA */
+.ficha {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ficha-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.ficha-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--red-bg);
+  border: 1px solid #3A1515;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--red);
+  flex-shrink: 0;
+}
+
+.ficha-name { font-size: 14px; font-weight: 600; }
+.ficha-meta { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+
+.ficha-body {
+  padding: 14px 16px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ficha-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.ficha-key { color: var(--text3); font-family: var(--mono); font-size: 10px; }
+.ficha-val { color: var(--text); font-weight: 500; }
+
+.ficha-section-title {
+  font-size: 9px;
+  color: var(--text3);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* CHAT */
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: var(--surface2);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.chat-msg {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.chat-msg .who {
+  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+
+.chat-msg.client .who { color: var(--text2); }
+.chat-msg.bot .who { color: var(--gold); }
+.chat-msg.ivan .who { color: var(--green); }
+
+.chat-msg .body {
+  color: var(--text);
+  background: var(--surface3);
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  max-width: 90%;
+}
+
+.chat-msg.bot .body { background: #1A1508; }
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+}
+
+.chat-input:focus { border-color: var(--gold); }
+.chat-input::placeholder { color: var(--text3); }
+
+/* INVENTARIO TABLE */
+.inv-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inv-table th {
+  font-size: 9px;
+  color: var(--text3);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.inv-table td {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.inv-table tr:last-child td { border-bottom: none; }
+.inv-table tr:hover td { background: var(--surface2); }
+.inv-table tr.stale td { background: var(--red-bg); }
+
+.car-img {
+  width: 48px;
+  height: 34px;
+  border-radius: 4px;
+  background: var(--surface3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.price-val { font-weight: 600; color: var(--green); font-family: var(--mono); font-size: 12px; }
+.margin-val { font-family: var(--mono); font-size: 11px; }
+.margin-good { color: var(--green); }
+.margin-low { color: var(--yellow); }
+
+/* LOADING */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text3);
+  font-size: 12px;
+  font-family: var(--mono);
+  gap: 8px;
+}
+
+.dot-pulse {
+  display: flex;
+  gap: 4px;
+}
+
+.dot-pulse span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+.dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulse {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+/* TABS */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  padding: 10px 16px;
+  font-size: 11px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.tab:hover { color: var(--text2); }
+.tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* EMPTY */
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+/* MODAL */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title { font-size: 13px; font-weight: 600; }
+.modal-close { color: var(--text3); cursor: pointer; font-size: 18px; }
+.modal-close:hover { color: var(--text); }
+
+.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+
+.form-label {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.form-input {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.form-input:focus { border-color: var(--gold); }
+.form-input::placeholder { color: var(--text3); }
+
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* SEARCH */
+.search-input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+  width: 200px;
+}
+
+.search-input:focus { border-color: var(--gold); }
+.search-input::placeholder { color: var(--text3); }
+
+/* FILTER */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  color: var(--text3);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filter-chip:hover { color: var(--text); border-color: var(--text2); }
+.filter-chip.active { color: var(--gold); border-color: var(--gold); background: rgba(201,162,77,0.08); }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* PAGES */
+.page { display: none; flex-direction: column; gap: 16px; }
+.page.active { display: flex; }
+
+/* STATUS DOT */
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 2s ease-in-out infinite; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@media (max-width: 900px) {
+  .sidebar { width: 56px; }
+  .sidebar-logo .dealer-name, .sidebar-logo .dealer-sub, .nav-label, .nav-item span, .sidebar-footer .urus-tag { display: none; }
+  .sidebar-logo .gold-bar { display: none; }
+  .nav-item { justify-content: center; padding: 12px; }
+  .main-grid { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="gold-bar"></div>
+    <div class="dealer-name">Ivan Auto Imports</div>
+    <div class="dealer-sub">Dealer OS · v1.0</div>
+  </div>
+  <nav class="nav-section">
+    <div class="nav-label">Principal</div>
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="nav-item" onclick="showPage('prospectos')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+      <span>Prospectos</span>
+      <span class="nav-badge" id="leads-badge">0</span>
+    </div>
+    <div class="nav-item" onclick="showPage('inventario')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 11l2-6h10l2 6"/><rect x="1" y="11" width="14" height="3" rx="1"/><circle cx="4" cy="14" r="1" fill="currentColor"/><circle cx="12" cy="14" r="1" fill="currentColor"/></svg>
+      <span>Inventario</span>
+    </div>
+    <div class="nav-item" onclick="showPage('mensajes')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12v9H2z" rx="1"/><path d="M5 13l3 2 3-2"/></svg>
+      <span>Mensajes FB</span>
+    </div>
+    <div class="nav-label">Análisis</div>
+    <div class="nav-item" onclick="showPage('reporte')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="10" width="3" height="5"/><rect x="6" y="6" width="3" height="9"/><rect x="11" y="2" width="3" height="13"/></svg>
+      <span>Reporte</span>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+      <div class="status-dot live"></div>
+      <span style="font-size:10px; color:var(--text3); font-family:var(--mono);">Sistema activo</span>
+    </div>
+    <div class="urus-tag">Powered by URUS</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-subtitle" id="page-date"></div>
+    </div>
+    <div class="topbar-right" id="topbar-actions"></div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div id="dash-alert" style="display:none;" class="alert">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1L1 14h14L8 1z"/><path d="M8 6v4M8 12h0"/></svg>
+        <span id="dash-alert-text"></span>
+      </div>
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Cargando...</div><div class="kpi-value" style="color:var(--text3)">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Cargando...</div><div class="kpi-value" style="color:var(--text3)">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Cargando...</div><div class="kpi-value" style="color:var(--text3)">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Cargando...</div><div class="kpi-value" style="color:var(--text3)">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Cargando...</div><div class="kpi-value" style="color:var(--text3)">—</div></div>
+      </div>
+      <div class="main-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Leads recientes</div>
+            <div class="card-action" onclick="showPage('prospectos')">Ver todos →</div>
+          </div>
+          <div id="dash-leads-body">
+            <div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Ficha rápida</div>
+          </div>
+          <div id="dash-ficha">
+            <div class="empty">Selecciona un lead para ver su ficha</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Inventario — alertas</div>
+          <div class="card-action" onclick="showPage('inventario')">Ver inventario →</div>
+        </div>
+        <div id="dash-inv-body">
+          <div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROSPECTOS -->
+    <div class="page" id="page-prospectos">
+      <div class="card" style="flex:1;">
+        <div class="card-header">
+          <div class="card-title">Todos los prospectos</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input class="search-input" placeholder="Buscar nombre o teléfono..." id="leads-search" oninput="filterLeads()">
+          </div>
+        </div>
+        <div class="filter-bar">
+          <div class="filter-chip active" onclick="setFilter('todos',this)">Todos</div>
+          <div class="filter-chip" onclick="setFilter('Nuevo',this)">Nuevos</div>
+          <div class="filter-chip" onclick="setFilter('Interesado',this)">Interesados</div>
+          <div class="filter-chip" onclick="setFilter('Negociando',this)">Negociando</div>
+          <div class="filter-chip" onclick="setFilter('Vendido',this)">Vendidos</div>
+          <div class="filter-chip" onclick="setFilter('hot',this)">🔴 Calientes</div>
+        </div>
+        <div id="prospectos-body">
+          <div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTARIO -->
+    <div class="page" id="page-inventario">
+      <div class="card" style="flex:1;">
+        <div class="card-header">
+          <div class="card-title">Inventario — <span id="inv-count">0</span> vehículos</div>
+          <button class="btn btn-primary" onclick="openNewVehicle()">+ Agregar vehículo</button>
+        </div>
+        <div id="inventario-body">
+          <div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MENSAJES FB -->
+    <div class="page" id="page-mensajes">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Mensajes Facebook</div>
+          <div style="font-size:11px; color:var(--text3); font-family:var(--mono);">Bot activo via ManyChat</div>
+        </div>
+        <div id="mensajes-body">
+          <div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTE -->
+    <div class="page" id="page-reporte">
+      <div class="kpi-grid" id="reporte-kpis" style="grid-template-columns:repeat(4,1fr);">
+        <div class="kpi-card"><div class="kpi-label">Cargando...</div><div class="kpi-value" style="color:var(--text3)">—</div></div>
+      </div>
+      <div class="main-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="card" id="reporte-estados">
+          <div class="card-header"><div class="card-title">Leads por estado</div></div>
+          <div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div></div>
+        </div>
+        <div class="card" id="reporte-vehiculos">
+          <div class="card-header"><div class="card-title">Vehículos más solicitados</div></div>
+          <div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL NUEVO PROSPECTO -->
+<div class="modal-overlay" id="modal-prospecto" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nuevo Prospecto</div>
+      <div class="modal-close" onclick="document.getElementById('modal-prospecto').style.display='none'">×</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Nombre</div>
+          <input class="form-input" id="p-nombre" placeholder="Carlos Rodríguez">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Teléfono</div>
+          <input class="form-input" id="p-telefono" placeholder="787-555-1234">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Vehículo de interés</div>
+          <input class="form-input" id="p-vehiculo" placeholder="Ram 1500 4x4">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Presupuesto ($)</div>
+          <input class="form-input" type="number" id="p-presupuesto" placeholder="25000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Pronto ($)</div>
+          <input class="form-input" type="number" id="p-pronto" placeholder="3000">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Crédito</div>
+          <select class="form-input" id="p-credito">
+            <option>Desconocido</option>
+            <option>Excelente</option>
+            <option>Bueno</option>
+            <option>Regular</option>
+            <option>Malo</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Fuente</div>
+          <select class="form-input" id="p-fuente">
+            <option>Facebook DM</option>
+            <option>Facebook Lead Form</option>
+            <option>Walk-in</option>
+            <option>Referido</option>
+            <option>Llamada</option>
+            <option>WhatsApp</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Temperatura</div>
+          <select class="form-input" id="p-temperatura">
+            <option>Frío</option>
+            <option>Tibio</option>
+            <option>Caliente</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Nota inicial</div>
+        <textarea class="form-input" id="p-nota" rows="2" placeholder="Notas adicionales..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-prospecto').style.display='none'">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProspecto()">Guardar prospecto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO VEHÍCULO -->
+<div class="modal-overlay" id="modal-vehiculo" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-vehiculo-title">Agregar Vehículo</div>
+      <div class="modal-close" onclick="document.getElementById('modal-vehiculo').style.display='none'">×</div>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="v-id">
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Marca</div>
+          <input class="form-input" id="v-marca" placeholder="Ram">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Modelo</div>
+          <input class="form-input" id="v-modelo" placeholder="1500 4x4">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Año</div>
+          <input class="form-input" type="number" id="v-año" placeholder="2022">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Color</div>
+          <input class="form-input" id="v-color" placeholder="Negro">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Precio venta ($)</div>
+          <input class="form-input" type="number" id="v-precio" placeholder="26900">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Precio compra ($)</div>
+          <input class="form-input" type="number" id="v-compra" placeholder="22000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Millaje</div>
+          <input class="form-input" type="number" id="v-millaje" placeholder="50000">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Estado</div>
+          <select class="form-input" id="v-estado">
+            <option>Disponible</option>
+            <option>Apartado</option>
+            <option>En negociación</option>
+            <option>Vendido</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Financiamiento</div>
+          <select class="form-input" id="v-financiamiento">
+            <option>No</option>
+            <option>Sí</option>
+            <option>Pendiente</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">URL de foto</div>
+          <input class="form-input" id="v-foto" placeholder="https://...">
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Notas</div>
+        <textarea class="form-input" id="v-notas" rows="2" placeholder="Condición, extras, historial..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-vehiculo').style.display='none'">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveVehiculo()">Guardar vehículo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://www.urusverify.com';
+const KEY = 'ivan2026';
+const H = { 'x-dealer-key': KEY, 'Content-Type': 'application/json' };
+
+let allLeads = [];
+let allInventory = [];
+let currentFilter = 'todos';
+
+function fmt(n) {
+  if (!n && n !== 0) return '—';
+  return '$' + Number(n).toLocaleString();
+}
+
+function initDate() {
+  const d = new Date();
+  const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  document.getElementById('page-date').textContent = d.toLocaleDateString('es-PR', opts);
+}
+
+function tempBadge(t) {
+  if (t === 'Caliente') return '<span class="temp-badge temp-hot">● Caliente</span>';
+  if (t === 'Tibio') return '<span class="temp-badge temp-warm">● Tibio</span>';
+  return '<span class="temp-badge temp-cold">● Frío</span>';
+}
+
+function initials(name) {
+  if (!name) return '?';
+  return name.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+}
+
+function daysSince(dateStr) {
+  if (!dateStr) return 0;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  return Math.floor(diff / 86400000);
+}
+
+async function fetchLeads() {
+  try {
+    const r = await fetch(API + '/v1/dealer/prospects', { headers: H });
+    const d = await r.json();
+    allLeads = d.prospects || [];
+    document.getElementById('leads-badge').textContent = allLeads.length;
+    renderDashLeads();
+    renderProspectos();
+    renderKPIs();
+    renderAlert();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function fetchInventory() {
+  try {
+    const r = await fetch(API + '/v1/dealer/inventory', { headers: H });
+    const d = await r.json();
+    allInventory = d.inventory || [];
+    document.getElementById('inv-count').textContent = allInventory.length;
+    renderInventario();
+    renderDashInv();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function renderKPIs() {
+  const hoy = new Date().toDateString();
+  const leadsHoy = allLeads.filter(l => new Date(l.created_at).toDateString() === hoy).length;
+  const calientes = allLeads.filter(l => l.temperatura === 'Caliente').length;
+  const negociando = allLeads.filter(l => l.estado === 'Negociando' || l.estado === 'Cita coordinada').length;
+  const vendidos = allLeads.filter(l => l.estado === 'Vendido').length;
+  const disponibles = allInventory.filter(v => v.estado_venta === 'Disponible' || v.estado === 'Disponible').length;
+
+  const totalInversion = allInventory.reduce((s, v) => s + (Number(v.precio_compra) || 0), 0);
+  const ganancia = allInventory.reduce((s, v) => {
+    const m = (Number(v.precio) || 0) - (Number(v.precio_compra) || 0);
+    return s + (m > 0 ? m : 0);
+  }, 0);
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Leads hoy</div>
+      <div class="kpi-value">${leadsHoy}</div>
+      <div class="kpi-sub">Total: ${allLeads.length}</div>
+    </div>
+    <div class="kpi-card danger">
+      <div class="kpi-label">Calientes</div>
+      <div class="kpi-value">${calientes}</div>
+      <div class="kpi-sub">Atención urgente</div>
+    </div>
+    <div class="kpi-card warning">
+      <div class="kpi-label">En proceso</div>
+      <div class="kpi-value">${negociando}</div>
+      <div class="kpi-sub">Negociando + Cita</div>
+    </div>
+    <div class="kpi-card success">
+      <div class="kpi-label">Vendidos</div>
+      <div class="kpi-value">${vendidos}</div>
+      <div class="kpi-sub">Total cerrados</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-label">Inventario</div>
+      <div class="kpi-value">${disponibles}</div>
+      <div class="kpi-sub">${fmt(ganancia)} potencial</div>
+    </div>
+  `;
+}
+
+function renderAlert() {
+  const calientes = allLeads.filter(l => l.temperatura === 'Caliente');
+  const sinContacto = calientes.filter(l => daysSince(l.updated_at) >= 2);
+  const el = document.getElementById('dash-alert');
+  if (sinContacto.length > 0) {
+    el.style.display = 'flex';
+    const names = sinContacto.map(l => l.nombre || 'Sin nombre').join(', ');
+    document.getElementById('dash-alert-text').textContent =
+      `${sinContacto.length} lead(s) caliente(s) sin contacto en más de 2 días — ${names}`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function renderDashLeads() {
+  const recent = allLeads.slice(0, 8);
+  if (recent.length === 0) {
+    document.getElementById('dash-leads-body').innerHTML = '<div class="empty">Sin prospectos aún. Los leads de Facebook aparecerán aquí.</div>';
+    return;
+  }
+  let html = '<table class="leads-table">';
+  html += '<thead><tr><th>Prospecto</th><th>Vehículo</th><th>Presupuesto</th><th>Temperatura</th><th>Estado</th></tr></thead><tbody>';
+  recent.forEach(l => {
+    html += `<tr onclick="showFicha('${l.id}')">
+      <td>
+        <div class="lead-name">${l.nombre || '—'}</div>
+        <div class="lead-vehicle">${l.telefono || '—'}</div>
+      </td>
+      <td style="font-size:12px;">${l.vehiculo_interes || '—'}</td>
+      <td style="font-family:var(--mono); font-size:11px;">${fmt(l.presupuesto)}</td>
+      <td>${tempBadge(l.temperatura || 'Frío')}</td>
+      <td><span class="estado-badge">${l.estado || 'Nuevo'}</span></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('dash-leads-body').innerHTML = html;
+}
+
+function showFicha(id) {
+  const l = allLeads.find(x => x.id === id);
+  if (!l) return;
+  const ini = initials(l.nombre);
+  const dias = daysSince(l.updated_at);
+  document.getElementById('dash-ficha').innerHTML = `
+    <div class="ficha">
+      <div class="ficha-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="ficha-avatar">${ini}</div>
+          <div>
+            <div class="ficha-name">${l.nombre || 'Sin nombre'}</div>
+            <div class="ficha-meta">${l.telefono || '—'} · ${l.fuente || 'Facebook DM'}</div>
+          </div>
+          <div style="margin-left:auto;">${tempBadge(l.temperatura || 'Frío')}</div>
+        </div>
+      </div>
+      <div class="ficha-body">
+        <div class="ficha-row"><span class="ficha-key">Vehículo</span><span class="ficha-val">${l.vehiculo_interes || '—'}</span></div>
+        <div class="ficha-row"><span class="ficha-key">Presupuesto</span><span class="ficha-val">${fmt(l.presupuesto)}</span></div>
+        <div class="ficha-row"><span class="ficha-key">Pronto</span><span class="ficha-val">${fmt(l.pronto)}</span></div>
+        <div class="ficha-row"><span class="ficha-key">Crédito</span><span class="ficha-val">${l.credito || '—'}</span></div>
+        <div class="ficha-row"><span class="ficha-key">Trade-in</span><span class="ficha-val">${l.trade_in ? 'Sí — ' + (l.vehiculo_trade_in || '') : 'No'}</span></div>
+        <div class="ficha-row"><span class="ficha-key">Estado</span><span class="ficha-val"><span class="estado-badge">${l.estado || 'Nuevo'}</span></span></div>
+        <div class="ficha-row"><span class="ficha-key">Sin contacto</span><span class="ficha-val" style="color:${dias > 2 ? 'var(--red)' : 'var(--text)'}">${dias} día(s)</span></div>
+        <div class="ficha-row"><span class="ficha-key">Próxima acción</span><span class="ficha-val" style="font-size:11px;">${l.proxima_accion || '—'}</span></div>
+        ${l.nota ? `<div style="padding:8px; background:var(--surface2); border-radius:6px; font-size:11px; color:var(--text2);">${l.nota}</div>` : ''}
+
+        <div class="ficha-section-title">Conversación Facebook</div>
+        <div class="chat-thread" id="chat-${l.id}">
+          <div class="chat-msg bot">
+            <div class="who">Bot URUS</div>
+            <div class="body">¡Hola! Soy el asistente de Ivan Auto Imports 🚗 ¿En cuál vehículo tienes interés?</div>
+          </div>
+          ${l.vehiculo_interes ? `<div class="chat-msg client"><div class="who">Cliente</div><div class="body">Hola, me interesa el ${l.vehiculo_interes}</div></div>` : ''}
+          ${l.last_message ? `<div class="chat-msg client"><div class="who">Último mensaje</div><div class="body">${l.last_message}</div></div>` : ''}
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="reply-${l.id}" placeholder="Escribir respuesta manual a ${l.nombre || 'cliente'}...">
+        <button class="btn btn-primary" onclick="sendReply('${l.id}')">Enviar</button>
+      </div>
+    </div>
+  `;
+}
+
+function sendReply(id) {
+  const inp = document.getElementById('reply-' + id);
+  const msg = inp.value.trim();
+  if (!msg) return;
+  const thread = document.getElementById('chat-' + id);
+  if (thread) {
+    thread.innerHTML += `<div class="chat-msg ivan"><div class="who">Ivan</div><div class="body">${msg}</div></div>`;
+    thread.scrollTop = thread.scrollHeight;
+  }
+  inp.value = '';
+}
+
+function renderProspectos() {
+  let leads = [...allLeads];
+  const q = (document.getElementById('leads-search')?.value || '').toLowerCase();
+  if (q) leads = leads.filter(l => (l.nombre||'').toLowerCase().includes(q) || (l.telefono||'').includes(q));
+  if (currentFilter !== 'todos') {
+    if (currentFilter === 'hot') leads = leads.filter(l => l.temperatura === 'Caliente');
+    else leads = leads.filter(l => l.estado === currentFilter);
+  }
+
+  if (leads.length === 0) {
+    document.getElementById('prospectos-body').innerHTML = '<div class="empty">Sin prospectos que mostrar.</div>';
+    return;
+  }
+
+  let html = '<table class="leads-table">';
+  html += `<thead><tr>
+    <th>Prospecto</th><th>Teléfono</th><th>Vehículo</th>
+    <th>Presupuesto</th><th>Crédito</th><th>Temperatura</th>
+    <th>Estado</th><th>Sin contacto</th><th>Próxima acción</th>
+  </tr></thead><tbody>`;
+  leads.forEach(l => {
+    const dias = daysSince(l.updated_at);
+    html += `<tr onclick="showPage('dashboard'); setTimeout(()=>showFicha('${l.id}'),100)">
+      <td><div class="lead-name">${l.nombre || '—'}</div><div class="lead-vehicle">${l.fuente || 'Facebook DM'}</div></td>
+      <td style="font-family:var(--mono); font-size:11px;">${l.telefono || '—'}</td>
+      <td>${l.vehiculo_interes || '—'}</td>
+      <td style="font-family:var(--mono); font-size:11px;">${fmt(l.presupuesto)}</td>
+      <td style="font-size:11px;">${l.credito || '—'}</td>
+      <td>${tempBadge(l.temperatura || 'Frío')}</td>
+      <td><span class="estado-badge">${l.estado || 'Nuevo'}</span></td>
+      <td><span class="dias-badge ${dias > 2 ? 'danger' : ''}">${dias}d</span></td>
+      <td style="font-size:11px; color:var(--text2); max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${l.proxima_accion || '—'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('prospectos-body').innerHTML = html;
+}
+
+function filterLeads() { renderProspectos(); }
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderProspectos();
+}
+
+function renderInventario() {
+  if (allInventory.length === 0) {
+    document.getElementById('inventario-body').innerHTML = '<div class="empty">Sin vehículos en inventario.</div>';
+    return;
+  }
+  let html = '<div style="overflow-x:auto;"><table class="inv-table">';
+  html += `<thead><tr>
+    <th>Foto</th><th>Vehículo</th><th>Año</th><th>Millaje</th>
+    <th>Precio</th><th>Compra</th><th>Margen</th>
+    <th>Estado</th><th>Financ.</th><th>Entrada</th><th>Notas</th>
+  </tr></thead><tbody>`;
+
+  allInventory.forEach(v => {
+    const dias = daysSince(v.fecha_entrada || v.created_at);
+    const stale = dias > 45;
+    const precio = Number(v.precio) || 0;
+    const compra = Number(v.precio_compra) || 0;
+    const margen = compra > 0 ? precio - compra : null;
+    html += `<tr class="${stale ? 'stale' : ''}" onclick="editVehiculo('${v.id}')">
+      <td>
+        ${v.foto_url
+          ? `<img src="${v.foto_url}" style="width:48px;height:34px;object-fit:cover;border-radius:4px;" onerror="this.outerHTML='<div class=\\'car-img\\'>🚗</div>'">`
+          : '<div class="car-img">🚗</div>'}
+      </td>
+      <td><div style="font-weight:500;font-size:13px;">${v.marca || ''} ${v.modelo || ''}</div><div style="font-size:11px;color:var(--text3);">${v.color || ''}</div></td>
+      <td style="font-family:var(--mono);font-size:12px;">${v.año || '—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${v.millaje ? Number(v.millaje).toLocaleString() : '—'}</td>
+      <td class="price-val">${fmt(v.precio)}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text3);">${compra > 0 ? fmt(compra) : '—'}</td>
+      <td class="margin-val ${margen !== null ? (margen > 3000 ? 'margin-good' : 'margin-low') : ''}">${margen !== null ? fmt(margen) : '—'}</td>
+      <td><span class="estado-badge">${v.estado_venta || v.estado || 'Disponible'}</span></td>
+      <td style="font-size:11px;color:var(--text3);">${v.financiamiento || 'No'}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:${stale?'var(--red)':'var(--text3)'};">${dias}d ${stale?'⚠':''}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.notas||'—'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('inventario-body').innerHTML = html;
+}
+
+function renderDashInv() {
+  const stale = allInventory.filter(v => daysSince(v.fecha_entrada || v.created_at) > 45);
+  if (stale.length === 0) {
+    document.getElementById('dash-inv-body').innerHTML = '<div class="empty" style="padding:20px;">Todos los vehículos dentro del rango de días. ✓</div>';
+    return;
+  }
+  let html = '<table class="inv-table"><thead><tr><th>Vehículo</th><th>Precio</th><th>Días en lote</th><th>Estado</th></tr></thead><tbody>';
+  stale.forEach(v => {
+    const dias = daysSince(v.fecha_entrada || v.created_at);
+    html += `<tr><td>${v.marca} ${v.modelo} ${v.año || ''}</td><td class="price-val">${fmt(v.precio)}</td><td style="color:var(--red);font-family:var(--mono);">${dias} días</td><td><span class="estado-badge">${v.estado_venta||v.estado||'Disponible'}</span></td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('dash-inv-body').innerHTML = html;
+}
+
+function renderMensajes() {
+  let html = '';
+  if (allLeads.length === 0) {
+    html = '<div class="empty">Cuando lleguen mensajes de Facebook aparecerán aquí con la conversación completa.</div>';
+  } else {
+    html = '<table class="leads-table"><thead><tr><th>Prospecto</th><th>Último mensaje</th><th>Origen</th><th>Temperatura</th><th></th></tr></thead><tbody>';
+    allLeads.forEach(l => {
+      html += `<tr>
+        <td><div class="lead-name">${l.nombre||'—'}</div><div class="lead-vehicle">${l.telefono||'—'}</div></td>
+        <td style="font-size:11px;color:var(--text2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${l.last_message||'Sin mensaje aún'}</td>
+        <td style="font-size:11px;">${l.origen_lead||l.fuente||'Facebook DM'}</td>
+        <td>${tempBadge(l.temperatura||'Frío')}</td>
+        <td><button class="btn btn-ghost" onclick="showPage('dashboard');setTimeout(()=>showFicha('${l.id}'),100)" style="font-size:11px;padding:4px 10px;">Ver ficha</button></td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+  document.getElementById('mensajes-body').innerHTML = html;
+}
+
+function renderReporte() {
+  const total = allLeads.length;
+  const vendidos = allLeads.filter(l=>l.estado==='Vendido').length;
+  const tasa = total > 0 ? Math.round((vendidos/total)*100) : 0;
+  const sinSeg = allLeads.filter(l=>l.fecha_seguimiento && new Date(l.fecha_seguimiento) < new Date()).length;
+  const inv = allInventory.length;
+  const disponibles = allInventory.filter(v=>v.estado_venta==='Disponible'||v.estado==='Disponible').length;
+
+  document.getElementById('reporte-kpis').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Total leads</div><div class="kpi-value">${total}</div></div>
+    <div class="kpi-card success"><div class="kpi-label">Tasa conversión</div><div class="kpi-value">${tasa}%</div><div class="kpi-sub">${vendidos} vendidos</div></div>
+    <div class="kpi-card danger"><div class="kpi-label">Seguimiento vencido</div><div class="kpi-value">${sinSeg}</div></div>
+    <div class="kpi-card gold"><div class="kpi-label">Inventario total</div><div class="kpi-value">${inv}</div><div class="kpi-sub">${disponibles} disponibles</div></div>
+  `;
+
+  const estados = {};
+  allLeads.forEach(l => {
+    const e = l.estado || 'Nuevo';
+    estados[e] = (estados[e] || 0) + 1;
+  });
+
+  let estadosHtml = '<table class="leads-table">';
+  estadosHtml += '<thead><tr><th>Estado</th><th>Cantidad</th><th>%</th></tr></thead><tbody>';
+  Object.entries(estados).sort((a,b)=>b[1]-a[1]).forEach(([e,n]) => {
+    const pct = total > 0 ? Math.round((n/total)*100) : 0;
+    estadosHtml += `<tr><td><span class="estado-badge">${e}</span></td><td style="font-family:var(--mono);">${n}</td><td style="font-family:var(--mono);color:var(--text3);">${pct}%</td></tr>`;
+  });
+  if (Object.keys(estados).length === 0) estadosHtml += '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:20px;">Sin datos</td></tr>';
+  estadosHtml += '</tbody></table>';
+  document.getElementById('reporte-estados').innerHTML = '<div class="card-header"><div class="card-title">Leads por estado</div></div>' + estadosHtml;
+
+  const vehiculos = {};
+  allLeads.forEach(l => {
+    if (l.vehiculo_interes) {
+      vehiculos[l.vehiculo_interes] = (vehiculos[l.vehiculo_interes] || 0) + 1;
+    }
+  });
+
+  let vehHtml = '<table class="leads-table">';
+  vehHtml += '<thead><tr><th>Vehículo solicitado</th><th>Veces</th></tr></thead><tbody>';
+  const sorted = Object.entries(vehiculos).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  sorted.forEach(([v,n]) => {
+    vehHtml += `<tr><td>${v}</td><td style="font-family:var(--mono);color:var(--gold);">${n}</td></tr>`;
+  });
+  if (sorted.length === 0) vehHtml += '<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:20px;">Sin datos</td></tr>';
+  vehHtml += '</tbody></table>';
+  document.getElementById('reporte-vehiculos').innerHTML = '<div class="card-header"><div class="card-title">Vehículos más solicitados</div></div>' + vehHtml;
+}
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+
+  const titles = {
+    dashboard: 'Dashboard',
+    prospectos: 'Prospectos',
+    inventario: 'Inventario',
+    mensajes: 'Mensajes Facebook',
+    reporte: 'Reporte'
+  };
+  document.getElementById('page-title').textContent = titles[page] || page;
+
+  const navMap = { dashboard: 0, prospectos: 1, inventario: 2, mensajes: 3, reporte: 4 };
+  const navItems = document.querySelectorAll('.nav-item');
+  if (navMap[page] !== undefined) navItems[navMap[page]]?.classList.add('active');
+
+  const actions = document.getElementById('topbar-actions');
+  if (page === 'prospectos') {
+    actions.innerHTML = '<button class="btn btn-primary" onclick="document.getElementById(\'modal-prospecto\').style.display=\'flex\'">+ Nuevo prospecto</button>';
+  } else if (page === 'inventario') {
+    actions.innerHTML = '';
+  } else {
+    actions.innerHTML = '';
+  }
+
+  if (page === 'mensajes') renderMensajes();
+  if (page === 'reporte') renderReporte();
+}
+
+function openNewVehicle() {
+  document.getElementById('v-id').value = '';
+  document.getElementById('modal-vehiculo-title').textContent = 'Agregar Vehículo';
+  ['v-marca','v-modelo','v-año','v-color','v-precio','v-compra','v-millaje','v-notas','v-foto'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('v-estado').value = 'Disponible';
+  document.getElementById('v-financiamiento').value = 'No';
+  document.getElementById('modal-vehiculo').style.display = 'flex';
+}
+
+function editVehiculo(id) {
+  const v = allInventory.find(x => x.id === id);
+  if (!v) return;
+  document.getElementById('v-id').value = v.id;
+  document.getElementById('modal-vehiculo-title').textContent = 'Editar Vehículo';
+  document.getElementById('v-marca').value = v.marca || '';
+  document.getElementById('v-modelo').value = v.modelo || '';
+  document.getElementById('v-año').value = v.año || '';
+  document.getElementById('v-color').value = v.color || '';
+  document.getElementById('v-precio').value = v.precio || '';
+  document.getElementById('v-compra').value = v.precio_compra || '';
+  document.getElementById('v-millaje').value = v.millaje || '';
+  document.getElementById('v-notas').value = v.notas || '';
+  document.getElementById('v-foto').value = v.foto_url || '';
+  document.getElementById('v-estado').value = v.estado_venta || v.estado || 'Disponible';
+  document.getElementById('v-financiamiento').value = v.financiamiento || 'No';
+  document.getElementById('modal-vehiculo').style.display = 'flex';
+}
+
+async function saveVehiculo() {
+  const body = {
+    marca: document.getElementById('v-marca').value,
+    modelo: document.getElementById('v-modelo').value,
+    año: Number(document.getElementById('v-año').value) || null,
+    color: document.getElementById('v-color').value,
+    precio: Number(document.getElementById('v-precio').value) || null,
+    precio_compra: Number(document.getElementById('v-compra').value) || null,
+    millaje: Number(document.getElementById('v-millaje').value) || null,
+    estado_venta: document.getElementById('v-estado').value,
+    financiamiento: document.getElementById('v-financiamiento').value,
+    foto_url: document.getElementById('v-foto').value || null,
+    notas: document.getElementById('v-notas').value || null
+  };
+  try {
+    await fetch(API + '/v1/dealer/inventory', { method: 'POST', headers: H, body: JSON.stringify(body) });
+    document.getElementById('modal-vehiculo').style.display = 'none';
+    await fetchInventory();
+  } catch(e) { alert('Error al guardar vehículo'); }
+}
+
+async function saveProspecto() {
+  const body = {
+    nombre: document.getElementById('p-nombre').value,
+    telefono: document.getElementById('p-telefono').value,
+    vehiculo_interes: document.getElementById('p-vehiculo').value,
+    presupuesto: Number(document.getElementById('p-presupuesto').value) || null,
+    pronto: Number(document.getElementById('p-pronto').value) || null,
+    credito: document.getElementById('p-credito').value,
+    fuente: document.getElementById('p-fuente').value,
+    temperatura: document.getElementById('p-temperatura').value,
+    nota: document.getElementById('p-nota').value || null
+  };
+  try {
+    await fetch(API + '/v1/dealer/prospects', { method: 'POST', headers: H, body: JSON.stringify(body) });
+    document.getElementById('modal-prospecto').style.display = 'none';
+    await fetchLeads();
+  } catch(e) { alert('Error al guardar prospecto'); }
+}
+
+initDate();
+fetchLeads();
+fetchInventory();
+setInterval(() => { fetchLeads(); fetchInventory(); }, 30000);
+</script>
+</body>
+</html>
