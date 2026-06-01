@@ -7471,8 +7471,11 @@ if (!prompt || !prompt.trim()) {
   return;
 }
     
-   const output = await callAI(
-  [{ role: "user", content: prompt }],
+  const output = await callAI(
+  [
+    { role: "system", content: "Eres JARVIS, inteligencia estratégica soberana de Josuan Bayón. Responde siempre en español." },
+    { role: "user", content: String(prompt).trim() }
+  ],
   0.8
 );
 
