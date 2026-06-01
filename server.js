@@ -3223,6 +3223,16 @@ await pool.query(`
   );
 `);
 
+await pool.query(`ALTER TABLE dealer_inventory ADD COLUMN IF NOT EXISTS precio_compra NUMERIC;`);
+  await pool.query(`ALTER TABLE dealer_inventory ADD COLUMN IF NOT EXISTS fecha_entrada DATE DEFAULT CURRENT_DATE;`);
+  await pool.query(`ALTER TABLE dealer_inventory ADD COLUMN IF NOT EXISTS estado_venta TEXT DEFAULT 'Disponible';`);
+  await pool.query(`ALTER TABLE dealer_inventory ADD COLUMN IF NOT EXISTS financiamiento TEXT DEFAULT 'No';`);
+  await pool.query(`ALTER TABLE dealer_inventory ADD COLUMN IF NOT EXISTS comprador TEXT;`);
+  await pool.query(`ALTER TABLE dealer_inventory ADD COLUMN IF NOT EXISTS foto_url TEXT;`);
+  await pool.query(`ALTER TABLE dealer_prospects ADD COLUMN IF NOT EXISTS temperatura TEXT DEFAULT 'Frío';`);
+  await pool.query(`ALTER TABLE dealer_prospects ADD COLUMN IF NOT EXISTS origen_lead TEXT DEFAULT 'Facebook DM';`);
+  await pool.query(`ALTER TABLE dealer_prospects ADD COLUMN IF NOT EXISTS dias_sin_contacto INT DEFAULT 0;`);
+  
 console.log("✅ Dealer OS tables ready");
   
   
