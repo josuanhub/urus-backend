@@ -7288,6 +7288,116 @@ app.post('/v1/dealer/inventory/bulk', dealerAuth, async (req, res) => {
   }
 });
 
+// ---------- Facebook Webhook — DealerFlow ----------
+
+const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || 'dealerflow2026';
+
+app.get('/webhook/facebook', (req, res) => {
+  const mode      = req.query['hub.mode'];
+  const token     = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    console.log('FB_WEBHOOK_VERIFIED');
+    return res.status(200).send(challenge);
+  }
+  return res.sendStatus(403);
+});
+
+app.post('/webhook/facebook', async (req, res) => {
+  res.sendStatus(200);
+  const body = req.body;
+  if (body.object !== 'page') return;
+
+  for (const entry of body.entry || []) {
+    const pageId = entry.id;
+    const dealerRes = await pool.query(
+      `SELECT * FROM dealers WHERE fb_page_id = $1 LIMIT 1`,
+      [pageId]
+    );
+    if (!dealerRes.rows.length) continue;
+    const dealer = dealerRes.rows[0];
+
+    for (const event of entry.messaging || []) {
+      if (!event.message || event.message.is_echo) continue;
+      const senderId = event.sender.id;
+      const text = (event.message.text || '').trim();
+      await handleBotMessage(dealer, senderId, text);
+    }
+  }
+});
+
+const botState = {};
+
+async function handleBotMessage(dealer, senderId, text) {
+  if (!botState[senderId]) botState[senderId] = { step: 0, data: {} };
+  const state = botState[senderId];
+
+  const steps = [
+    { field: null,               msg: `Hola, gracias por contactar a ${dealer.nombre}.\n\n¿Qué vehículo te interesa?\nEjemplo: Toyota Corolla, Ram 1500, SUV` },
+    { field: 'vehiculo_interes', msg: '💰 ¿Cuál es tu presupuesto?\nEjemplo: $15,000 / $25,000 / $40,000' },
+    { field: 'presupuesto',      msg: '🏦 ¿Cuánto tienes para el pronto?\nEjemplo: $1,000 / $3,000 / $5,000' },
+    { field: 'pronto',           msg: '📋 ¿Cómo está tu crédito?\nExcelente / Bueno / Regular / Sin crédito' },
+    { field: 'credito',          msg: '🔄 ¿Tienes vehículo para trade-in?\nSí o No' },
+    { field: 'trade_in',         msg: '👤 ¿Cuál es tu nombre completo?' },
+    { field: 'nombre',           msg: '📱 ¿Cuál es tu número de teléfono?' },
+    { field: 'telefono',         msg: null }
+  ];
+
+  if (state.step > 0 && steps[state.step - 1].field) {
+    state.data[steps[state.step - 1].field] = text;
+  }
+
+  if (state.step === steps.length - 1) {
+    state.data['telefono'] = text;
+    try {
+      await pool.query(
+        `INSERT INTO dealer_prospects 
+         (dealer_key, nombre, telefono, vehiculo_interes, presupuesto, pronto, credito, trade_in, fuente, temperatura, estado)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [
+          dealer.dealer_key,
+          state.data.nombre        || 'No especificado',
+          state.data.telefono      || 'No especificado',
+          state.data.vehiculo_interes || 'No especificado',
+          state.data.presupuesto   || 'No especificado',
+          state.data.pronto        || 'No especificado',
+          state.data.credito       || 'No especificado',
+          state.data.trade_in      || 'No',
+          'Facebook DM', 'Tibio', 'Nuevo'
+        ]
+      );
+
+      const msg = `🚗 NUEVO LEAD — ${dealer.nombre}\n\nNombre: ${state.data.nombre}\nTeléfono: ${state.data.telefono}\nVehículo: ${state.data.vehiculo_interes}\nPresupuesto: ${state.data.presupuesto}\nPronto: ${state.data.pronto}\nCrédito: ${state.data.credito}\nTrade-in: ${state.data.trade_in}\n\nVer panel: https://www.urusverify.com/dealer-crm.html`;
+
+      await sendWhatsAppTextTwilio({ to: `+1${dealer.whatsapp}`, text: msg });
+
+    } catch (err) {
+      console.error('PROSPECT_SAVE_ERR', err.message);
+    }
+
+    await sendFBMessage(dealer.fb_page_access_token, senderId,
+      `Perfecto ${state.data.nombre || ''}, recibimos tu información. Un representante de ${dealer.nombre} te contactará pronto.`
+    );
+    delete botState[senderId];
+    return;
+  }
+
+  await sendFBMessage(dealer.fb_page_access_token, senderId, steps[state.step].msg);
+  state.step++;
+}
+
+async function sendFBMessage(pageAccessToken, recipientId, text) {
+  try {
+    await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${pageAccessToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient: { id: recipientId }, message: { text } })
+    });
+  } catch (err) {
+    console.error('FB_SEND_ERR', err.message);
+  }
+}
+
 // ---------- Boot ----------
 (async () => {
   try {
