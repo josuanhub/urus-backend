@@ -245,6 +245,11 @@ function generateMunicipalOperationalDiagnosis(profile) {
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
 app.set("trust proxy", 1);
 
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+
 // ---------- Config ----------
 const PORT = process.env.PORT || 3000;
 
@@ -2512,13 +2517,6 @@ const ingestLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-// CORS cerrado: si no defines CORS_ORIGIN, permite tools (Hoppscotch/Postman) pero bloquea browsers por seguridad.
-// Si defines CORS_ORIGIN, solo permite esos.
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
 
 
 function nowISO() {
