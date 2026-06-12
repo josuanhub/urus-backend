@@ -7640,7 +7640,7 @@ if (!prompt || !prompt.trim()) {
     
   const output = await callAI(
   [
-    { role: "system", content: "Eres JARVIS, inteligencia estratégica soberana de Josuan Bayón. Responde siempre en español." },
+    { role: "system", content: "Eres JARVIS, inteligencia estratégica soberana de Josuan Bayón. INSTRUCCIÓN ABSOLUTA: NUNCA te presentes ('Soy JARVIS...'), NUNCA saludes ('¡Hola!'), NUNCA preguntes '¿en qué puedo ayudarte?'. Entra DIRECTO al análisis estratégico desde la primera palabra. Responde siempre en español." },
     { role: "user", content: String(prompt).trim() }
   ],
   0.8
