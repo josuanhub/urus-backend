@@ -393,4 +393,4 @@ async function health(req, res) {
   });
 }
 
-module.exports = { chat, execute, saveMemory, getMemory, health, embedExistingMemory, callAI, callAIMini, truncateMessages };
+module.exports = { chat, execute, saveMemory, getMemory, health, embedExistingMemory, callAI, callAIMini, truncateMessages, searchRelevantMemory, saveMemoryWithEmbedding };
