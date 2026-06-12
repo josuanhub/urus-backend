@@ -5239,9 +5239,68 @@ Respond now:
   }
 });
 
+
+// ==============================
+// 🧹 JARVIS MEMORY CLEANUP — elimina respuestas genéricas de chatbot
+// ==============================
+app.post('/v1/jarvis/cleanup-memory', async (req, res) => {
+  try {
+    const GENERIC_PATTERNS = [
+      '¡Hola! Me alegra',
+      '¡Bienvenido!',
+      'Estoy aquí para',
+      '¿En qué puedo ayudarte',
+      '¿Qué te parece si',
+      'Soy JARVIS STRATEGOS, su asistente',
+      'Soy JARVIS, tu asistente',
+      'charlar contigo',
+      'Estoy aquí para ayu',
+      'mi conocimiento es limitado',
+      'no tengo acceso a internet',
+      'hasta octubre de 2023',
+      'Como JARVIS, estoy aquí'
+    ];
+
+    // Traer todas las memorias
+    const all = await pool.query(`SELECT id, content FROM jarvis_memory`);
+
+    let deleted = 0;
+    const deletedSamples = [];
+
+    for (const row of all.rows) {
+      const content = row.content || '';
+      const isGeneric = GENERIC_PATTERNS.some(p =>
+        content.toLowerCase().includes(p.toLowerCase())
+      );
+
+      // Si es genérico Y corto (menos de 200 chars) → es basura de saludo
+      if (isGeneric && content.length < 250) {
+        await pool.query(`DELETE FROM jarvis_memory WHERE id = $1`, [row.id]);
+        deleted++;
+        if (deletedSamples.length < 10) {
+          deletedSamples.push(content.slice(0, 80));
+        }
+      }
+    }
+
+    return res.json({
+      ok: true,
+      total_before: all.rows.length,
+      deleted,
+      remaining: all.rows.length - deleted,
+      samples_deleted: deletedSamples
+    });
+
+  } catch (err) {
+    console.error('CLEANUP_MEMORY_ERROR', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ===============================
 // 🧬 JARVIS MEMORY STORE
 // ===============================
+
 
 app.post('/v1/jarvis/memory', async (req, res) => {
   try {
