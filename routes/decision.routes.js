@@ -20,6 +20,10 @@ router.post("/run", async (req, res) => {
       mode: "chat"
     };
 
+    const pool = global.__URUS_DB__;
+    const { searchRelevantMemory } = require("./controllers/jarvis.controller");
+    const memory = await searchRelevantMemory(pool, message, 8);
+
     const completion = await client.chat.completions.create({
       model: "gpt-4o", // 👈 AQUI ESTÁ TU "CHATGPT-4" REAL MODERNO
       messages: [
@@ -62,7 +66,13 @@ Tu objetivo:
 no es “ayudar”
 es **hacer avanzar la situación**
 
-Hablas como alguien que ya está dentro del sistema, no como alguien externo.`
+Hablas como alguien que ya está dentro del sistema, no como alguien externo.
+
+INSTRUCCIÓN CRÍTICA: A continuación tienes el [PERFIL DE JOSUAN] con tu memoria real — proyectos, contexto, historial completo. ÚSALA SIEMPRE. Nunca digas que no tienes memoria o acceso a datos personales.
+
+[PERFIL DE JOSUAN]:
+${memory}
+[/PERFIL]`
         },
         {
           role: "user",
@@ -72,6 +82,8 @@ Hablas como alguien que ya está dentro del sistema, no como alguien externo.`
     });
 
     const output = completion.choices[0].message.content;
+    const { saveMemoryWithEmbedding } = require("./controllers/jarvis.controller");
+    await saveMemoryWithEmbedding(pool, `[WHATSAPP] Josuan: ${message}\nJARVIS: ${output}`);
 
     return res.json({
       output,
