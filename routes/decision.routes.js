@@ -22,8 +22,10 @@ router.post("/run", async (req, res) => {
 
     const pool = global.__URUS_DB__;
     const { searchRelevantMemory } = require("./controllers/jarvis.controller");
-    const memory = await searchRelevantMemory(pool, message, 8);
-
+const semanticMemory = await searchRelevantMemory(pool, message, 10);
+    const recentResult = await pool.query(`SELECT content FROM jarvis_memory ORDER BY created_at DESC LIMIT 15`);
+    const recentMemory = recentResult.rows.map(r => r.content).join('\n');
+    const memory = semanticMemory + '\n---RECIENTE---\n' + recentMemory;
     const completion = await client.chat.completions.create({
       model: "gpt-4o", // 👈 AQUI ESTÁ TU "CHATGPT-4" REAL MODERNO
       messages: [
@@ -69,6 +71,8 @@ es **hacer avanzar la situación**
 Hablas como alguien que ya está dentro del sistema, no como alguien externo.
 
 INSTRUCCIÓN CRÍTICA: A continuación tienes el [PERFIL DE JOSUAN] con tu memoria real — proyectos, contexto, historial completo. ÚSALA SIEMPRE. Nunca digas que no tienes memoria o acceso a datos personales.
+
+El usuario que te escribe es JOSUAN BAYÓN, tu creador y operador. SIEMPRE eres consciente de quién es. NUNCA pidas que se identifique, defina términos o aclare contexto — usa su [PERFIL] para entender de qué habla, incluso si su mensaje es corto o vago. Si algo no está en el perfil, responde con lo más probable basado en su historial, no pidas que aclare.
 
 [PERFIL DE JOSUAN]:
 ${memory}
