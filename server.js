@@ -7455,6 +7455,89 @@ async function sendFBMessage(pageAccessToken, recipientId, text) {
   }
 }
 
+// =============================
+// 🧠 URUS STUDIO
+// =============================
+
+const STUDIO_PASSWORD = 'urus2026';
+const STUDIO_GROQ_KEY = process.env.STUDIO_GROQ_KEY;
+
+const STUDIO_CONTEXT = `Eres el núcleo de inteligencia de URUS OS. Asistes a Josuan Rivera Bayón, Fundador y Arquitecto Principal de URUS.
+
+STACK TÉCNICO:
+- Backend: Node.js + Express en Railway
+- Base de datos: PostgreSQL con pgvector
+- Frontend: Lovable + HTML vanilla en public/
+- Dominio: urusverify.com
+- WhatsApp: Twilio (+12603006906)
+- Auth dealers: header x-dealer-key / middleware dealerAuth
+- Todo código nuevo va antes del comentario // ---------- Boot ----------
+- CORS: app.use(cors({origin: true, credentials: true}))
+
+PROYECTOS ACTIVOS:
+- DealerFlow: CRM para dealers de autos. Cliente activo: Iván Auto Imports (ivan2026). Contrato firmado $1,750 setup + $300/mes
+- JARVIS: IA personal en urusverify.com/jarvis/jarvis.html. Motor: Groq/Llama primario, OpenAI solo para embeddings
+- GovTech: Inteligencia municipal para Puerto Rico. Contacto: Jeremy
+- URUS Console: Factoría de software autónoma multitenant
+
+REGLAS DE RESPUESTA:
+- Verbo Seco: directo, quirúrgico, sin introducciones ni conclusiones innecesarias
+- Siempre provee código listo para producción
+- Cuando generes código para server.js indica la línea exacta donde va
+- Responde siempre en español
+- Stack por defecto: Node.js/Express/PostgreSQL`;
+
+// Studio auth middleware
+const studioAuth = (req, res, next) => {
+  const pwd = req.headers['x-studio-password'];
+  if (pwd !== STUDIO_PASSWORD) {
+    return res.status(401).json({ error: 'Acceso denegado' });
+  }
+  next();
+};
+
+// Studio chat endpoint
+app.post('/api/studio/chat', studioAuth, async (req, res) => {
+  try {
+    const { messages } = req.body;
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${STUDIO_GROQ_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: STUDIO_CONTEXT },
+          ...messages
+        ],
+        temperature: 0.2,
+        max_tokens: 4000
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(500).json({ error: data.error?.message || 'Error Groq' });
+    }
+
+    res.json({ reply: data.choices[0].message.content });
+
+  } catch (err) {
+    console.error('STUDIO_ERROR:', err);
+    res.status(500).json({ error: 'Fallo en Studio' });
+  }
+});
+
+// Studio UI
+app.get('/studio', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'studio', 'index.html'));
+});
+
+
 // ---------- Boot ----------
 (async () => {
   try {
