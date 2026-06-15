@@ -7538,6 +7538,173 @@ app.get('/studio', (req, res) => {
 });
 
 
+// ---------- URUS FACTORY ----------
+
+// POST /v1/factory/session/start
+app.post('/v1/factory/session/start', async (req, res) => {
+  const { client_name, company, industry } = req.body;
+  if (!client_name || !company) {
+    return res.status(400).json({ error: 'client_name y company son requeridos' });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO factory_sessions (client_name, company, industry, status)
+       VALUES ($1, $2, $3, 'iniciada') RETURNING id, created_at`,
+      [client_name, company, industry || '']
+    );
+    res.json({ session_id: result.rows[0].id, created_at: result.rows[0].created_at });
+  } catch (err) {
+    console.error('Factory start error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /v1/factory/session/transcribe
+app.post('/v1/factory/session/transcribe', async (req, res) => {
+  const { session_id, transcript } = req.body;
+  if (!session_id || !transcript) {
+    return res.status(400).json({ error: 'session_id y transcript requeridos' });
+  }
+  try {
+    await pool.query(
+      `UPDATE factory_sessions SET transcript = $1, status = 'transcrita', updated_at = NOW() WHERE id = $2`,
+      [transcript, session_id]
+    );
+    res.json({ ok: true, session_id, chars: transcript.length });
+  } catch (err) {
+    console.error('Factory transcribe error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /v1/factory/session/analyze
+app.post('/v1/factory/session/analyze', async (req, res) => {
+  const { session_id } = req.body;
+  if (!session_id) return res.status(400).json({ error: 'session_id requerido' });
+
+  try {
+    const row = await pool.query(
+      `SELECT transcript, company, industry FROM factory_sessions WHERE id = $1`,
+      [session_id]
+    );
+    if (!row.rows.length) return res.status(404).json({ error: 'Sesión no encontrada' });
+
+    const { transcript, company, industry } = row.rows[0];
+
+    const prompt = `Eres el Motor de Análisis Empresarial de URUS Factory.
+Analiza esta transcripción de una reunión con un empresario de la empresa "${company}" (industria: ${industry}).
+
+TRANSCRIPCIÓN:
+${transcript}
+
+Extrae y devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
+{
+  "procesos": ["descripción de cada proceso identificado"],
+  "problemas": [{ "descripcion": "", "impacto": "", "severidad": "critico|medio|bajo" }],
+  "herramientas_actuales": ["Excel", "WhatsApp", etc],
+  "actores": ["roles mencionados"],
+  "oportunidades": ["automatizaciones posibles"],
+  "roi_estimado_mensual": número en USD,
+  "horas_perdidas_mes": número,
+  "modulos_sugeridos": ["CRM", "Dashboard", "Portal", "WhatsApp", "Reportes", etc],
+  "preguntas_faltantes": ["solo si hay gaps críticos de información"]
+}`;
+
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+    const analysis = JSON.parse(raw);
+
+    await pool.query(
+      `UPDATE factory_sessions SET analysis = $1, status = 'analizada', updated_at = NOW() WHERE id = $2`,
+      [JSON.stringify(analysis), session_id]
+    );
+
+    res.json({ ok: true, analysis });
+  } catch (err) {
+    console.error('Factory analyze error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /v1/factory/session/proposal
+app.post('/v1/factory/session/proposal', async (req, res) => {
+  const { session_id, answers } = req.body;
+  if (!session_id) return res.status(400).json({ error: 'session_id requerido' });
+
+  try {
+    const row = await pool.query(
+      `SELECT analysis, company, industry FROM factory_sessions WHERE id = $1`,
+      [session_id]
+    );
+    if (!row.rows.length) return res.status(404).json({ error: 'Sesión no encontrada' });
+
+    const { analysis, company, industry } = row.rows[0];
+
+    const prompt = `Eres el Arquitecto de Soluciones de URUS Factory.
+Empresa: "${company}" | Industria: ${industry}
+
+ANÁLISIS:
+${JSON.stringify(analysis, null, 2)}
+
+RESPUESTAS ADICIONALES:
+${answers ? JSON.stringify(answers) : 'Ninguna'}
+
+REGLAS DE PRICING:
+- Setup base $1,000 + $200 por módulo + $300 por integración externa + $500 si app móvil. Techo $5,000.
+- Mensual base $300 + $50 por cada 10 usuarios sobre 10 + $100 por integración activa. Techo $800.
+- ROI proyectado debe ser mínimo 3x el mensual.
+- Tiempo entrega: 2-6 semanas según complejidad.
+
+Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
+{
+  "titulo": "nombre del sistema",
+  "descripcion": "2 frases que explican qué construirá URUS",
+  "modulos": [{ "nombre": "", "descripcion": "", "impacto": "" }],
+  "arquitectura": ["PostgreSQL", "API REST", "WhatsApp Business", etc],
+  "roi_proyectado_mensual": número USD,
+  "horas_devueltas_mes": número,
+  "tiempo_entrega_semanas": número,
+  "precio_setup": número USD,
+  "precio_mensual": número USD,
+  "usuarios_incluidos": número,
+  "integraciones": ["lista"]
+}`;
+
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+    const proposal = JSON.parse(raw);
+
+    await pool.query(
+      `UPDATE factory_sessions SET proposal = $1, answers = $2, status = 'propuesta', updated_at = NOW() WHERE id = $3`,
+      [JSON.stringify(proposal), JSON.stringify(answers || {}), session_id]
+    );
+
+    res.json({ ok: true, proposal });
+  } catch (err) {
+    console.error('Factory proposal error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- END URUS FACTORY ----------
+
+
 // ---------- Boot ----------
 (async () => {
   try {
