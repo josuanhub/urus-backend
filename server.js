@@ -7540,8 +7540,16 @@ app.get('/studio', (req, res) => {
 
 // ---------- URUS FACTORY ----------
 
+const factoryAuth = (req, res, next) => {
+  const key = req.headers['x-factory-key'];
+  if (key !== process.env.FACTORY_API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+};
+
 // POST /v1/factory/session/start
-app.post('/v1/factory/session/start', async (req, res) => {
+app.post('/v1/factory/session/start', factoryAuth, async (req, res) => {
   const { client_name, company, industry } = req.body;
   if (!client_name || !company) {
     return res.status(400).json({ error: 'client_name y company son requeridos' });
@@ -7560,7 +7568,7 @@ app.post('/v1/factory/session/start', async (req, res) => {
 });
 
 // POST /v1/factory/session/transcribe
-app.post('/v1/factory/session/transcribe', async (req, res) => {
+app.post('/v1/factory/session/transcribe', factoryAuth, async (req, res) => {
   const { session_id, transcript } = req.body;
   if (!session_id || !transcript) {
     return res.status(400).json({ error: 'session_id y transcript requeridos' });
@@ -7635,7 +7643,7 @@ Extrae y devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
 });
 
 // POST /v1/factory/session/proposal
-app.post('/v1/factory/session/proposal', async (req, res) => {
+app.post('/v1/factory/session/proposal', factoryAuth, async (req, res) => {
   const { session_id, answers } = req.body;
   if (!session_id) return res.status(400).json({ error: 'session_id requerido' });
 
