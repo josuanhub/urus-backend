@@ -4,394 +4,1024 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>URUS Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #0f0f0f;
+    --bg2: #161616;
+    --bg3: #1c1c1c;
+    --border: #2a2a2a;
+    --border2: #333;
+    --gold: #c9a84c;
+    --gold2: #e0c068;
+    --gold-dim: rgba(201,168,76,0.15);
+    --gold-dimmer: rgba(201,168,76,0.06);
+    --text: #e8e8e8;
+    --text2: #a0a0a0;
+    --text3: #555;
+    --user-bg: #1a1500;
+    --user-border: rgba(201,168,76,0.2);
+    --ai-bg: #161616;
+    --ai-border: #222;
+    --code-bg: #0a0a0a;
+    --radius: 8px;
+    --radius-sm: 4px;
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  
+
   body {
-    background: #0a0a0a;
-    color: #e0e0e0;
-    font-family: 'Courier New', monospace;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
     height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
+  /* ── LOGIN ── */
   #login-screen {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100vh;
-    gap: 20px;
+    gap: 32px;
+    background: var(--bg);
   }
 
-  #login-screen h1 {
-    color: #c9a84c;
-    font-size: 2rem;
-    letter-spacing: 4px;
-  }
-
-  #login-screen p {
-    color: #666;
-    font-size: 0.8rem;
-  }
-
-  #login-screen input {
-    background: #111;
-    border: 1px solid #c9a84c;
-    color: #fff;
-    padding: 12px 20px;
-    font-size: 1rem;
-    font-family: 'Courier New', monospace;
-    width: 280px;
-    text-align: center;
-    outline: none;
-  }
-
-  #login-screen button {
-    background: #c9a84c;
-    color: #000;
-    border: none;
-    padding: 12px 40px;
-    font-size: 0.9rem;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    cursor: pointer;
-    letter-spacing: 2px;
-  }
-
-  #login-screen button:hover { background: #e0c068; }
-
-  #app { display: none; flex-direction: column; height: 100vh; }
-
-  #header {
-    background: #111;
-    border-bottom: 1px solid #c9a84c33;
-    padding: 12px 20px;
+  .login-logo {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
+    gap: 12px;
   }
 
-  #header h1 { color: #c9a84c; font-size: 1rem; letter-spacing: 3px; }
-  #header span { color: #444; font-size: 0.7rem; }
-
-  #main {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  #sidebar {
-    width: 200px;
-    background: #0d0d0d;
-    border-right: 1px solid #1a1a1a;
-    padding: 20px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  #sidebar h3 {
-    color: #444;
-    font-size: 0.65rem;
-    letter-spacing: 2px;
-    padding: 0 16px 12px;
-  }
-
-  .project-btn {
-    background: none;
-    border: none;
-    color: #666;
-    padding: 10px 16px;
-    text-align: left;
-    cursor: pointer;
-    font-family: 'Courier New', monospace;
-    font-size: 0.78rem;
-    transition: all 0.2s;
-    border-left: 2px solid transparent;
-  }
-
-  .project-btn:hover { color: #c9a84c; background: #111; }
-  .project-btn.active { color: #c9a84c; border-left-color: #c9a84c; background: #111; }
-
-  #chat-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  #project-label {
-    padding: 10px 20px;
-    background: #0d0d0d;
-    border-bottom: 1px solid #1a1a1a;
-    color: #c9a84c;
-    font-size: 0.7rem;
-    letter-spacing: 2px;
-  }
-
-  #messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  #messages::-webkit-scrollbar { width: 4px; }
-  #messages::-webkit-scrollbar-track { background: #0a0a0a; }
-  #messages::-webkit-scrollbar-thumb { background: #333; }
-
-  .msg {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-width: 85%;
-  }
-
-  .msg.user { align-self: flex-end; }
-  .msg.assistant { align-self: flex-start; }
-
-  .msg-label {
-    font-size: 0.6rem;
-    color: #444;
-    letter-spacing: 1px;
-  }
-
-  .msg.user .msg-label { text-align: right; color: #c9a84c88; }
-
-  .msg-content {
-    padding: 12px 16px;
-    font-size: 0.82rem;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  .msg.user .msg-content {
-    background: #1a1500;
-    border: 1px solid #c9a84c33;
-    color: #e0e0e0;
-  }
-
-  .msg.assistant .msg-content {
-    background: #111;
-    border: 1px solid #1a1a1a;
-    color: #d0d0d0;
-  }
-
-  .msg-content code {
-    background: #0a0a0a;
-    color: #c9a84c;
-    padding: 2px 6px;
-    font-family: 'Courier New', monospace;
-    font-size: 0.78rem;
-  }
-
-  .msg-content pre {
-    background: #050505;
-    border: 1px solid #1a1a1a;
-    padding: 12px;
-    margin: 8px 0;
-    overflow-x: auto;
-    font-size: 0.75rem;
-    line-height: 1.5;
-  }
-
-  #typing {
-    display: none;
-    padding: 0 20px;
-    color: #c9a84c;
-    font-size: 0.7rem;
-    letter-spacing: 2px;
-    animation: pulse 1.5s infinite;
-  }
-
-  @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
-
-  #input-area {
-    padding: 16px 20px;
-    background: #0d0d0d;
-    border-top: 1px solid #1a1a1a;
-    display: flex;
-    gap: 10px;
-  }
-
-  #input {
-    flex: 1;
-    background: #111;
-    border: 1px solid #2a2a2a;
-    color: #e0e0e0;
-    padding: 12px 16px;
-    font-family: 'Courier New', monospace;
-    font-size: 0.85rem;
-    outline: none;
-    resize: none;
+  .login-logo svg {
+    width: 48px;
     height: 48px;
-    max-height: 200px;
-    overflow-y: auto;
+    color: var(--gold);
+  }
+
+  .login-logo h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 6px;
+    color: var(--gold);
+  }
+
+  .login-logo p {
+    font-size: 0.7rem;
+    color: var(--text3);
+    letter-spacing: 3px;
+    font-weight: 300;
+  }
+
+  .login-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 300px;
+  }
+
+  .login-box input {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 14px 18px;
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    border-radius: var(--radius);
+    text-align: center;
     transition: border 0.2s;
   }
 
-  #input:focus { border-color: #c9a84c55; }
+  .login-box input:focus { border-color: var(--gold); }
+  .login-box input.error { border-color: #e05555; animation: shake 0.3s; }
 
-  #send-btn {
-    background: #c9a84c;
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-6px)}
+    75%{transform:translateX(6px)}
+  }
+
+  .login-box button {
+    width: 100%;
+    background: var(--gold);
     color: #000;
     border: none;
-    padding: 0 20px;
-    font-family: 'Courier New', monospace;
+    padding: 14px;
     font-size: 0.8rem;
-    font-weight: bold;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 2px;
+    border-radius: var(--radius);
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .login-box button:hover { background: var(--gold2); }
+  .login-box button:active { transform: scale(0.98); }
+
+  /* ── APP ── */
+  #app { display: none; flex-direction: row; height: 100vh; }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 220px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sidebar-header svg { width: 22px; height: 22px; color: var(--gold); }
+
+  .sidebar-header span {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    color: var(--gold);
+  }
+
+  .sidebar-section {
+    padding: 16px 12px 8px;
+  }
+
+  .sidebar-label {
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--text3);
+    padding: 0 4px;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .proj-btn {
+    width: 100%;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    padding: 9px 10px;
+    text-align: left;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+    font-weight: 400;
+  }
+
+  .proj-btn:hover { color: var(--text); background: var(--bg3); }
+
+  .proj-btn.active {
+    color: var(--gold);
+    background: var(--gold-dimmer);
+    font-weight: 500;
+  }
+
+  .proj-btn .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text3);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .proj-btn.active .dot { background: var(--gold); }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 0.62rem;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  /* ── MAIN AREA ── */
+  #main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  #topbar {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+
+  #topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #project-name {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 1px;
+  }
+
+  #project-badge {
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--gold);
+    background: var(--gold-dimmer);
+    border: 1px solid rgba(201,168,76,0.2);
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  #topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .top-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+  }
+
+  .top-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  /* ── MESSAGES ── */
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-track { background: transparent; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg-row {
+    padding: 12px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: background 0.1s;
+  }
+
+  .msg-row:hover { background: rgba(255,255,255,0.01); }
+  .msg-row.user-row { background: var(--gold-dimmer); border-left: 2px solid var(--gold); padding-left: 22px; }
+  .msg-row.ai-row { border-left: 2px solid transparent; }
+
+  .msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .msg-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .user-avatar { background: var(--gold); color: #000; }
+  .ai-avatar { background: var(--bg3); color: var(--gold); border: 1px solid var(--border2); }
+
+  .msg-sender {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  .user-row .msg-sender { color: var(--gold); }
+  .ai-row .msg-sender { color: var(--text2); }
+
+  .msg-time {
+    font-size: 0.6rem;
+    color: var(--text3);
+    margin-left: auto;
+  }
+
+  .msg-content {
+    font-size: 0.85rem;
+    line-height: 1.7;
+    color: var(--text);
+    padding-left: 30px;
+  }
+
+  /* Markdown styling */
+  .msg-content p { margin-bottom: 10px; }
+  .msg-content p:last-child { margin-bottom: 0; }
+
+  .msg-content strong { color: var(--text); font-weight: 600; }
+
+  .msg-content code {
+    background: var(--code-bg);
+    color: var(--gold);
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    border: 1px solid var(--border);
+  }
+
+  .msg-content pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin: 12px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .msg-content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #d4d4d4;
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+
+  .copy-code-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+
+  .copy-code-btn:hover { color: var(--text); border-color: var(--text3); }
+
+  .msg-content ul, .msg-content ol {
+    padding-left: 20px;
+    margin: 8px 0;
+  }
+
+  .msg-content li { margin-bottom: 4px; line-height: 1.6; }
+
+  .msg-content h1,.msg-content h2,.msg-content h3 {
+    color: var(--text);
+    font-weight: 600;
+    margin: 16px 0 8px;
+    line-height: 1.3;
+  }
+
+  .msg-content h1 { font-size: 1.1rem; }
+  .msg-content h2 { font-size: 0.95rem; color: var(--gold); }
+  .msg-content h3 { font-size: 0.85rem; color: var(--text2); }
+
+  .msg-content blockquote {
+    border-left: 3px solid var(--gold);
+    padding: 8px 16px;
+    color: var(--text2);
+    margin: 10px 0;
+    background: var(--gold-dimmer);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .msg-content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+
+  .msg-actions {
+    padding-left: 30px;
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .msg-action-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 0.65rem;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    padding: 3px 0;
+    letter-spacing: 0.5px;
+    transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .msg-action-btn:hover { color: var(--text2); }
+
+  /* ── WELCOME ── */
+  #welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 16px;
+    color: var(--text3);
+    padding: 40px;
+  }
+
+  #welcome svg { width: 36px; height: 36px; color: var(--border2); }
+  #welcome h2 { font-size: 0.85rem; font-weight: 500; color: var(--text2); letter-spacing: 2px; }
+  #welcome p { font-size: 0.75rem; color: var(--text3); text-align: center; max-width: 300px; line-height: 1.6; }
+
+  .welcome-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  .chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .chip:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dimmer); }
+
+  /* ── TYPING ── */
+  #typing-indicator {
+    display: none;
+    padding: 12px 24px 0;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .typing-dots {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .typing-dots span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--text3);
+    animation: bounce 1.2s infinite;
+  }
+
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%,60%,100%{transform:translateY(0);opacity:0.4}
+    30%{transform:translateY(-5px);opacity:1}
+  }
+
+  .typing-label {
+    font-size: 0.65rem;
+    color: var(--text3);
+    letter-spacing: 1px;
+  }
+
+  /* ── INPUT AREA ── */
+  #input-area {
+    padding: 16px 20px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  #input-wrapper {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.2s;
+    overflow: hidden;
+  }
+
+  #input-wrapper:focus-within { border-color: rgba(201,168,76,0.4); }
+
+  #input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 14px 16px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    outline: none;
+    resize: none;
+    min-height: 52px;
+    max-height: 160px;
+    line-height: 1.5;
+  }
+
+  #input::placeholder { color: var(--text3); }
+
+  #input-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    gap: 6px;
+    border-top: 1px solid var(--border);
+  }
+
+  .tool-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .tool-btn:hover { color: var(--text); background: var(--bg3); }
+  .tool-btn.active { color: var(--gold); background: var(--gold-dimmer); }
+  .tool-btn svg { width: 14px; height: 14px; }
+
+  .tool-btn.recording {
+    color: #e05555;
+    background: rgba(224,85,85,0.1);
+    animation: pulse-red 1s infinite;
+  }
+
+  @keyframes pulse-red {
+    0%,100%{opacity:1}
+    50%{opacity:0.6}
+  }
+
+  #toolbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #char-count {
+    font-size: 0.6rem;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  #send-btn {
+    background: var(--gold);
+    color: #000;
+    border: none;
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
     cursor: pointer;
     letter-spacing: 1px;
-    transition: background 0.2s;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
-  #send-btn:hover { background: #e0c068; }
-  #send-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+  #send-btn:hover { background: var(--gold2); }
+  #send-btn:disabled { background: var(--bg3); color: var(--text3); cursor: not-allowed; }
+  #send-btn svg { width: 12px; height: 12px; }
 
-  #clear-btn {
+  /* TTS bar */
+  #tts-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg3);
+    border-top: 1px solid var(--border);
+    font-size: 0.65rem;
+    color: var(--text2);
+  }
+
+  #tts-bar.visible { display: flex; }
+
+  #stop-tts-btn {
     background: none;
-    border: 1px solid #1a1a1a;
-    color: #444;
-    padding: 0 12px;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 0.6rem;
     cursor: pointer;
-    font-size: 0.7rem;
-    font-family: 'Courier New', monospace;
-    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+    margin-left: auto;
   }
 
-  #clear-btn:hover { border-color: #333; color: #666; }
+  #stop-tts-btn:hover { border-color: #e05555; color: #e05555; }
 
-  .welcome {
-    color: #333;
-    font-size: 0.8rem;
-    text-align: center;
-    margin: auto;
-    line-height: 2;
+  .tts-wave {
+    display: flex;
+    gap: 2px;
+    align-items: center;
   }
 
-  .welcome span { color: #c9a84c; }
+  .tts-wave span {
+    width: 2px;
+    border-radius: 1px;
+    background: var(--gold);
+    animation: wave 0.8s infinite ease-in-out;
+  }
+
+  .tts-wave span:nth-child(1){height:8px;animation-delay:0s}
+  .tts-wave span:nth-child(2){height:14px;animation-delay:0.1s}
+  .tts-wave span:nth-child(3){height:10px;animation-delay:0.2s}
+  .tts-wave span:nth-child(4){height:16px;animation-delay:0.15s}
+  .tts-wave span:nth-child(5){height:8px;animation-delay:0.05s}
+
+  @keyframes wave {
+    0%,100%{transform:scaleY(0.5);opacity:0.5}
+    50%{transform:scaleY(1);opacity:1}
+  }
+
+  /* Notification */
+  #notif {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.25s;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  #notif.show { opacity: 1; transform: translateY(0); }
 </style>
 </head>
 <body>
 
+<!-- LOGIN -->
 <div id="login-screen">
-  <h1>⬡ URUS</h1>
-  <p>STUDIO — ACCESO RESTRINGIDO</p>
-  <input type="password" id="pwd-input" placeholder="contraseña" onkeydown="if(event.key==='Enter')login()">
-  <button onclick="login()">ENTRAR</button>
+  <div class="login-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/>
+    </svg>
+    <h1>URUS</h1>
+    <p>STUDIO — ACCESO RESTRINGIDO</p>
+  </div>
+  <div class="login-box">
+    <input type="password" id="pwd-input" placeholder="Contraseña" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">ENTRAR</button>
+  </div>
 </div>
 
+<!-- APP -->
 <div id="app">
-  <div id="header">
-    <h1>⬡ URUS STUDIO</h1>
-    <span id="project-tag">GENERAL</span>
-  </div>
 
-  <div id="main">
-    <div id="sidebar">
-      <h3>PROYECTOS</h3>
-      <button class="project-btn active" onclick="setProject('GENERAL')">⬡ General</button>
-      <button class="project-btn" onclick="setProject('DEALERFLOW')">◈ DealerFlow</button>
-      <button class="project-btn" onclick="setProject('JARVIS')">◉ JARVIS</button>
-      <button class="project-btn" onclick="setProject('GOVTECH')">◫ GovTech</button>
-      <button class="project-btn" onclick="setProject('URUS CORE')">◎ URUS Core</button>
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/>
+      </svg>
+      <span>URUS</span>
     </div>
 
-    <div id="chat-area">
-      <div id="project-label">MODO: <span id="mode-label">GENERAL</span></div>
-      <div id="messages">
-        <div class="welcome">
-          <span>⬡ URUS STUDIO</span><br>
-          Sistema operativo de inteligencia activo.<br>
-          Contexto cargado. Selecciona un proyecto y ejecuta.
+    <div class="sidebar-section">
+      <div class="sidebar-label">PROYECTOS</div>
+      <button class="proj-btn active" onclick="setProject('GENERAL','General')">
+        <span class="dot"></span>General
+      </button>
+      <button class="proj-btn" onclick="setProject('DEALERFLOW','DealerFlow')">
+        <span class="dot"></span>DealerFlow
+      </button>
+      <button class="proj-btn" onclick="setProject('JARVIS','JARVIS')">
+        <span class="dot"></span>JARVIS
+      </button>
+      <button class="proj-btn" onclick="setProject('GOVTECH','GovTech')">
+        <span class="dot"></span>GovTech
+      </button>
+      <button class="proj-btn" onclick="setProject('URUS_CORE','URUS Core')">
+        <span class="dot"></span>URUS Core
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      urusverify.com · v1.0
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main-area">
+
+    <!-- TOPBAR -->
+    <div id="topbar">
+      <div id="topbar-left">
+        <span id="project-name">General</span>
+        <span id="project-badge">ACTIVO</span>
+      </div>
+      <div id="topbar-right">
+        <button class="top-btn" onclick="clearChat()">Limpiar</button>
+      </div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div id="messages">
+      <div id="welcome">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/>
+        </svg>
+        <h2>URUS STUDIO</h2>
+        <p>Sistema operativo activo. Contexto cargado. Selecciona un proyecto y ejecuta.</p>
+        <div class="welcome-chips">
+          <div class="chip" onclick="quickSend('¿Cuál es el estado actual de DealerFlow?')">Estado DealerFlow</div>
+          <div class="chip" onclick="quickSend('Dame el código del endpoint de prospects para Iván')">Código prospects</div>
+          <div class="chip" onclick="quickSend('¿Qué falta para GovTech con Jeremy?')">GovTech pipeline</div>
+          <div class="chip" onclick="quickSend('¿Cómo está JARVIS configurado?')">Estado JARVIS</div>
         </div>
       </div>
-      <div id="typing">procesando...</div>
-      <div id="input-area">
-        <textarea id="input" placeholder="Escribe tu instrucción..." onkeydown="handleKey(event)"></textarea>
-        <button id="clear-btn" onclick="clearChat()">LIMPIAR</button>
-        <button id="send-btn" onclick="sendMessage()">ENVIAR</button>
+    </div>
+
+    <!-- TYPING -->
+    <div id="typing-indicator">
+      <div class="typing-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <span class="typing-label">URUS procesando...</span>
+    </div>
+
+    <!-- TTS BAR -->
+    <div id="tts-bar">
+      <div class="tts-wave">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <span id="tts-label">Reproduciendo respuesta...</span>
+      <button id="stop-tts-btn" onclick="stopTTS()">DETENER</button>
+    </div>
+
+    <!-- INPUT -->
+    <div id="input-area">
+      <div id="input-wrapper">
+        <textarea id="input" placeholder="Escribe tu instrucción..." onkeydown="handleKey(event)" oninput="updateCount()"></textarea>
+        <div id="input-toolbar">
+          <button class="tool-btn" id="mic-btn" onclick="toggleMic()" title="Hablar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            Hablar
+          </button>
+          <button class="tool-btn" id="autospeak-btn" onclick="toggleAutoSpeak()" title="Respuesta automática en voz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+            Auto-voz
+          </button>
+          <div id="toolbar-right">
+            <span id="char-count">0</span>
+            <button id="send-btn" onclick="sendMessage()">
+              EJECUTAR
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
+
   </div>
 </div>
 
+<div id="notif"></div>
+
 <script>
+  // ── STATE ──
   let password = '';
   let currentProject = 'GENERAL';
   let history = [];
+  let recognition = null;
+  let isRecording = false;
+  let autoSpeak = false;
+  let currentUtterance = null;
 
   const projectContexts = {
-    'GENERAL': 'Contexto general URUS. Responde cualquier consulta técnica o estratégica.',
-    'DEALERFLOW': 'Proyecto DealerFlow. CRM para dealers de autos en Puerto Rico. Cliente activo: Iván Auto Imports. Auth: x-dealer-key ivan2026. Endpoints en /v1/dealer/. WhatsApp via Twilio a 787-390-5016.',
+    'GENERAL': 'Contexto general URUS. Responde cualquier consulta técnica o estratégica sobre el sistema.',
+    'DEALERFLOW': 'Proyecto DealerFlow. CRM para dealers de autos en Puerto Rico. Cliente activo: Iván Auto Imports. Auth: x-dealer-key ivan2026. Endpoints en /v1/dealer/. WhatsApp via Twilio a 787-390-5016. Contrato: $1,750 setup + $300/mes.',
     'JARVIS': 'Proyecto JARVIS. IA personal de Josuan. Frontend: public/jarvis/jarvis.html. Motor: Groq/Llama primario. OpenAI solo para embeddings. Respuestas en español. TTS activo.',
-    'GOVTECH': 'Proyecto GovTech. Inteligencia municipal Puerto Rico. Contacto estratégico: Jeremy. Target: Municipality of Arecibo. Modelo Palantir adaptado.',
-    'URUS CORE': 'Proyecto URUS Core / URUS Console. Factoría de software autónoma multitenant. Generación dinámica de estructuras de base de datos y endpoints universales.'
+    'GOVTECH': 'Proyecto GovTech. Inteligencia municipal Puerto Rico. Contacto estratégico: Jeremy. Target: Municipio de Arecibo, alcalde Carlos "Tito" Ramírez. Modelo Palantir adaptado.',
+    'URUS_CORE': 'Proyecto URUS Core / Console. Factoría de software autónoma multitenant. Generación dinámica de estructuras de base de datos y endpoints universales en Node.js/Express/PostgreSQL.'
   };
 
+  // ── LOGIN ──
   function login() {
     const pwd = document.getElementById('pwd-input').value;
     if (pwd === 'urus2026') {
       password = pwd;
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
+      document.getElementById('input').focus();
     } else {
-      document.getElementById('pwd-input').style.borderColor = '#ff4444';
-      setTimeout(() => document.getElementById('pwd-input').style.borderColor = '#c9a84c', 1000);
+      const inp = document.getElementById('pwd-input');
+      inp.classList.add('error');
+      inp.value = '';
+      setTimeout(() => inp.classList.remove('error'), 400);
     }
   }
 
-  function setProject(name) {
-    currentProject = name;
-    document.getElementById('project-tag').textContent = name;
-    document.getElementById('mode-label').textContent = name;
-    document.querySelectorAll('.project-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
+  // ── PROJECT ──
+  function setProject(id, name) {
+    currentProject = id;
     history = [];
+    document.getElementById('project-name').textContent = name;
+    document.querySelectorAll('.proj-btn').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
     const msgs = document.getElementById('messages');
-    msgs.innerHTML = `<div class="welcome"><span>◈ ${name}</span><br>Contexto cargado. Ejecuta.</div>`;
+    msgs.innerHTML = `
+      <div id="welcome" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:var(--text3);padding:40px;">
+        <p style="font-size:0.75rem;color:var(--text3);letter-spacing:1px;">MODO: ${name.toUpperCase()} — contexto cargado</p>
+      </div>`;
+    stopTTS();
   }
 
   function clearChat() {
     history = [];
+    stopTTS();
     const msgs = document.getElementById('messages');
-    msgs.innerHTML = `<div class="welcome"><span>⬡ URUS STUDIO</span><br>Chat limpiado. Contexto de proyecto mantenido.</div>`;
+    msgs.innerHTML = `
+      <div id="welcome" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:var(--text3);padding:40px;">
+        <p style="font-size:0.75rem;color:var(--text3);letter-spacing:1px;">Chat limpiado.</p>
+      </div>`;
+    showNotif('Chat limpiado');
   }
 
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+  // ── MARKDOWN RENDERER ──
+  function renderMarkdown(text) {
+    let html = text;
+
+    // Escape HTML first
+    html = html.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    // Code blocks
+    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+      return `<pre><button class="copy-code-btn" onclick="copyCode(this)">COPIAR</button><code class="lang-${lang}">${code.trim()}</code></pre>`;
+    });
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Headers
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Bold
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+
+    // Italic
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+    // HR
+    html = html.replace(/^---+$/gm, '<hr>');
+
+    // Blockquote
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+    // Unordered lists
+    html = html.replace(/^[\*\-] (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+    // Ordered lists
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+    // Paragraphs — wrap lines not already in tags
+    html = html.split('\n').map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return '';
+      if (trimmed.startsWith('<')) return line;
+      return `<p>${line}</p>`;
+    }).join('\n');
+
+    return html;
   }
 
+  // ── MESSAGES ──
   function addMessage(role, content) {
+    const welcome = document.getElementById('welcome');
+    if (welcome) welcome.remove();
+
     const msgs = document.getElementById('messages');
-    const welcomes = msgs.querySelectorAll('.welcome');
-    welcomes.forEach(w => w.remove());
+    const now = new Date().toLocaleTimeString('es-PR', {hour:'2-digit',minute:'2-digit'});
 
-    const div = document.createElement('div');
-    div.className = `msg ${role}`;
+    const row = document.createElement('div');
+    row.className = `msg-row ${role === 'user' ? 'user-row' : 'ai-row'}`;
 
-    const label = document.createElement('div');
-    label.className = 'msg-label';
-    label.textContent = role === 'user' ? 'TÚ' : 'URUS';
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    meta.innerHTML = `
+      <div class="msg-avatar ${role === 'user' ? 'user-avatar' : 'ai-avatar'}">${role === 'user' ? 'TÚ' : 'AI'}</div>
+      <span class="msg-sender">${role === 'user' ? 'TÚ' : 'URUS'}</span>
+      <span class="msg-time">${now}</span>`;
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'msg-content';
-    contentDiv.textContent = content;
 
-    div.appendChild(label);
-    div.appendChild(contentDiv);
-    msgs.appendChild(div);
+    if (role === 'user') {
+      contentDiv.textContent = content;
+    } else {
+      contentDiv.innerHTML = renderMarkdown(content);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+
+    if (role === 'assistant') {
+      actions.innerHTML = `
+        <button class="msg-action-btn" onclick="copyText(this, \`${content.replace(/`/g,'\\`')}\`)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar
+        </button>
+        <button class="msg-action-btn" onclick="speakText(\`${content.replace(/`/g,'\\`')}\`)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          Escuchar
+        </button>`;
+    }
+
+    row.appendChild(meta);
+    row.appendChild(contentDiv);
+    if (role === 'assistant') row.appendChild(actions);
+    msgs.appendChild(row);
     msgs.scrollTop = msgs.scrollHeight;
+
+    return content;
   }
 
+  // ── SEND ──
   async function sendMessage() {
     const input = document.getElementById('input');
     const text = input.value.trim();
@@ -400,15 +1030,15 @@
     const btn = document.getElementById('send-btn');
     btn.disabled = true;
     input.value = '';
+    updateCount();
 
     addMessage('user', text);
 
     const projectCtx = projectContexts[currentProject] || '';
-    const fullMessage = `[PROYECTO: ${currentProject}] ${projectCtx}\n\n${text}`;
+    history.push({ role: 'user', content: `[PROYECTO: ${currentProject}]\n${projectCtx}\n\n${text}` });
 
-    history.push({ role: 'user', content: fullMessage });
-
-    document.getElementById('typing').style.display = 'block';
+    document.getElementById('typing-indicator').style.display = 'flex';
+    stopTTS();
 
     try {
       const res = await fetch('/api/studio/chat', {
@@ -422,21 +1052,179 @@
 
       const data = await res.json();
 
+      document.getElementById('typing-indicator').style.display = 'none';
+
       if (data.reply) {
         history.push({ role: 'assistant', content: data.reply });
         addMessage('assistant', data.reply);
+        if (autoSpeak) speakText(data.reply);
       } else {
-        addMessage('assistant', 'Error: ' + (data.error || 'Sin respuesta'));
+        addMessage('assistant', 'Error: ' + (data.error || 'Sin respuesta del servidor'));
       }
 
     } catch (err) {
+      document.getElementById('typing-indicator').style.display = 'none';
       addMessage('assistant', 'Error de conexión con URUS Core.');
     }
 
-    document.getElementById('typing').style.display = 'none';
     btn.disabled = false;
     input.focus();
   }
+
+  function quickSend(text) {
+    document.getElementById('input').value = text;
+    sendMessage();
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function updateCount() {
+    const len = document.getElementById('input').value.length;
+    document.getElementById('char-count').textContent = len > 0 ? len : '';
+  }
+
+  // ── COPY ──
+  function copyCode(btn) {
+    const code = btn.nextElementSibling.textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      btn.textContent = '✓ COPIADO';
+      setTimeout(() => btn.textContent = 'COPIAR', 2000);
+    });
+  }
+
+  function copyText(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Copiado';
+      setTimeout(() => btn.innerHTML = orig, 2000);
+    });
+  }
+
+  // ── TTS ──
+  function speakText(text) {
+    stopTTS();
+    const clean = text
+      .replace(/```[\s\S]*?```/g, 'bloque de código.')
+      .replace(/`[^`]+`/g, '')
+      .replace(/#{1,3} /g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/\[|\]/g, '')
+      .trim();
+
+    if (!clean) return;
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = 'es-PR';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    // Try to pick a Spanish voice
+    const voices = window.speechSynthesis.getVoices();
+    const esVoice = voices.find(v => v.lang.startsWith('es')) || null;
+    if (esVoice) utterance.voice = esVoice;
+
+    utterance.onstart = () => {
+      document.getElementById('tts-bar').classList.add('visible');
+    };
+    utterance.onend = utterance.onerror = () => {
+      document.getElementById('tts-bar').classList.remove('visible');
+      currentUtterance = null;
+    };
+
+    currentUtterance = utterance;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function stopTTS() {
+    window.speechSynthesis.cancel();
+    document.getElementById('tts-bar').classList.remove('visible');
+    currentUtterance = null;
+  }
+
+  function toggleAutoSpeak() {
+    autoSpeak = !autoSpeak;
+    const btn = document.getElementById('autospeak-btn');
+    btn.classList.toggle('active', autoSpeak);
+    showNotif(autoSpeak ? 'Auto-voz activada' : 'Auto-voz desactivada');
+  }
+
+  // ── VOICE INPUT ──
+  function toggleMic() {
+    if (isRecording) {
+      stopMic();
+    } else {
+      startMic();
+    }
+  }
+
+  function startMic() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      showNotif('Tu navegador no soporta reconocimiento de voz');
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'es-PR';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      isRecording = true;
+      document.getElementById('mic-btn').classList.add('recording');
+      document.getElementById('mic-btn').innerHTML = `
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><circle cx="12" cy="12" r="8"/></svg>
+        Grabando...`;
+    };
+
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+      document.getElementById('input').value = transcript;
+      updateCount();
+    };
+
+    recognition.onend = () => {
+      stopMic();
+      const text = document.getElementById('input').value.trim();
+      if (text) sendMessage();
+    };
+
+    recognition.onerror = () => stopMic();
+
+    recognition.start();
+  }
+
+  function stopMic() {
+    isRecording = false;
+    if (recognition) { try { recognition.stop(); } catch(e){} }
+    const btn = document.getElementById('mic-btn');
+    btn.classList.remove('recording');
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+        <line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+      Hablar`;
+  }
+
+  // ── NOTIF ──
+  function showNotif(msg) {
+    const n = document.getElementById('notif');
+    n.textContent = msg;
+    n.classList.add('show');
+    setTimeout(() => n.classList.remove('show'), 2500);
+  }
+
+  // Preload voices
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 </script>
 </body>
 </html>
