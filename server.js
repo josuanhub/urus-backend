@@ -7855,7 +7855,7 @@ Genera una Master Specification CORTA. Devuelve ÚNICAMENTE este JSON sin markdo
   },
   "integrations": ["whatsapp"],
   "tech_stack": { "frontend": "React + Tailwind", "backend": "Node.js + Express", "database": "PostgreSQL", "hosting": "Railway + Lovable" },
-  "lovable_prompt": "Construye un sistema CRM para ${project.company}. Pantallas: Dashboard con KPIs, Lista de clientes, Formulario de pedidos, Reportes. Conecta al backend en Railway. Stack: React + Tailwind. Diseño oscuro profesional."
+  "lovable_prompt": "Construye un sistema CRM para ${project.company}. Pantallas: Dashboard con KPIs, Lista de clientes, Formulario de pedidos, Reportes. Conecta al backend en Railway. Stack: React + Tailwind. Diseño oscuro profesional.""lovable_prompt": "...todo el prompt... Backend URL: https://www.urusverify.com — todos los fetch usan header x-factory-key: factory2026 y Content-Type: application/json."
 }`;
 
   const message = await client.messages.create({
