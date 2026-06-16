@@ -7821,6 +7821,20 @@ async function runOrchestrator(project_id) {
 
       // AGENTE 2 — Builder Adapter (Lovable por ahora)
       await updateProjectStatus(project_id, 'building', 'builder_adapter');
+
+      // AGENTE 3 — Deploy Agent (Vercel)
+      // NOTA: repoFullName todavía no existe en tu pipeline — viene del paso de GitHub Sync
+      // que es lo que vamos a construir justo después de esto.
+      await updateProjectStatus(project_id, 'building', 'deploy_agent');
+      const deployResult = await deployAgent(project_id, masterSpec, repoFullName);
+      await logAgentMemory(project_id, 'deploy_agent', { repo: repoFullName }, deployResult, 'done');
+
+      await pool.query(
+        `UPDATE factory_projects SET deployed_url = $1 WHERE id = $2`,
+        [deployResult.custom_domain, project_id]
+      );
+
+    
     const builder = await builderRegistry.select('frontend');
     const buildResult = await builder.build({ ...masterSpec, project_id });
 
@@ -7840,6 +7854,97 @@ async function runOrchestrator(project_id) {
     );
   }
 }
+
+async function deployAgent(project_id, masterSpec, repoFullName) {
+  console.log(`[DeployAgent] Iniciando deploy a Vercel para ${project_id}`);
+
+  const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
+  const subdomain = (masterSpec.system_name || `cliente-${project_id.slice(0, 8)}`)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+
+  try {
+    // 1. Crear el proyecto en Vercel apuntando al repo de GitHub
+    const createRes = await fetch('https://api.vercel.com/v10/projects', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${VERCEL_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: subdomain,
+        gitRepository: {
+          type: 'github',
+          repo: repoFullName, // ej: "josuanhub/cliente-ivan-frontend"
+        },
+        framework: 'vite',
+      }),
+    });
+
+    const project = await createRes.json();
+    if (!createRes.ok) {
+      throw new Error(`Vercel project create falló: ${JSON.stringify(project)}`);
+    }
+
+    // 2. Disparar el primer deploy desde la rama main
+    const deployRes = await fetch('https://api.vercel.com/v13/deployments', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${VERCEL_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: subdomain,
+        project: project.id,
+        gitSource: {
+          type: 'github',
+          repo: repoFullName,
+          ref: 'main',
+        },
+        target: 'production',
+      }),
+    });
+
+    const deployment = await deployRes.json();
+    if (!deployRes.ok) {
+      throw new Error(`Vercel deploy falló: ${JSON.stringify(deployment)}`);
+    }
+
+    // 3. Asignar el dominio custom del cliente
+    const customDomain = `${subdomain}.urusverify.com`;
+    const domainRes = await fetch(`https://api.vercel.com/v10/projects/${project.id}/domains`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${VERCEL_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: customDomain }),
+    });
+
+    const domainResult = await domainRes.json();
+    if (!domainRes.ok) {
+      console.error(`[DeployAgent] Dominio no se pudo asignar automáticamente:`, domainResult);
+    }
+
+    console.log(`[DeployAgent] Deploy completo: ${customDomain}`);
+
+    return {
+      vercel_project_id: project.id,
+      deployment_url: deployment.url ? `https://${deployment.url}` : null,
+      custom_domain: customDomain,
+      domain_verified: domainRes.ok,
+      status: 'done',
+    };
+
+  } catch (err) {
+    console.error(`[DeployAgent] Error:`, err.message);
+    throw new Error(`Deploy Agent falló: ${err.message}`);
+  }
+}
+
 
 async function backendEngineerAgent(project_id, masterSpec, schemaName) {
   console.log(`[BackendEngineer] Generando endpoints para ${schemaName}`);
