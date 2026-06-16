@@ -7830,49 +7830,32 @@ async function masterPlannerAgent(project) {
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
 
-  const prompt = `Eres el Master Planner de URUS Factory.
+const prompt = `Eres el Master Planner de URUS Factory.
 Empresa: "${project.company}" | Industria: ${project.industry}
 
-ANÁLISIS DEL NEGOCIO:
-${JSON.stringify(project.analysis, null, 2)}
+PROBLEMAS DETECTADOS:
+${JSON.stringify(project.analysis?.problemas?.slice(0,3) || [])}
 
-PROPUESTA APROBADA:
-${JSON.stringify(project.proposal, null, 2)}
+MÓDULOS PROPUESTOS:
+${JSON.stringify(project.proposal?.modulos?.slice(0,4) || [])}
 
-Genera la Master Specification completa del sistema a construir.
-Devuelve ÚNICAMENTE este JSON sin markdown:
+Genera una Master Specification CORTA. Devuelve ÚNICAMENTE este JSON sin markdown ni texto extra:
 {
-  "system_name": "nombre del sistema",
-  "description": "descripción en 2 frases",
+  "system_name": "nombre corto del sistema",
+  "description": "una frase de qué hace",
   "modules": [
-    {
-      "name": "nombre del módulo",
-      "type": "frontend|backend|integration",
-      "description": "qué hace",
-      "screens": ["pantalla1", "pantalla2"],
-      "endpoints": ["/ruta1", "/ruta2"],
-      "priority": 1
-    }
+    { "name": "CRM", "type": "frontend", "screens": ["Dashboard", "Clientes"], "endpoints": ["/clientes", "/pedidos"] },
+    { "name": "API Core", "type": "backend", "screens": [], "endpoints": ["/api/clientes", "/api/pedidos"] }
   ],
   "database_schema": {
     "tables": [
-      {
-        "name": "nombre_tabla",
-        "fields": [
-          { "name": "id", "type": "UUID", "primary": true },
-          { "name": "campo", "type": "TEXT" }
-        ]
-      }
+      { "name": "clientes", "fields": [{"name":"id","type":"UUID"},{"name":"nombre","type":"TEXT"}] },
+      { "name": "pedidos", "fields": [{"name":"id","type":"UUID"},{"name":"cliente_id","type":"UUID"},{"name":"total","type":"NUMERIC"}] }
     ]
   },
-  "integrations": ["twilio", "whatsapp", "stripe"],
-  "tech_stack": {
-    "frontend": "React + Tailwind",
-    "backend": "Node.js + Express",
-    "database": "PostgreSQL",
-    "hosting": "Railway + Lovable"
-  },
-  "lovable_prompt": "prompt completo listo para pegar en Lovable que describe todo el sistema a construir con sus pantallas, flujos y conexiones al backend"
+  "integrations": ["whatsapp"],
+  "tech_stack": { "frontend": "React + Tailwind", "backend": "Node.js + Express", "database": "PostgreSQL", "hosting": "Railway + Lovable" },
+  "lovable_prompt": "Construye un sistema CRM para ${project.company}. Pantallas: Dashboard con KPIs, Lista de clientes, Formulario de pedidos, Reportes. Conecta al backend en Railway. Stack: React + Tailwind. Diseño oscuro profesional."
 }`;
 
   const message = await client.messages.create({
