@@ -7715,9 +7715,6 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
 
 // ---------- URUS FACTORY ORCHESTRATOR ----------
 
-const path = require('path');
-const fs = require('fs');
-
 // Builder Registry — carga plugins dinámicamente
 class BuilderRegistry {
   constructor() {
