@@ -7713,6 +7713,299 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
 // ---------- END URUS FACTORY ----------
 
 
+// ---------- URUS FACTORY ORCHESTRATOR ----------
+
+const path = require('path');
+const fs = require('fs');
+
+// Builder Registry — carga plugins dinámicamente
+class BuilderRegistry {
+  constructor() {
+    this.plugins = new Map();
+  }
+
+  register(name, plugin) {
+    const required = ['build', 'ping', 'getStatus'];
+    for (const fn of required) {
+      if (typeof plugin[fn] !== 'function') {
+        console.error(`[BuilderRegistry] Plugin ${name} rechazado — falta: ${fn}`);
+        return;
+      }
+    }
+    this.plugins.set(name, plugin);
+    console.log(`[BuilderRegistry] Plugin registrado: ${name}`);
+  }
+
+  async select(type) {
+    const result = await pool.query(
+      `SELECT name FROM factory_builders 
+       WHERE (type = $1 OR type = 'fullstack') AND active = true 
+       ORDER BY priority ASC`,
+      [type]
+    );
+    for (const row of result.rows) {
+      const plugin = this.plugins.get(row.name);
+      if (plugin) {
+        try {
+          const alive = await plugin.ping();
+          if (alive) return plugin;
+        } catch (e) { continue; }
+      }
+    }
+    throw new Error(`No builder disponible para tipo: ${type}`);
+  }
+}
+
+const builderRegistry = new BuilderRegistry();
+
+// Plugin: Lovable (via prompt — hoy es manual)
+builderRegistry.register('lovable', {
+  async ping() { return true; },
+  async build(spec) {
+    return {
+      build_id: spec.project_id,
+      url: `https://lovable.dev/projects/06470d15-2286-4dd4-b5d1-a42a391defd0`,
+      status: 'building',
+      note: 'Spec lista para pegar en Lovable'
+    };
+  },
+  async getStatus(build_id) {
+    return { status: 'building', url: null };
+  }
+});
+
+// Orchestrator simple (V1 — un proyecto a la vez)
+async function runOrchestrator(project_id) {
+  console.log(`[Orchestrator] Iniciando proyecto: ${project_id}`);
+
+  try {
+    // Leer sesión y análisis
+    const proj = await pool.query(
+      `SELECT fp.*, fs.analysis, fs.proposal, fs.transcript, fs.client_name, fs.company, fs.industry
+       FROM factory_projects fp
+       JOIN factory_sessions fs ON fs.id = fp.session_id
+       WHERE fp.id = $1`,
+      [project_id]
+    );
+    if (!proj.rows.length) throw new Error('Proyecto no encontrado');
+    const project = proj.rows[0];
+
+    // AGENTE 1 — Master Planner
+    await updateProjectStatus(project_id, 'planning', 'master_planner');
+    const masterSpec = await masterPlannerAgent(project);
+
+    // Guardar spec
+    await pool.query(
+      `INSERT INTO factory_specs (project_id, version, spec, status)
+       VALUES ($1, '1.0.0', $2, 'building')`,
+      [project_id, JSON.stringify(masterSpec)]
+    );
+
+    // Guardar memory
+    await logAgentMemory(project_id, 'master_planner', project, masterSpec, 'done');
+
+    // Poblar Project Brain
+    await initProjectBrain(project_id, project, masterSpec);
+
+    // AGENTE 2 — Builder Adapter (Lovable por ahora)
+    await updateProjectStatus(project_id, 'building', 'builder_adapter');
+    const builder = await builderRegistry.select('frontend');
+    const buildResult = await builder.build({ ...masterSpec, project_id });
+
+    await logAgentMemory(project_id, 'builder_adapter', masterSpec, buildResult, 'done');
+
+    // Notificar a Josuan por WhatsApp
+    await notifyOperator(project_id, project, masterSpec, buildResult);
+
+    await updateProjectStatus(project_id, 'delivered', null);
+    console.log(`[Orchestrator] Proyecto completado: ${project_id}`);
+
+  } catch (err) {
+    console.error(`[Orchestrator] Error en proyecto ${project_id}:`, err);
+    await pool.query(
+      `UPDATE factory_projects SET status = 'failed', error_log = $1, updated_at = NOW() WHERE id = $2`,
+      [JSON.stringify({ error: err.message, stack: err.stack }), project_id]
+    );
+  }
+}
+
+async function masterPlannerAgent(project) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+
+  const prompt = `Eres el Master Planner de URUS Factory.
+Empresa: "${project.company}" | Industria: ${project.industry}
+
+ANÁLISIS DEL NEGOCIO:
+${JSON.stringify(project.analysis, null, 2)}
+
+PROPUESTA APROBADA:
+${JSON.stringify(project.proposal, null, 2)}
+
+Genera la Master Specification completa del sistema a construir.
+Devuelve ÚNICAMENTE este JSON sin markdown:
+{
+  "system_name": "nombre del sistema",
+  "description": "descripción en 2 frases",
+  "modules": [
+    {
+      "name": "nombre del módulo",
+      "type": "frontend|backend|integration",
+      "description": "qué hace",
+      "screens": ["pantalla1", "pantalla2"],
+      "endpoints": ["/ruta1", "/ruta2"],
+      "priority": 1
+    }
+  ],
+  "database_schema": {
+    "tables": [
+      {
+        "name": "nombre_tabla",
+        "fields": [
+          { "name": "id", "type": "UUID", "primary": true },
+          { "name": "campo", "type": "TEXT" }
+        ]
+      }
+    ]
+  },
+  "integrations": ["twilio", "whatsapp", "stripe"],
+  "tech_stack": {
+    "frontend": "React + Tailwind",
+    "backend": "Node.js + Express",
+    "database": "PostgreSQL",
+    "hosting": "Railway + Lovable"
+  },
+  "lovable_prompt": "prompt completo listo para pegar en Lovable que describe todo el sistema a construir con sus pantallas, flujos y conexiones al backend"
+}`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 3000,
+    messages: [{ role: 'user', content: prompt }]
+  });
+
+  const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+  return JSON.parse(raw);
+}
+
+async function initProjectBrain(project_id, project, masterSpec) {
+  await pool.query(
+    `INSERT INTO project_brain (
+      project_id, business_profile, objectives, 
+      conversation_history, business_processes,
+      detected_problems, financial_context
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (project_id) DO UPDATE SET
+      business_profile = EXCLUDED.business_profile,
+      last_updated = NOW()`,
+    [
+      project_id,
+      JSON.stringify({ company: project.company, industry: project.industry }),
+      JSON.stringify({ sistema: masterSpec.system_name }),
+      JSON.stringify([{ fecha: new Date(), resumen: project.transcript?.slice(0, 500) }]),
+      JSON.stringify(project.analysis?.procesos || []),
+      JSON.stringify(project.analysis?.problemas || []),
+      JSON.stringify({ setup: project.proposal?.precio_setup, mensual: project.proposal?.precio_mensual })
+    ]
+  );
+}
+
+async function notifyOperator(project_id, project, masterSpec, buildResult) {
+  try {
+    const msg = `🏭 *URUS Factory — Proyecto Listo*\n\n` +
+      `Cliente: ${project.client_name}\n` +
+      `Empresa: ${project.company}\n` +
+      `Sistema: ${masterSpec.system_name}\n\n` +
+      `📋 *Próximo paso:*\n` +
+      `Pega el lovable_prompt en Lovable para construir el frontend.\n\n` +
+      `🆔 Project ID: ${project_id}`;
+
+    await sendWhatsAppTextTwilio({
+      to: 'whatsapp:+17873905016',
+      text: msg
+    });
+  } catch (e) {
+    console.error('[Notify] Error WhatsApp:', e.message);
+  }
+}
+
+async function updateProjectStatus(project_id, status, agent) {
+  await pool.query(
+    `UPDATE factory_projects SET status = $1, current_agent = $2, updated_at = NOW() WHERE id = $3`,
+    [status, agent, project_id]
+  );
+}
+
+async function logAgentMemory(project_id, agent, input, output, status) {
+  await pool.query(
+    `INSERT INTO factory_project_memory (project_id, agent, input, output, status, completed_at)
+     VALUES ($1, $2, $3, $4, $5, NOW())`,
+    [project_id, agent, JSON.stringify(input), JSON.stringify(output), status]
+  );
+}
+
+// POST /v1/factory/project/approve — cliente aprueba y arranca la fábrica
+app.post('/v1/factory/project/approve', factoryAuth, async (req, res) => {
+  const { session_id } = req.body;
+  if (!session_id) return res.status(400).json({ error: 'session_id requerido' });
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO factory_projects (session_id, status)
+       VALUES ($1, 'queued') RETURNING id`,
+      [session_id]
+    );
+    const project_id = result.rows[0].id;
+
+    res.json({ ok: true, project_id, status: 'queued' });
+
+    // Arranca el orchestrator en background
+    setImmediate(() => runOrchestrator(project_id));
+
+  } catch (err) {
+    console.error('Factory approve error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /v1/factory/project/:id/status
+app.get('/v1/factory/project/:id/status', factoryAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT fp.id, fp.status, fp.current_agent, fp.deployed_url, fp.error_log,
+              fs.spec, fs.version
+       FROM factory_projects fp
+       LEFT JOIN factory_specs fs ON fs.project_id = fp.id
+       WHERE fp.id = $1`,
+      [req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'No encontrado' });
+    res.json({ ok: true, project: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /v1/factory/project/:id/brain
+app.get('/v1/factory/project/:id/brain', factoryAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM project_brain WHERE project_id = $1`,
+      [req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Brain no encontrado' });
+    res.json({ ok: true, brain: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- END URUS FACTORY ORCHESTRATOR ----------
+
+
+
+
+
 // ---------- Boot ----------
 (async () => {
   try {
