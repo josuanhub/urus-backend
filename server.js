@@ -7804,8 +7804,18 @@ async function runOrchestrator(project_id) {
     // Poblar Project Brain
     await initProjectBrain(project_id, project, masterSpec);
 
-    // AGENTE 2 — Builder Adapter (Lovable por ahora)
-    await updateProjectStatus(project_id, 'building', 'builder_adapter');
+  // AGENTE 1.5 — Database Architect
+      await updateProjectStatus(project_id, 'building', 'database_architect');
+      const dbResult = await databaseArchitectAgent(project_id, masterSpec, project);
+      await logAgentMemory(project_id, 'database_architect', masterSpec.database_schema, dbResult, 'done');
+
+      await pool.query(
+        `UPDATE factory_projects SET error_log = $1 WHERE id = $2`,
+        [JSON.stringify({ db_schema: dbResult.schema, tables: dbResult.tables_created }), project_id]
+      );
+
+      // AGENTE 2 — Builder Adapter (Lovable por ahora)
+      await updateProjectStatus(project_id, 'building', 'builder_adapter');
     const builder = await builderRegistry.select('frontend');
     const buildResult = await builder.build({ ...masterSpec, project_id });
 
@@ -7823,6 +7833,50 @@ async function runOrchestrator(project_id) {
       `UPDATE factory_projects SET status = 'failed', error_log = $1, updated_at = NOW() WHERE id = $2`,
       [JSON.stringify({ error: err.message, stack: err.stack }), project_id]
     );
+  }
+}
+
+async function databaseArchitectAgent(project_id, masterSpec, project) {
+  console.log(`[DatabaseArchitect] Iniciando para proyecto ${project_id}`);
+
+  const schemaName = `client_${project_id.replace(/-/g, '_').slice(0, 20)}`;
+
+  try {
+    await pool.query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
+
+    const tables = masterSpec.database_schema?.tables || [];
+    const createdTables = [];
+
+    for (const table of tables) {
+      const fields = table.fields.map(f => {
+        let type = f.type.toUpperCase();
+        if (type === 'UUID' && f.name === 'id') {
+          return `"${f.name}" UUID PRIMARY KEY DEFAULT gen_random_uuid()`;
+        }
+        if (type === 'TIMESTAMP') return `"${f.name}" TIMESTAMP DEFAULT NOW()`;
+        if (type === 'BOOLEAN') return `"${f.name}" BOOLEAN DEFAULT true`;
+        if (type === 'NUMERIC') return `"${f.name}" NUMERIC(12,2) DEFAULT 0`;
+        if (type === 'INTEGER') return `"${f.name}" INTEGER DEFAULT 0`;
+        return `"${f.name}" TEXT`;
+      }).join(',\n  ');
+
+      const createSQL = `CREATE TABLE IF NOT EXISTS ${schemaName}."${table.name}" (\n  ${fields}\n)`;
+
+      await pool.query(createSQL);
+      createdTables.push(table.name);
+    }
+
+    console.log(`[DatabaseArchitect] Tablas creadas: ${createdTables.join(', ')}`);
+
+    return {
+      schema: schemaName,
+      tables_created: createdTables,
+      status: 'done'
+    };
+
+  } catch (err) {
+    console.error(`[DatabaseArchitect] Error:`, err.message);
+    throw new Error(`Database Architect falló: ${err.message}`);
   }
 }
 
