@@ -7918,7 +7918,7 @@ async function notifyOperator(project_id, project, masterSpec, buildResult) {
       `🆔 Project ID: ${project_id}`;
 
     await sendWhatsAppTextTwilio({
-      to: 'whatsapp:+17873905016',
+      to: 'whatsapp:+19395851479',
       text: msg
     });
   } catch (e) {
