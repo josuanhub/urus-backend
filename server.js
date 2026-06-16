@@ -7818,10 +7818,15 @@ async function runOrchestrator(project_id) {
       await updateProjectStatus(project_id, 'building', 'backend_engineer');
       const backendResult = await backendEngineerAgent(project_id, masterSpec, dbResult.schema);
       await logAgentMemory(project_id, 'backend_engineer', { schema: dbResult.schema }, backendResult, 'done');
+    
 
-      // AGENTE 2 — Builder Adapter (Lovable por ahora)
+     // AGENTE 2 — Builder Adapter (Lovable construye, queda esperando aquí)
       await updateProjectStatus(project_id, 'building', 'builder_adapter');
+      // El pipeline se detiene aquí. Continúa cuando se llame
+      // a /v1/factory/project/:id/confirm-github más adelante.
+      return;
 
+    
       // AGENTE 3 — Deploy Agent (Vercel)
       // NOTA: repoFullName todavía no existe en tu pipeline — viene del paso de GitHub Sync
       // que es lo que vamos a construir justo después de esto.
@@ -8273,6 +8278,99 @@ app.get('/v1/factory/project/:id/brain', factoryAuth, async (req, res) => {
 // ---------- END URUS FACTORY ORCHESTRATOR ----------
 
 
+
+
+async function deployAgent(project_id, masterSpec, repoFullName) {
+  console.log(`[DeployAgent] Iniciando deploy a Vercel para ${project_id}`);
+
+  const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
+  const subdomain = (masterSpec.system_name || `cliente-${project_id.slice(0, 8)}`)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+
+  try {
+    const createRes = await fetch('https://api.vercel.com/v10/projects', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: subdomain,
+        gitRepository: { type: 'github', repo: repoFullName },
+        framework: 'vite',
+      }),
+    });
+    const project = await createRes.json();
+    if (!createRes.ok) throw new Error(`Vercel project create falló: ${JSON.stringify(project)}`);
+
+    const deployRes = await fetch('https://api.vercel.com/v13/deployments', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: subdomain,
+        project: project.id,
+        gitSource: { type: 'github', repo: repoFullName, ref: 'main' },
+        target: 'production',
+      }),
+    });
+    const deployment = await deployRes.json();
+    if (!deployRes.ok) throw new Error(`Vercel deploy falló: ${JSON.stringify(deployment)}`);
+
+    const customDomain = `${subdomain}.urusverify.com`;
+    const domainRes = await fetch(`https://api.vercel.com/v10/projects/${project.id}/domains`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: customDomain }),
+    });
+    const domainResult = await domainRes.json();
+    if (!domainRes.ok) console.error(`[DeployAgent] Dominio no se pudo asignar automáticamente:`, domainResult);
+
+    console.log(`[DeployAgent] Deploy completo: ${customDomain}`);
+    return {
+      vercel_project_id: project.id,
+      deployment_url: deployment.url ? `https://${deployment.url}` : null,
+      custom_domain: customDomain,
+      domain_verified: domainRes.ok,
+      status: 'done',
+    };
+  } catch (err) {
+    console.error(`[DeployAgent] Error:`, err.message);
+    throw new Error(`Deploy Agent falló: ${err.message}`);
+  }
+}
+
+// Llama esto tú, una vez, justo después de darle clic a "Connect" en GitHub dentro de Lovable
+app.post('/v1/factory/project/:id/confirm-github', factoryAuth, async (req, res) => {
+  const project_id = req.params.id;
+  const repoFullName = `josuanhub/urus-cliente-${project_id.slice(0, 8)}`;
+
+  try {
+    const projectRes = await pool.query(`SELECT * FROM factory_projects WHERE id = $1`, [project_id]);
+    if (projectRes.rowCount === 0) {
+      return res.status(404).json({ ok: false, error: 'Proyecto no encontrado' });
+    }
+    const masterSpec = projectRes.rows[0].spec;
+
+    await updateProjectStatus(project_id, 'building', 'deploy_agent');
+    const deployResult = await deployAgent(project_id, masterSpec, repoFullName);
+    await logAgentMemory(project_id, 'deploy_agent', { repo: repoFullName }, deployResult, 'done');
+
+    await pool.query(
+      `UPDATE factory_projects SET status = $1, deployed_url = $2, current_agent = NULL WHERE id = $3`,
+      ['delivered', deployResult.custom_domain, project_id]
+    );
+
+    res.json({ ok: true, deployed_url: deployResult.custom_domain });
+  } catch (err) {
+    console.error('[ConfirmGithub] Error:', err.message);
+    await pool.query(
+      `UPDATE factory_projects SET status = 'failed', error_log = $1 WHERE id = $2`,
+      [JSON.stringify({ error: err.message }), project_id]
+    );
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 
 
