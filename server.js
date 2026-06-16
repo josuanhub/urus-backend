@@ -7881,8 +7881,31 @@ Devuelve ÚNICAMENTE este JSON sin markdown:
     messages: [{ role: 'user', content: prompt }]
   });
 
-  const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+  let raw = message.content[0].text.replace(/```json|```/g, '').trim();
+// Si el JSON está truncado, intentar cerrar los brackets
+try {
   return JSON.parse(raw);
+} catch (e) {
+  // Contar brackets abiertos y cerrar los que faltan
+  const opens = (raw.match(/\{/g) || []).length;
+  const closes = (raw.match(/\}/g) || []).length;
+  const diff = opens - closes;
+  if (diff > 0) raw = raw + '}'.repeat(diff);
+  try {
+    return JSON.parse(raw);
+  } catch (e2) {
+    // Simplificar — pedir spec reducida
+    return {
+      system_name: `Sistema ${message.content[0].text.match(/"system_name":\s*"([^"]+)"/)?.[1] || 'URUS'}`,
+      description: 'Sistema generado por URUS Factory',
+      modules: [],
+      database_schema: { tables: [] },
+      integrations: [],
+      tech_stack: { frontend: 'React', backend: 'Node.js', database: 'PostgreSQL', hosting: 'Railway' },
+      lovable_prompt: raw.match(/"lovable_prompt":\s*"([^"]+)"/)?.[1] || 'Sistema empresarial completo'
+    };
+  }
+}
 }
 
 async function initProjectBrain(project_id, project, masterSpec) {
