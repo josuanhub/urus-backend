@@ -7814,6 +7814,11 @@ async function runOrchestrator(project_id) {
         [JSON.stringify({ db_schema: dbResult.schema, tables: dbResult.tables_created }), project_id]
       );
 
+      // AGENTE 1.7 — Backend Engineer
+      await updateProjectStatus(project_id, 'building', 'backend_engineer');
+      const backendResult = await backendEngineerAgent(project_id, masterSpec, dbResult.schema);
+      await logAgentMemory(project_id, 'backend_engineer', { schema: dbResult.schema }, backendResult, 'done');
+
       // AGENTE 2 — Builder Adapter (Lovable por ahora)
       await updateProjectStatus(project_id, 'building', 'builder_adapter');
     const builder = await builderRegistry.select('frontend');
@@ -7835,6 +7840,109 @@ async function runOrchestrator(project_id) {
     );
   }
 }
+
+async function backendEngineerAgent(project_id, masterSpec, schemaName) {
+  console.log(`[BackendEngineer] Generando endpoints para ${schemaName}`);
+
+  const tables = masterSpec.database_schema?.tables || [];
+  const router = express.Router();
+
+  // Middleware de auth reutiliza factoryAuth
+  router.use(factoryAuth);
+
+  for (const table of tables) {
+    const tableName = table.name;
+    const pkField = table.fields.find(f => f.name === 'id') ? 'id' : table.fields[0].name;
+
+    // GET /api/{tabla} — listar con paginación simple
+    router.get(`/${tableName}`, async (req, res) => {
+      try {
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = parseInt(req.query.offset) || 0;
+        const result = await pool.query(
+          `SELECT * FROM ${schemaName}."${tableName}" ORDER BY ${pkField} DESC LIMIT $1 OFFSET $2`,
+          [limit, offset]
+        );
+        res.json({ ok: true, data: result.rows, count: result.rowCount });
+      } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+      }
+    });
+
+    // GET /api/{tabla}/:id
+    router.get(`/${tableName}/:id`, async (req, res) => {
+      try {
+        const result = await pool.query(
+          `SELECT * FROM ${schemaName}."${tableName}" WHERE ${pkField} = $1`,
+          [req.params.id]
+        );
+        if (result.rowCount === 0) return res.status(404).json({ ok: false, error: 'No encontrado' });
+        res.json({ ok: true, data: result.rows[0] });
+      } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+      }
+    });
+
+    // POST /api/{tabla} — crear
+    router.post(`/${tableName}`, async (req, res) => {
+      try {
+        const fields = table.fields.filter(f => f.name !== 'id' && req.body[f.name] !== undefined);
+        const columns = fields.map(f => `"${f.name}"`).join(', ');
+        const values = fields.map(f => req.body[f.name]);
+        const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
+
+        const result = await pool.query(
+          `INSERT INTO ${schemaName}."${tableName}" (${columns}) VALUES (${placeholders}) RETURNING *`,
+          values
+        );
+        res.json({ ok: true, data: result.rows[0] });
+      } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+      }
+    });
+
+    // PUT /api/{tabla}/:id — actualizar
+    router.put(`/${tableName}/:id`, async (req, res) => {
+      try {
+        const fields = table.fields.filter(f => f.name !== 'id' && req.body[f.name] !== undefined);
+        const setClause = fields.map((f, i) => `"${f.name}" = $${i + 1}`).join(', ');
+        const values = fields.map(f => req.body[f.name]);
+
+        const result = await pool.query(
+          `UPDATE ${schemaName}."${tableName}" SET ${setClause} WHERE ${pkField} = $${fields.length + 1} RETURNING *`,
+          [...values, req.params.id]
+        );
+        if (result.rowCount === 0) return res.status(404).json({ ok: false, error: 'No encontrado' });
+        res.json({ ok: true, data: result.rows[0] });
+      } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+      }
+    });
+
+    // DELETE /api/{tabla}/:id
+    router.delete(`/${tableName}/:id`, async (req, res) => {
+      try {
+        await pool.query(`DELETE FROM ${schemaName}."${tableName}" WHERE ${pkField} = $1`, [req.params.id]);
+        res.json({ ok: true });
+      } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+      }
+    });
+  }
+
+  // Montar el router bajo /v1/client/{project_id}/api
+  const mountPath = `/v1/client/${project_id}/api`;
+  app.use(mountPath, router);
+
+  console.log(`[BackendEngineer] Endpoints montados en ${mountPath}`);
+
+  return {
+    mount_path: mountPath,
+    endpoints_created: tables.map(t => `${mountPath}/${t.name}`),
+    status: 'done'
+  };
+}
+
 
 async function databaseArchitectAgent(project_id, masterSpec, project) {
   console.log(`[DatabaseArchitect] Iniciando para proyecto ${project_id}`);
