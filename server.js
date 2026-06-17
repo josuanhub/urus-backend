@@ -7893,7 +7893,9 @@ async function deployAgent(project_id, masterSpec, repoFullName) {
     if (!createRes.ok) {
       throw new Error(`Vercel project create falló: ${JSON.stringify(project)}`);
     }
+console.log('[DeployAgent] Respuesta completa de Vercel al crear proyecto:', JSON.stringify(project));
 
+    
     // 2. Disparar el primer deploy desde la rama main
     const deployRes = await fetch('https://api.vercel.com/v13/deployments', {
       method: 'POST',
