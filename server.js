@@ -7864,7 +7864,7 @@ async function deployAgent(project_id, masterSpec, repoFullName) {
   console.log(`[DeployAgent] Iniciando deploy a Vercel para ${project_id}`);
 
   const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
-  const subdomain = (masterSpec.system_name || `cliente-${project_id.slice(0, 8)}`)
+  const subdomain = (`${masterSpec.system_name || 'cliente'}-${project_id.slice(0, 8)}`)
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
