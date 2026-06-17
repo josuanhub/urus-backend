@@ -7894,7 +7894,9 @@ async function deployAgent(project_id, masterSpec, repoFullName) {
       throw new Error(`Vercel project create falló: ${JSON.stringify(project)}`);
     }
 console.log('[DeployAgent] Respuesta completa de Vercel al crear proyecto:', JSON.stringify(project));
-
+const repoId = project.link?.repoId;
+    if (!repoId) throw new Error(`No se pudo obtener repoId de Vercel: ${JSON.stringify(project.link)}`);
+    
     
     // 2. Disparar el primer deploy desde la rama main
     const deployRes = await fetch('https://api.vercel.com/v13/deployments', {
@@ -7908,7 +7910,7 @@ console.log('[DeployAgent] Respuesta completa de Vercel al crear proyecto:', JSO
         project: project.id,
         gitSource: {
           type: 'github',
-          repo: repoFullName,
+          repoId: repoId,
           ref: 'main',
         },
         target: 'production',
