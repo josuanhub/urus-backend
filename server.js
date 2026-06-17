@@ -8280,65 +8280,7 @@ app.get('/v1/factory/project/:id/brain', factoryAuth, async (req, res) => {
 
 
 
-async function deployAgent(project_id, masterSpec, repoFullName) {
-  console.log(`[DeployAgent] Iniciando deploy a Vercel para ${project_id}`);
 
-  const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
-  const subdomain = (masterSpec.system_name || `cliente-${project_id.slice(0, 8)}`)
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40);
-
-  try {
-    const createRes = await fetch('https://api.vercel.com/v10/projects', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: subdomain,
-        gitRepository: { type: 'github', repo: repoFullName },
-        framework: 'vite',
-      }),
-    });
-    const project = await createRes.json();
-    if (!createRes.ok) throw new Error(`Vercel project create falló: ${JSON.stringify(project)}`);
-
-    const deployRes = await fetch('https://api.vercel.com/v13/deployments', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: subdomain,
-        project: project.id,
-        gitSource: { type: 'github', repo: repoFullName, ref: 'main' },
-        target: 'production',
-      }),
-    });
-    const deployment = await deployRes.json();
-    if (!deployRes.ok) throw new Error(`Vercel deploy falló: ${JSON.stringify(deployment)}`);
-
-    const customDomain = `${subdomain}.urusverify.com`;
-    const domainRes = await fetch(`https://api.vercel.com/v10/projects/${project.id}/domains`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: customDomain }),
-    });
-    const domainResult = await domainRes.json();
-    if (!domainRes.ok) console.error(`[DeployAgent] Dominio no se pudo asignar automáticamente:`, domainResult);
-
-    console.log(`[DeployAgent] Deploy completo: ${customDomain}`);
-    return {
-      vercel_project_id: project.id,
-      deployment_url: deployment.url ? `https://${deployment.url}` : null,
-      custom_domain: customDomain,
-      domain_verified: domainRes.ok,
-      status: 'done',
-    };
-  } catch (err) {
-    console.error(`[DeployAgent] Error:`, err.message);
-    throw new Error(`Deploy Agent falló: ${err.message}`);
-  }
-}
 
 // Llama esto tú, una vez, justo después de darle clic a "Connect" en GitHub dentro de Lovable
 app.post('/v1/factory/project/:id/confirm-github', factoryAuth, async (req, res) => {
