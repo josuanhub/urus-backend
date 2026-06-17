@@ -8353,8 +8353,9 @@ if (!repoFullName) {
     if (projectRes.rowCount === 0) {
       return res.status(404).json({ ok: false, error: 'Proyecto no encontrado' });
     }
-    const masterSpec = projectRes.rows[0].spec;
-
+    
+const masterSpec = projectRes.rows[0].spec || projectRes.rows[0].master_spec;
+    
     await updateProjectStatus(project_id, 'building', 'deploy_agent');
     const deployResult = await deployAgent(project_id, masterSpec, repoFullName);
     await logAgentMemory(project_id, 'deploy_agent', { repo: repoFullName }, deployResult, 'done');
