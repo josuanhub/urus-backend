@@ -8343,7 +8343,10 @@ async function deployAgent(project_id, masterSpec, repoFullName) {
 // Llama esto tú, una vez, justo después de darle clic a "Connect" en GitHub dentro de Lovable
 app.post('/v1/factory/project/:id/confirm-github', factoryAuth, async (req, res) => {
   const project_id = req.params.id;
-  const repoFullName = `josuanhub/urus-cliente-${project_id.slice(0, 8)}`;
+ const { repo: repoFullName } = req.body;
+if (!repoFullName) {
+  return res.status(400).json({ ok: false, error: 'Falta el campo repo en el body' });
+}
 
   try {
     const projectRes = await pool.query(`SELECT * FROM factory_projects WHERE id = $1`, [project_id]);
