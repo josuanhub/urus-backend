@@ -8349,12 +8349,18 @@ if (!repoFullName) {
 }
 
   try {
-    const projectRes = await pool.query(`SELECT * FROM factory_projects WHERE id = $1`, [project_id]);
+    const projectRes = await pool.query(
+      `SELECT fp.id, fs.spec
+       FROM factory_projects fp
+       LEFT JOIN factory_specs fs ON fs.project_id = fp.id
+       WHERE fp.id = $1`,
+      [project_id]
+    );
     if (projectRes.rowCount === 0) {
       return res.status(404).json({ ok: false, error: 'Proyecto no encontrado' });
     }
     
-const masterSpec = projectRes.rows[0].spec || projectRes.rows[0].master_spec;
+const masterSpec = projectRes.rows[0].spec;
     
     await updateProjectStatus(project_id, 'building', 'deploy_agent');
     const deployResult = await deployAgent(project_id, masterSpec, repoFullName);
