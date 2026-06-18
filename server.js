@@ -8332,9 +8332,50 @@ app.post('/v1/factory/project/:id/upload-data', factoryAuth, upload.single('file
     if (['xlsx', 'xls', 'csv'].includes(ext)) {
       // Excel y CSV usan la misma librería
       const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+
+if (workbook.SheetNames.length > 1) {
+  // Múltiples hojas — procesar cada una y responder directo
+  const allSheetResults = [];
+  for (const sheetName of workbook.SheetNames) {
+    const sheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null });
+    if (!sheetRows.length) continue;
+    const sheetMapping = await mapColumnsWithAI(Object.keys(sheetRows[0]), sheetRows.slice(0, 3), tables, null);
+    if (!sheetMapping.table_name) continue;
+    const targetTable = tables.find(t => t.name === sheetMapping.table_name);
+    if (!targetTable) continue;
+    await pool.query(
+      `INSERT INTO factory_upload_mappings (project_id, table_name, column_map) VALUES ($1, $2, $3) ON CONFLICT (project_id, table_name) DO UPDATE SET column_map = EXCLUDED.column_map, updated_at = NOW()`,
+      [project_id, sheetMapping.table_name, JSON.stringify(sheetMapping.column_map)]
+    );
+    let inserted = 0, skipped = 0;
+    for (const row of sheetRows) {
+      try {
+        const fieldNames = [], values = [];
+        for (const field of targetTable.fields) {
+          if (field.name === 'id') continue;
+          const sourceColumn = sheetMapping.column_map[field.name];
+          if (sourceColumn && row[sourceColumn] !== undefined && row[sourceColumn] !== null) {
+            fieldNames.push(`"${field.name}"`);
+            values.push(row[sourceColumn]);
+          }
+        }
+        if (!fieldNames.length) { skipped++; continue; }
+        await pool.query(
+          `INSERT INTO ${schemaName}."${targetTable.name}" (${fieldNames.join(', ')}) VALUES (${values.map((_, i) => `$${i + 1}`).join(', ')})`,
+          values
+        );
+        inserted++;
+      } catch (e) { skipped++; }
+    }
+    allSheetResults.push({ hoja: sheetName, tabla: sheetMapping.table_name, filas_recibidas: sheetRows.length, filas_insertadas: inserted, filas_omitidas: skipped });
+  }
+  return res.json({ ok: true, hojas_procesadas: allSheetResults.length, resultados: allSheetResults });
+}
+
+// Una sola hoja — flujo original
+const sheetName = workbook.SheetNames[0];
+const sheet = workbook.Sheets[sheetName];
+rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
     } else if (ext === 'pdf') {
       rows = await extractRowsFromPDF(req.file.buffer);
     } else if (['png', 'jpg', 'jpeg'].includes(ext)) {
