@@ -8506,6 +8506,66 @@ async function extractRowsFromImage(buffer, ext) {
 }
 
 
+
+
+// ============================================================
+// PIEZA 3 — pegar en la misma línea 8281 (antes del END URUS FACTORY ORCHESTRATOR)
+// junto con la Pieza 1 si aún no la pegaste, o justo después de ella
+// ============================================================
+
+// GET /v1/factory/projects — lista todos los proyectos generados con toda su info
+app.get('/v1/factory/projects', factoryAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        fp.id AS project_id,
+        fp.session_id,
+        fp.status,
+        fp.current_agent,
+        fp.deployed_url,
+        fp.created_at,
+        fp.updated_at,
+        fs_session.client_name,
+        fs_session.company,
+        fs_session.industry,
+        fs_spec.spec,
+        fs_spec.version
+       FROM factory_projects fp
+       LEFT JOIN factory_sessions fs_session ON fs_session.id = fp.session_id
+       LEFT JOIN factory_specs fs_spec ON fs_spec.project_id = fp.id
+       ORDER BY fp.created_at DESC`
+    );
+
+    const projects = result.rows.map(row => ({
+      project_id: row.project_id,
+      session_id: row.session_id,
+      status: row.status,
+      current_agent: row.current_agent,
+      deployed_url: row.deployed_url,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      client_name: row.client_name,
+      company: row.company,
+      industry: row.industry,
+      version: row.version,
+      system_name: row.spec?.system_name || null,
+      description: row.spec?.description || null,
+      lovable_prompt: row.spec?.lovable_prompt || null,
+      modules: row.spec?.modules || [],
+      database_schema: row.spec?.database_schema || null,
+      tech_stack: row.spec?.tech_stack || null,
+      integrations: row.spec?.integrations || []
+    }));
+
+    res.json({ ok: true, total: projects.length, projects });
+  } catch (err) {
+    console.error('Factory projects list error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
 // ---------- END URUS FACTORY ORCHESTRATOR ----------
 
 
