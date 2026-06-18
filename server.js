@@ -8131,8 +8131,7 @@ Genera una Master Specification CORTA. Devuelve ÚNICAMENTE este JSON sin markdo
   },
   "integrations": ["whatsapp"],
   "tech_stack": { "frontend": "React + Tailwind", "backend": "Node.js + Express", "database": "PostgreSQL", "hosting": "Railway + Lovable" },
-  "lovable_prompt": "Construye un sistema CRM para ${project.company}. Pantallas: Dashboard con KPIs, Lista de clientes, Formulario de pedidos, Reportes. Conecta al backend en Railway. Stack: React + Tailwind. Diseño oscuro profesional.""lovable_prompt": "...todo el prompt... Backend URL: https://www.urusverify.com — todos los fetch usan header x-factory-key: factory2026 y Content-Type: application/json."
-}`;
+"lovable_prompt": "Construye un sistema CRM para ${project.company}. Pantallas: Dashboard con KPIs, Lista de clientes, Formulario de pedidos, Reportes. Conecta al backend en Railway. Stack: React + Tailwind. Diseño oscuro profesional. Backend URL: https://www.urusverify.com — todos los fetch usan header x-factory-key: factory2026 y Content-Type: application/json. En el Dashboard, agrega una tarjeta llamada 'Cargar mis datos' con un campo de subir archivo (acepta .xlsx, .xls, .csv, .pdf, .png, .jpg) y un botón 'Subir'. Al hacer click, envía el archivo con fetch como FormData (campo 'file') a POST https://www.urusverify.com/v1/factory/project/${project.id || 'PROJECT_ID'}/upload-data con header x-factory-key: factory2026 (sin Content-Type, el navegador lo pone solo en FormData). Mientras sube, muestra 'Procesando archivo...'. Cuando responda, muestra un resumen: tabla detectada, cuántas filas se insertaron, y cuántas se omitieron. Si hay error, muéstralo en rojo de forma clara."}`;
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -8278,6 +8277,234 @@ app.get('/v1/factory/project/:id/brain', factoryAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ============================================================
+// PIEZA 1 — pegar DEBAJO de GET /v1/factory/project/:id/brain
+// Endpoint universal de carga de datos: Excel, CSV, PDF, imagen
+// ============================================================
+
+// Necesitas instalar estas dos librerías nuevas (no las tienes aún):
+//   npm install multer xlsx
+//
+// multer = recibe el archivo subido desde el navegador
+// xlsx   = lee archivos .xlsx, .xls y también .csv
+
+const multer = require('multer');
+const XLSX = require('xlsx');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+
+// POST /v1/factory/project/:id/upload-data
+// Sube cualquier archivo (xlsx, csv, pdf, png, jpg) y lo inserta
+// en la tabla correcta del schema de ESE proyecto, usando IA para
+// entender qué columna del archivo va en qué campo de la tabla.
+app.post('/v1/factory/project/:id/upload-data', factoryAuth, upload.single('file'), async (req, res) => {
+  const { id: project_id } = req.params;
+  const { table_name } = req.body; // opcional: si el dueño ya sabe a qué tabla va
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se recibió ningún archivo (campo "file")' });
+  }
+
+  try {
+    // 1. Confirmar que el proyecto existe y traer su schema + spec
+    const projRes = await pool.query(
+      `SELECT fp.id, fs.spec
+       FROM factory_projects fp
+       LEFT JOIN factory_specs fs ON fs.project_id = fp.id
+       WHERE fp.id = $1`,
+      [project_id]
+    );
+    if (!projRes.rows.length) return res.status(404).json({ error: 'Proyecto no encontrado' });
+
+    const spec = projRes.rows[0].spec;
+    const tables = spec?.database_schema?.tables || [];
+    if (!tables.length) {
+      return res.status(400).json({ error: 'Este proyecto no tiene tablas definidas todavía' });
+    }
+
+    const schemaName = `client_${project_id.replace(/-/g, '_').slice(0, 20)}`;
+    const ext = (req.file.originalname.split('.').pop() || '').toLowerCase();
+
+    // 2. Extraer filas según el tipo de archivo
+    let rows = [];
+
+    if (['xlsx', 'xls', 'csv'].includes(ext)) {
+      // Excel y CSV usan la misma librería
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+    } else if (ext === 'pdf') {
+      rows = await extractRowsFromPDF(req.file.buffer);
+    } else if (['png', 'jpg', 'jpeg'].includes(ext)) {
+      rows = await extractRowsFromImage(req.file.buffer, ext);
+    } else {
+      return res.status(400).json({ error: `Formato .${ext} no soportado. Usa Excel, CSV, PDF o imagen.` });
+    }
+
+    if (!rows.length) {
+      return res.status(400).json({ error: 'No se encontraron filas de datos en el archivo' });
+    }
+
+    // 3. Decidir a qué tabla va (si no vino especificada) y mapear columnas con IA
+    const fileColumns = Object.keys(rows[0]);
+    const mapping = await mapColumnsWithAI(fileColumns, rows.slice(0, 3), tables, table_name);
+
+    if (!mapping.table_name) {
+      return res.status(422).json({
+        error: 'No se pudo determinar a qué tabla pertenecen estos datos',
+        columnas_detectadas: fileColumns,
+        tablas_disponibles: tables.map(t => t.name)
+      });
+    }
+
+    const targetTable = tables.find(t => t.name === mapping.table_name);
+    if (!targetTable) {
+      return res.status(422).json({ error: `La tabla "${mapping.table_name}" no existe en este proyecto` });
+    }
+
+    // 4. Guardar el mapeo para reusarlo en futuras cargas del mismo proyecto
+    await pool.query(
+      `INSERT INTO factory_upload_mappings (project_id, table_name, column_map)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (project_id, table_name) DO UPDATE SET column_map = EXCLUDED.column_map, updated_at = NOW()`,
+      [project_id, mapping.table_name, JSON.stringify(mapping.column_map)]
+    );
+
+    // 5. Insertar fila por fila en la tabla real
+    let inserted = 0;
+    let skipped = 0;
+    const errors = [];
+
+    for (const row of rows) {
+      try {
+        const fieldNames = [];
+        const values = [];
+
+        for (const field of targetTable.fields) {
+          if (field.name === 'id') continue; // id es autogenerado
+          const sourceColumn = mapping.column_map[field.name];
+          if (sourceColumn && row[sourceColumn] !== undefined && row[sourceColumn] !== null) {
+            fieldNames.push(`"${field.name}"`);
+            values.push(row[sourceColumn]);
+          }
+        }
+
+        if (fieldNames.length === 0) { skipped++; continue; }
+
+        const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+        await pool.query(
+          `INSERT INTO ${schemaName}."${targetTable.name}" (${fieldNames.join(', ')}) VALUES (${placeholders})`,
+          values
+        );
+        inserted++;
+      } catch (rowErr) {
+        skipped++;
+        errors.push(rowErr.message);
+      }
+    }
+
+    res.json({
+      ok: true,
+      tabla: targetTable.name,
+      filas_recibidas: rows.length,
+      filas_insertadas: inserted,
+      filas_omitidas: skipped,
+      mapeo_usado: mapping.column_map,
+      errores: errors.slice(0, 5) // solo los primeros 5 para no saturar la respuesta
+    });
+
+  } catch (err) {
+    console.error('Upload-data error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Usa Claude para decidir a qué tabla pertenecen los datos y cómo
+// mapear cada columna del archivo a cada campo de esa tabla.
+async function mapColumnsWithAI(fileColumns, sampleRows, tables, forcedTableName) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+
+  const tablesDescription = tables.map(t => ({
+    name: t.name,
+    fields: t.fields.map(f => f.name).filter(f => f !== 'id')
+  }));
+
+  const prompt = `Eres un agente que mapea columnas de un archivo subido por un negocio a los campos de una base de datos.
+
+TABLAS DISPONIBLES EN ESTE PROYECTO:
+${JSON.stringify(tablesDescription)}
+
+${forcedTableName ? `EL USUARIO YA INDICÓ que estos datos van en la tabla: "${forcedTableName}"` : ''}
+
+COLUMNAS DEL ARCHIVO SUBIDO:
+${JSON.stringify(fileColumns)}
+
+FILAS DE EJEMPLO (para entender el contenido):
+${JSON.stringify(sampleRows)}
+
+Decide a cuál tabla pertenecen estos datos (o usa la indicada si el usuario ya la especificó) y mapea cada campo de esa tabla a la columna del archivo que mejor corresponda. Si una columna del archivo no corresponde a ningún campo, ignórala. Si un campo de la tabla no tiene columna correspondiente en el archivo, no lo incluyas en el mapeo.
+
+Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
+{
+  "table_name": "nombre_de_la_tabla_elegida",
+  "column_map": { "campo_de_la_tabla": "columna_del_archivo", "otro_campo": "otra_columna" }
+}`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: prompt }]
+  });
+
+  const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+  return JSON.parse(raw);
+}
+
+// Extrae tablas de datos desde un PDF (facturas, listados, reportes)
+async function extractRowsFromPDF(buffer) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4000,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: buffer.toString('base64') } },
+        { type: 'text', text: 'Extrae todas las filas de datos tabulares de este PDF (clientes, productos, pedidos, lo que sea). Devuelve ÚNICAMENTE un array JSON de objetos, uno por fila, usando como llaves los encabezados de columna que veas en el documento. Sin texto adicional, sin markdown.' }
+      ]
+    }]
+  });
+
+  const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+  return JSON.parse(raw);
+}
+
+// Extrae tablas de datos desde una imagen (foto de una lista, factura, etc)
+async function extractRowsFromImage(buffer, ext) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+  const mediaType = ext === 'png' ? 'image/png' : 'image/jpeg';
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4000,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: buffer.toString('base64') } },
+        { type: 'text', text: 'Extrae todas las filas de datos tabulares visibles en esta imagen. Devuelve ÚNICAMENTE un array JSON de objetos, uno por fila, usando como llaves los encabezados de columna que veas. Sin texto adicional, sin markdown.' }
+      ]
+    }]
+  });
+
+  const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+  return JSON.parse(raw);
+}
+
 
 // ---------- END URUS FACTORY ORCHESTRATOR ----------
 
