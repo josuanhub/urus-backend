@@ -8361,9 +8361,11 @@ if (workbook.SheetNames.length > 1) {
         }
         if (!fieldNames.length) { skipped++; continue; }
         await pool.query(
-          `INSERT INTO ${schemaName}."${targetTable.name}" (${fieldNames.join(', ')}) VALUES (${values.map((_, i) => `$${i + 1}`).join(', ')})`,
-          values
-        );
+  `INSERT INTO ${schemaName}."${targetTable.name}" (${fieldNames.join(', ')}) 
+   VALUES (${values.map((_, i) => `$${i + 1}`).join(', ')})
+   ON CONFLICT DO NOTHING`,
+  values
+);
         inserted++;
       } catch (e) { skipped++; }
     }
