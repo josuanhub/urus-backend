@@ -8102,38 +8102,66 @@ async function databaseArchitectAgent(project_id, masterSpec, project) {
   }
 }
 
+// ============================================================
+// REEMPLAZO COMPLETO de masterPlannerAgent
+// Busca la función actual "async function masterPlannerAgent(project) {"
+// y reemplázala ENTERA (desde esa línea hasta el cierre de la función)
+// por todo este bloque.
+// ============================================================
+
 async function masterPlannerAgent(project) {
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
 
-const prompt = `Eres el Master Planner de URUS Factory.
-Empresa: "${project.company}" | Industria: ${project.industry}
+  // Usamos la transcripción completa (truncada a un límite seguro) en vez
+  // de solo el análisis recortado, para que el arquitecto tenga el contexto real
+  const transcriptCompleto = (project.transcript || '').slice(0, 4000);
 
-PROBLEMAS DETECTADOS:
-${JSON.stringify(project.analysis?.problemas?.slice(0,3) || [])}
+  const prompt = `Eres el Arquitecto Jefe de URUS Factory. Tu trabajo NO es nombrar pantallas genéricas — es diseñar un sistema operativo empresarial completo y específico, como lo haría un CTO senior que ha construido software para cientos de empresas distintas.
 
-MÓDULOS PROPUESTOS:
-${JSON.stringify(project.proposal?.modulos?.slice(0,4) || [])}
+EMPRESA: "${project.company}"
+INDUSTRIA: ${project.industry}
 
-Genera una Master Specification CORTA. Devuelve ÚNICAMENTE este JSON sin markdown ni texto extra:
+TRANSCRIPCIÓN ORIGINAL DE LA REUNIÓN CON EL DUEÑO DEL NEGOCIO:
+${transcriptCompleto}
+
+ANÁLISIS PREVIO DETECTADO:
+${JSON.stringify(project.analysis || {}, null, 2)}
+
+PROPUESTA YA APROBADA POR EL CLIENTE:
+${JSON.stringify(project.proposal || {}, null, 2)}
+
+INSTRUCCIONES DE DISEÑO — sigue este proceso de pensamiento antes de responder:
+
+1. IDENTIFICA EL NEGOCIO REAL: no generes un "CRM genérico". Lee la transcripción y entiende exactamente qué vende esta empresa, cómo opera, quiénes son sus actores (dueño, empleados, clientes, proveedores), y cuál es su flujo de trabajo diario real, palabra por palabra de lo que dijeron.
+
+2. DISEÑA LOS MÓDULOS COMO UN SISTEMA OPERATIVO COMPLETO: piensa en todas las áreas que una empresa de este tipo necesita digitalizar — ventas, inventario o servicios, clientes, operaciones, finanzas/cobros, comunicación con clientes, reportes y métricas del dueño. No te limites a 2-3 módulos genéricos; incluye TODOS los módulos relevantes a este negocio específico, sin importar si parecen ambiciosos. Esta plataforma puede ser tan completa como Lovable sea capaz de construir.
+
+3. PARA CADA MÓDULO, DEFINE EL FLUJO DE USUARIO COMPLETO: qué ve el usuario primero, qué decisiones toma, qué pasa cuando hace click en cada botón principal, qué validaciones existen, qué estados tiene cada entidad (ej: una cita puede estar programada/confirmada/cancelada/realizada — un pedido puede estar pendiente/pagado/enviado/entregado), y qué colores o indicadores visuales comunican esos estados.
+
+4. PIENSA EN INTEGRACIONES REALES: si el negocio usa WhatsApp para hablar con clientes, el sistema debe tener una pantalla de mensajes/recordatorios automáticos vía WhatsApp con Twilio. Si maneja pagos o cobros, debe tener una pantalla de cobros con métodos de pago y saldos. Si maneja inventario físico, debe tener control de stock con alertas de mínimos.
+
+5. DISEÑA EL DASHBOARD COMO RESUMEN EJECUTIVO: KPIs específicos del negocio (no genéricos como "total clientes" sin más — piensa qué número le importa de verdad al dueño de ESTE negocio según lo que dijo en la transcripción), gráficas relevantes, y vista general de lo que necesita atención hoy.
+
+6. ESCRIBE EL lovable_prompt CON EL MISMO NIVEL DE DETALLE QUE UN BRIEF DE PRODUCTO REAL: para cada pantalla describe layout, componentes, comportamiento al hacer click, validaciones, y mensajes de error/éxito. No escribas "Lista de Clientes con búsqueda" — escribe "Lista de Clientes con buscador en tiempo real por nombre o teléfono, tabla con columnas X Y Z, badge de color por estado, click en fila abre panel lateral con detalle completo y historial". Sé exhaustivo, el objetivo es que Lovable construya un sistema production-ready, no un mockup.
+
+Genera la Master Specification completa. Devuelve ÚNICAMENTE este JSON sin markdown ni texto extra:
 {
-  "system_name": "nombre corto del sistema",
-  "description": "una frase de qué hace",
+  "system_name": "nombre corto y memorable del sistema, relacionado al negocio real",
+  "description": "dos frases que describen el sistema completo y su impacto en el negocio",
   "modules": [
-    { "name": "CRM", "type": "frontend", "screens": ["Dashboard", "Clientes"], "endpoints": ["/clientes", "/pedidos"] },
-    { "name": "API Core", "type": "backend", "screens": [], "endpoints": ["/api/clientes", "/api/pedidos"] }
+    { "name": "nombre del módulo", "type": "frontend", "screens": ["pantalla 1", "pantalla 2"], "endpoints": ["/recurso1", "/recurso2"] }
   ],
   "database_schema": {
     "tables": [
-      { "name": "clientes", "fields": [{"name":"id","type":"UUID"},{"name":"nombre","type":"TEXT"}] },
-      { "name": "pedidos", "fields": [{"name":"id","type":"UUID"},{"name":"cliente_id","type":"UUID"},{"name":"total","type":"NUMERIC"}] }
+      { "name": "nombre_tabla", "fields": [{"name":"id","type":"UUID"},{"name":"campo","type":"TEXT"}] }
     ]
   },
-  "integrations": ["whatsapp"],
+  "integrations": ["whatsapp-twilio", "stripe", "email", "lo que aplique según el negocio"],
   "tech_stack": { "frontend": "React + Tailwind", "backend": "Node.js + Express", "database": "PostgreSQL", "hosting": "Railway + Lovable" },
-  "lovable_prompt": "Construye un sistema completo llamado [pon aquí el system_name real] para ${project.company} en la industria ${project.industry}. Analiza los módulos y pantallas necesarios según el negocio y constrúyelos todos completos y funcionales. Stack: React + Tailwind. Diseño oscuro profesional. Backend URL: https://www.urusverify.com — todos los fetch usan header x-factory-key: factory2026 y Content-Type: application/json. CRÍTICO: todos los endpoints usan la URL completa con prefijo, nunca rutas cortas. Ejemplos: GET https://www.urusverify.com/v1/client/${project.id}/api/clientes, POST https://www.urusverify.com/v1/client/${project.id}/api/pedidos, GET https://www.urusverify.com/v1/client/${project.id}/api/productos. Sustituye el nombre de la tabla según el módulo. Agrega en el sidebar una página dedicada llamada Importar datos con ícono de nube. Esta página tiene únicamente: título Importar datos, texto explicativo Sube tu archivo Excel, CSV, PDF o imagen y el sistema lo procesa automáticamente, área de carga con drag and drop (acepta .xlsx .xls .csv .pdf .png .jpg), y botón Subir. Al hacer click envía el archivo con fetch como FormData campo file a POST https://www.urusverify.com/v1/factory/project/${project.id}/upload-data con header x-factory-key: factory2026 sin Content-Type. Mientras sube muestra Procesando archivo con spinner. Cuando responda muestra en verde: tabla detectada, filas insertadas y filas omitidas. Si hay error muéstralo en rojo claro. El Dashboard principal queda completamente limpio — solo KPIs, métricas y gráficas del negocio, sin ningún elemento de carga de archivos."
+  "lovable_prompt": "Aquí va el brief completo y exhaustivo descrito en el paso 6. Debe incluir: nombre del sistema, descripción de la empresa real, TODAS las pantallas con su comportamiento detallado pantalla por pantalla, paleta de colores específica y justificada para esta industria (no siempre azul/violeta — piensa qué colores comunican confianza para ESTE negocio), tipografía, Backend URL https://www.urusverify.com con header x-factory-key: factory2026 y Content-Type: application/json, todos los endpoints con la URL completa usando el prefijo /v1/client/${project.id}/api/{tabla} (nunca rutas cortas), una página dedicada 'Importar datos' en el sidebar (no en el Dashboard) con drag and drop que acepta .xlsx .xls .csv .pdf .png .jpg y hace POST a https://www.urusverify.com/v1/factory/project/${project.id}/upload-data con header x-factory-key: factory2026 sin Content-Type mostrando resultado por hoja procesada, y el Dashboard principal limpio solo con KPIs específicos del negocio sin elementos de carga."
 }`;
-  
+
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 8000,
@@ -8141,31 +8169,29 @@ Genera una Master Specification CORTA. Devuelve ÚNICAMENTE este JSON sin markdo
   });
 
   let raw = message.content[0].text.replace(/```json|```/g, '').trim();
-// Si el JSON está truncado, intentar cerrar los brackets
-try {
-  return JSON.parse(raw);
-} catch (e) {
-  // Contar brackets abiertos y cerrar los que faltan
-  const opens = (raw.match(/\{/g) || []).length;
-  const closes = (raw.match(/\}/g) || []).length;
-  const diff = opens - closes;
-  if (diff > 0) raw = raw + '}'.repeat(diff);
   try {
     return JSON.parse(raw);
-  } catch (e2) {
-    // Simplificar — pedir spec reducida
-    return {
-      system_name: `Sistema ${message.content[0].text.match(/"system_name":\s*"([^"]+)"/)?.[1] || 'URUS'}`,
-      description: 'Sistema generado por URUS Factory',
-      modules: [],
-      database_schema: { tables: [] },
-      integrations: [],
-      tech_stack: { frontend: 'React', backend: 'Node.js', database: 'PostgreSQL', hosting: 'Railway' },
-      lovable_prompt: raw.match(/"lovable_prompt":\s*"([^"]+)"/)?.[1] || 'Sistema empresarial completo'
-    };
+  } catch (e) {
+    const opens = (raw.match(/\{/g) || []).length;
+    const closes = (raw.match(/\}/g) || []).length;
+    const diff = opens - closes;
+    if (diff > 0) raw = raw + '}'.repeat(diff);
+    try {
+      return JSON.parse(raw);
+    } catch (e2) {
+      return {
+        system_name: `Sistema ${message.content[0].text.match(/"system_name":\s*"([^"]+)"/)?.[1] || 'URUS'}`,
+        description: 'Sistema generado por URUS Factory',
+        modules: [],
+        database_schema: { tables: [] },
+        integrations: [],
+        tech_stack: { frontend: 'React', backend: 'Node.js', database: 'PostgreSQL', hosting: 'Railway' },
+        lovable_prompt: raw.match(/"lovable_prompt":\s*"([^"]+)"/)?.[1] || 'Sistema empresarial completo'
+      };
+    }
   }
 }
-}
+
 
 async function initProjectBrain(project_id, project, masterSpec) {
   await pool.query(
