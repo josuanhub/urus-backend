@@ -7710,6 +7710,155 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
   }
 });
 
+// ============================================================
+// PEGAR AQUÍ — justo después del }); que cierra /session/proposal
+// y ANTES de // ---------- END URUS FACTORY ----------
+// No requiere tocar el endpoint /session/start.
+// ============================================================
+
+// POST /v1/factory/session/research
+// Busca el negocio en internet: presencia web, redes sociales, reseñas.
+app.post('/v1/factory/session/research', factoryAuth, async (req, res) => {
+  const { session_id } = req.body;
+  if (!session_id) return res.status(400).json({ error: 'session_id requerido' });
+
+  try {
+    const row = await pool.query(
+      `SELECT company, industry FROM factory_sessions WHERE id = $1`,
+      [session_id]
+    );
+    if (!row.rows.length) return res.status(404).json({ error: 'Sesión no encontrada' });
+
+    const { company, industry } = row.rows[0];
+
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{
+        role: 'user',
+        content: `Investiga el negocio "${company}" (industria: ${industry}). Busca: 1) si tiene página web propia y en qué estado está, 2) presencia en redes sociales (Instagram, Facebook) y nivel de actividad, 3) reseñas en Google si existen y su calificación, 4) cualquier señal de digitalización o falta de ella. Después de buscar, devuelve ÚNICAMENTE este JSON sin markdown ni texto extra: {"tiene_web": true/false/null, "estado_web": "descripción breve si tiene", "redes_sociales": ["lista con nivel de actividad"], "resenas_google": "calificación y cantidad o null", "hallazgos_clave": ["3 a 5 observaciones concretas en tono de consultor"], "oportunidad_digital": "una frase que conecta lo encontrado con la oportunidad de un sistema URUS"}`
+      }]
+    });
+
+    const textBlocks = message.content.filter(b => b.type === 'text').map(b => b.text);
+    const raw = textBlocks.join('\n').replace(/```json|```/g, '').trim();
+
+    let research;
+    try {
+      research = JSON.parse(raw);
+    } catch (e) {
+      research = {
+        tiene_web: null,
+        estado_web: 'No se pudo determinar automáticamente',
+        redes_sociales: [],
+        resenas_google: null,
+        hallazgos_clave: ['No se encontró suficiente información pública del negocio'],
+        oportunidad_digital: 'Se recomienda evaluar presencia digital directamente con el cliente'
+      };
+    }
+
+    await pool.query(
+      `UPDATE factory_sessions SET research = $1, updated_at = NOW() WHERE id = $2`,
+      [JSON.stringify(research), session_id]
+    );
+
+    res.json({ ok: true, research });
+  } catch (err) {
+    console.error('Research error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /v1/factory/session/diagnostic-master
+// Combina analysis + proposal + research en una radiografía ejecutiva persuasiva.
+app.post('/v1/factory/session/diagnostic-master', factoryAuth, async (req, res) => {
+  const { session_id } = req.body;
+  if (!session_id) return res.status(400).json({ error: 'session_id requerido' });
+
+  try {
+    const row = await pool.query(
+      `SELECT analysis, proposal, research, company, industry, client_name FROM factory_sessions WHERE id = $1`,
+      [session_id]
+    );
+    if (!row.rows.length) return res.status(404).json({ error: 'Sesión no encontrada' });
+
+    const { analysis, proposal, research, company, industry, client_name } = row.rows[0];
+
+    if (!analysis || !proposal) {
+      return res.status(400).json({
+        error: 'Faltan analysis o proposal. Corre /session/analyze y /session/proposal antes del diagnostico maestro.'
+      });
+    }
+
+    const prompt = `Eres un consultor senior de estrategia (estilo McKinsey/Palantir) presentando un diagnóstico ejecutivo a un cliente.
+
+EMPRESA: "${company}" | INDUSTRIA: ${industry} | DUEÑO: ${client_name}
+
+ANÁLISIS TÉCNICO DE LA REUNIÓN:
+${JSON.stringify(analysis, null, 2)}
+
+PROPUESTA TÉCNICA:
+${JSON.stringify(proposal, null, 2)}
+
+INVESTIGACIÓN DE PRESENCIA DIGITAL REAL (búsqueda en internet):
+${research ? JSON.stringify(research, null, 2) : 'No se realizó investigación externa para esta sesión.'}
+
+Convierte todo esto en una presentación ejecutiva persuasiva de tres actos. Si hay datos de investigación externa, ÚSALOS como evidencia dura — por ejemplo "Notamos que su negocio no tiene página web propia" genera más impacto que cualquier cosa que el cliente haya dicho, porque es un hecho verificable. Tono: directo, seguro, basado en números y evidencia, sin relleno emocional.
+
+Devuelve ÚNICAMENTE este JSON, sin markdown ni texto extra:
+{
+  "titulo_radiografia": "título corto y contundente, ej: 'Radiografía Operativa: ${company}'",
+  "resumen_ejecutivo": "2-3 frases que resumen el diagnóstico completo",
+  "evidencia_digital_externa": {
+    "hallazgos": ["lista de hallazgos de la investigación externa — solo incluir si hay datos de research"],
+    "implicacion": "una frase que conecta esos hallazgos con el costo de oportunidad"
+  },
+  "radiografia_problema": [
+    { "sintoma": "lo que el dueño describió", "diagnostico": "qué está pasando realmente", "costo_oculto": "costo en dinero, tiempo u oportunidad, con número específico" }
+  ],
+  "blueprint_sistema": {
+    "nombre": "nombre del sistema propuesto",
+    "resumen": "una frase de qué hace el sistema completo",
+    "pilares": ["3 a 5 pilares del sistema, cada uno una frase corta"]
+  },
+  "oferta": {
+    "frase_ancla": "frase que compare el costo con algo que el dueño ya entiende",
+    "precio_setup": número,
+    "precio_mensual": número,
+    "roi_proyectado_mensual": número,
+    "tiempo_entrega_semanas": número,
+    "cierre": "frase final de cierre, segura y directa"
+  }
+}`;
+
+    const Anthropic2 = require('@anthropic-ai/sdk');
+    const client2 = new Anthropic2({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+
+    const message = await client2.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 3000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+    const diagnosticoMaestro = JSON.parse(raw);
+
+    await pool.query(
+      `UPDATE factory_sessions SET diagnostic_master = $1, updated_at = NOW() WHERE id = $2`,
+      [JSON.stringify(diagnosticoMaestro), session_id]
+    );
+
+    res.json({ ok: true, diagnostico_maestro: diagnosticoMaestro });
+  } catch (err) {
+    console.error('Diagnostic master error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---------- END URUS FACTORY ----------
 
 
