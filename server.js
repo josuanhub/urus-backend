@@ -7993,6 +7993,7 @@ async function runOrchestrator(project_id) {
   await updateProjectStatus(project_id, 'planning', 'master_planner');
 await new Promise(r => setTimeout(r, 90000));
 const masterSpec = await masterPlannerAgent(project);
+    await integrationDetectorAgent(project_id, masterSpec);
 
     // Guardar spec
     await pool.query(
