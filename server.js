@@ -7537,7 +7537,119 @@ app.get('/studio', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'studio', 'index.html'));
 });
 
+// ============================================================
+// PASO 1 — Pegar ANTES de la línea que dice:
+// // ---------- URUS FACTORY ----------
+// Es una función helper que reutilizan todos los endpoints.
+// ============================================================
 
+async function claudeWithRetry(params) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+  const esperas = [30000, 60000, 120000]; // 30s, 60s, 2min
+  for (let i = 0; i <= esperas.length; i++) {
+    try {
+      return await client.messages.create(params);
+    } catch (err) {
+      if (err.status === 429 && i < esperas.length) {
+        console.log(`[Claude] Rate limit — esperando ${esperas[i]/1000}s antes de reintentar (${i+1}/3)...`);
+        await new Promise(r => setTimeout(r, esperas[i]));
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
+// ============================================================
+// PASO 2 — 4 reemplazos en server.js, uno por endpoint.
+// En cada lugar, reemplaza el bloque de client.messages.create
+// por claudeWithRetry con los mismos parámetros.
+// No toques NADA más — solo esas líneas.
+// ============================================================
+
+// ------------------------------------------------------------
+// REEMPLAZO A — dentro de POST /v1/factory/session/analyze
+// Líneas ~7621-7630 (las que cambiaste antes)
+// ANTES:
+// ------------------------------------------------------------
+//    const Anthropic = require('@anthropic-ai/sdk');
+//    const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+//
+//    const message = await client.messages.create({
+//      model: 'claude-sonnet-4-6',
+//      max_tokens: 4000,
+//      messages: [{ role: 'user', content: prompt }]
+//    });
+//
+//    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+// ------------------------------------------------------------
+// DESPUÉS (pega esto en su lugar):
+// ------------------------------------------------------------
+
+    const message_analyze = await claudeWithRetry({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const raw_analyze = message_analyze.content[0].text.replace(/```json|```/g, '').trim();
+
+// IMPORTANTE: en la línea siguiente cambia "raw" por "raw_analyze":
+// const analysis = JSON.parse(raw_analyze);
+
+// ------------------------------------------------------------
+// REEMPLAZO B — dentro de POST /v1/factory/session/proposal
+// Líneas ~7689-7698
+// ANTES: mismo bloque de Anthropic + client.messages.create
+// DESPUÉS:
+// ------------------------------------------------------------
+
+    const message_proposal = await claudeWithRetry({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const raw_proposal = message_proposal.content[0].text.replace(/```json|```/g, '').trim();
+
+// IMPORTANTE: en la línea siguiente cambia "raw" por "raw_proposal":
+// const proposal = JSON.parse(raw_proposal);
+
+// ------------------------------------------------------------
+// REEMPLAZO C — dentro de POST /v1/factory/session/diagnostic-master
+// Línea ~7870 según el log de Railway
+// ANTES: bloque con Anthropic2 + client2.messages.create
+// DESPUÉS:
+// ------------------------------------------------------------
+
+    const message_diagnostic = await claudeWithRetry({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 3000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const raw_diagnostic = message_diagnostic.content[0].text.replace(/```json|```/g, '').trim();
+
+// IMPORTANTE: en la línea siguiente cambia "raw" por "raw_diagnostic":
+// const diagnosticoMaestro = JSON.parse(raw_diagnostic);
+
+// ------------------------------------------------------------
+// REEMPLAZO D — dentro de async function masterPlannerAgent
+// Busca: const message = await client.messages.create({
+//          model: 'claude-sonnet-4-6',
+//          max_tokens: 12000 o 16000,
+// ANTES: el bloque completo de Anthropic + client.messages.create
+// DESPUÉS:
+// ------------------------------------------------------------
+
+    const message_planner = await claudeWithRetry({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 12000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+// IMPORTANTE: en la línea siguiente que dice:
+// let raw = message.content[0].text.replace(...)
+// cámbiala por:
+// let raw = message_planner.content[0].text.replace(/```json|```/g, '').trim();
 // ---------- URUS FACTORY ----------
 
 const factoryAuth = (req, res, next) => {
@@ -7966,8 +8078,9 @@ async function runOrchestrator(project_id) {
     const project = proj.rows[0];
 
     // AGENTE 1 — Master Planner
-    await updateProjectStatus(project_id, 'planning', 'master_planner');
-    const masterSpec = await masterPlannerAgent(project);
+  await updateProjectStatus(project_id, 'planning', 'master_planner');
+await new Promise(r => setTimeout(r, 90000));
+const masterSpec = await masterPlannerAgent(project);
 
     // Guardar spec
     await pool.query(
