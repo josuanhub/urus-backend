@@ -7561,6 +7561,15 @@ async function claudeWithRetry(params) {
   }
 }
 
+const factoryAuth = (req, res, next) => {
+  const key = req.headers['x-factory-key'];
+  if (key !== process.env.FACTORY_API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+};
+
+// ---------- URUS FACTORY ----------
 
 
 // POST /v1/factory/session/start
