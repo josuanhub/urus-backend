@@ -7685,16 +7685,31 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
   "usuarios_incluidos": número,
   "integraciones": ["lista"]
 }`;
-const Groq = require('groq-sdk');
-    const groqClient = new Groq({ apiKey: process.env.STUDIO_GROQ_KEY });
+const Anthropic = require('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
 
-    const message = await groqClient.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    let message;
+    let intentos = 0;
+    while (intentos < 3) {
+      try {
+        message = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4000,
+          messages: [{ role: 'user', content: prompt }]
+        });
+        break;
+      } catch (retryErr) {
+        if (retryErr.status === 429 && intentos < 2) {
+          intentos++;
+          console.log(`[Proposal] Rate limit, reintentando en 60s (intento ${intentos}/3)...`);
+          await new Promise(r => setTimeout(r, 60000));
+        } else {
+          throw retryErr;
+        }
+      }
+    }
 
-    const raw = message.choices[0].message.content.replace(/```json|```/g, '').trim();
+    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
     const proposal = JSON.parse(raw);
 
     await pool.query(
