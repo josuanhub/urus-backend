@@ -8590,6 +8590,40 @@ app.get('/v1/factory/project/:id/brain', factoryAuth, async (req, res) => {
   }
 });
 
+// GET /v1/factory/project/:id/integrations
+app.get('/v1/factory/project/:id/integrations', factoryAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, tipo, estado, checklist, credenciales, created_at, updated_at
+       FROM factory_integrations WHERE project_id = $1 ORDER BY created_at ASC`,
+      [req.params.id]
+    );
+    res.json({ ok: true, integraciones: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /v1/factory/project/:id/integrations/:tipo/conectar
+app.post('/v1/factory/project/:id/integrations/:tipo/conectar', factoryAuth, async (req, res) => {
+  const { id: project_id, tipo } = req.params;
+  const credenciales = req.body || {};
+  try {
+    const result = await pool.query(
+      `UPDATE factory_integrations
+       SET estado = 'conectada', credenciales = $1, updated_at = NOW()
+       WHERE project_id = $2 AND tipo = $3
+       RETURNING *`,
+      [JSON.stringify(credenciales), project_id, tipo]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Integración no encontrada' });
+    res.json({ ok: true, integracion: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // ============================================================
 // PIEZA 1 — pegar DEBAJO de GET /v1/factory/project/:id/brain
 // Endpoint universal de carga de datos: Excel, CSV, PDF, imagen
