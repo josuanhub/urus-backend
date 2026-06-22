@@ -8261,6 +8261,87 @@ async function backendEngineerAgent(project_id, masterSpec, schemaName) {
   };
 }
 
+async function integrationDetectorAgent(project_id, masterSpec) {
+  console.log(`[IntegrationDetector] Iniciando para proyecto ${project_id}`);
+
+  const integraciones = masterSpec.integrations || [];
+  if (!integraciones.length) {
+    console.log(`[IntegrationDetector] Sin integraciones para ${project_id}`);
+    return { status: 'done', integraciones: [] };
+  }
+
+  const catalogo = {
+    'whatsapp-twilio': {
+      nombre: 'WhatsApp Business (vía Twilio)',
+      checklist: [
+        'Comprar número de Twilio dedicado para este negocio',
+        'Activar WhatsApp Sender en ese número en la consola de Twilio',
+        `Configurar webhook de mensajes entrantes a /v1/whatsapp/webhook/${project_id}`,
+        'Guardar el número en este checklist (campo numero_twilio)'
+      ],
+      campos_credenciales: ['numero_twilio']
+    },
+    'whatsapp': {
+      nombre: 'WhatsApp Business (vía Twilio)',
+      checklist: [
+        'Comprar número de Twilio dedicado para este negocio',
+        'Activar WhatsApp Sender en ese número en la consola de Twilio',
+        `Configurar webhook de mensajes entrantes a /v1/whatsapp/webhook/${project_id}`,
+        'Guardar el número en este checklist (campo numero_twilio)'
+      ],
+      campos_credenciales: ['numero_twilio']
+    },
+    'whatsapp_business_api': {
+      nombre: 'WhatsApp Business (vía Twilio)',
+      checklist: [
+        'Comprar número de Twilio dedicado para este negocio',
+        'Activar WhatsApp Sender en ese número en la consola de Twilio',
+        `Configurar webhook de mensajes entrantes a /v1/whatsapp/webhook/${project_id}`,
+        'Guardar el número en este checklist (campo numero_twilio)'
+      ],
+      campos_credenciales: ['numero_twilio']
+    },
+    'stripe': {
+      nombre: 'Cobros con Stripe',
+      checklist: [
+        'Crear cuenta de Stripe para este negocio',
+        'Configurar producto y precios según el pricing acordado',
+        'Guardar stripe_account_id en este checklist'
+      ],
+      campos_credenciales: ['stripe_account_id']
+    },
+    'email': {
+      nombre: 'Notificaciones por correo',
+      checklist: [
+        'Definir correo remitente para este negocio',
+        'Verificar el dominio remitente'
+      ],
+      campos_credenciales: ['email_remitente']
+    }
+  };
+
+  const resultados = [];
+
+  for (const tipo of integraciones) {
+    const tipoKey = tipo.toLowerCase().trim();
+    const def = catalogo[tipoKey];
+    const checklistData = def
+      ? { nombre: def.nombre, checklist: def.checklist, campos_credenciales: def.campos_credenciales }
+      : { nombre: tipo, checklist: ['Revisar manualmente qué requiere esta integración'] };
+
+    await pool.query(
+      `INSERT INTO factory_integrations (project_id, tipo, estado, checklist)
+       VALUES ($1, $2, 'pendiente', $3)
+       ON CONFLICT (project_id, tipo) DO UPDATE SET checklist = EXCLUDED.checklist, updated_at = NOW()`,
+      [project_id, tipoKey, JSON.stringify(checklistData)]
+    );
+
+    resultados.push({ tipo: tipoKey, estado: 'pendiente' });
+  }
+
+  console.log(`[IntegrationDetector] ${resultados.length} integraciones registradas para ${project_id}`);
+  return { status: 'done', integraciones: resultados };
+}
 
 async function databaseArchitectAgent(project_id, masterSpec, project) {
   console.log(`[DatabaseArchitect] Iniciando para proyecto ${project_id}`);
