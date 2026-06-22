@@ -7618,16 +7618,16 @@ Extrae y devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
   "preguntas_faltantes": ["solo si hay gaps críticos de información"]
 }`;
 
-    const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+    const Groq = require('groq-sdk');
+    const groqClient = new Groq({ apiKey: process.env.STUDIO_GROQ_KEY });
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+    const message = await groqClient.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
       max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }]
     });
 
-    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+    const raw = message.choices[0].message.content.replace(/```json|```/g, '').trim();
     const analysis = JSON.parse(raw);
 
     await pool.query(
@@ -7685,17 +7685,16 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
   "usuarios_incluidos": número,
   "integraciones": ["lista"]
 }`;
+const Groq = require('groq-sdk');
+    const groqClient = new Groq({ apiKey: process.env.STUDIO_GROQ_KEY });
 
-    const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
-
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+    const message = await groqClient.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
       max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }]
     });
 
-    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+    const raw = message.choices[0].message.content.replace(/```json|```/g, '').trim();
     const proposal = JSON.parse(raw);
 
     await pool.query(
