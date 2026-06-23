@@ -9024,6 +9024,231 @@ const masterSpec = projectRes.rows[0].spec;
 });
 
 
+// ============================================================
+// AGENTE WHATSAPP — pegar antes de // ---------- Boot ----------
+// ============================================================
+
+// POST /v1/whatsapp/webhook
+// Recibe mensajes de Twilio WhatsApp, identifica el negocio,
+// consulta el CRM real, genera respuesta con IA, responde al cliente
+app.post('/v1/whatsapp/webhook', async (req, res) => {
+  try {
+    const { From, To, Body } = req.body;
+
+    if (!From || !To || !Body) {
+      return res.status(400).send('Missing fields');
+    }
+
+    // Normalizar números (Twilio los manda como "whatsapp:+1787...")
+    const fromNumber = From.replace('whatsapp:', '').trim();
+    const toNumber   = To.replace('whatsapp:', '').trim();
+
+    console.log(`[WhatsApp] Mensaje de ${fromNumber} a ${toNumber}: "${Body}"`);
+
+    // 1. Identificar a qué proyecto pertenece el número receptor
+    const intResult = await pool.query(
+      `SELECT fi.project_id, fi.credenciales,
+              fp.id as pid,
+              fs.spec, fs.company, fs.industry,
+              fs.client_name
+       FROM factory_integrations fi
+       JOIN factory_projects fp ON fp.id = fi.project_id
+       JOIN factory_specs fs ON fs.project_id = fi.project_id
+       WHERE fi.tipo = 'whatsapp-twilio'
+         AND fi.credenciales->>'numero_twilio' = $1
+         AND fi.estado = 'conectada'
+       LIMIT 1`,
+      [toNumber]
+    );
+
+    if (!intResult.rows.length) {
+      console.log(`[WhatsApp] Número ${toNumber} no está registrado en ningún proyecto`);
+      return res.status(200).send('OK');
+    }
+
+    const { project_id, spec, company, industry } = intResult.rows[0];
+    const schemaName = `client_${project_id.replace(/-/g, '_').slice(0, 20)}`;
+
+    // 2. Determinar si quien escribe es el dueño o un cliente final
+    const ownerResult = await pool.query(
+      `SELECT credenciales->>'telefono_dueno' as telefono_dueno
+       FROM factory_integrations
+       WHERE project_id = $1 AND tipo = 'whatsapp-twilio'`,
+      [project_id]
+    );
+    const telefonoDueno = ownerResult.rows[0]?.telefono_dueno;
+    const esDueno = telefonoDueno && fromNumber === telefonoDueno;
+
+    // 3. Buscar si el número ya existe como cliente/prospecto en el CRM
+    let clienteInfo = null;
+    const tables = spec?.database_schema?.tables || [];
+    const tablaClientes = tables.find(t =>
+      ['clientes', 'prospectos', 'pacientes', 'contactos'].includes(t.name)
+    );
+
+    if (tablaClientes) {
+      try {
+        const clientRes = await pool.query(
+          `SELECT * FROM ${schemaName}."${tablaClientes.name}"
+           WHERE telefono = $1 OR telefono = $2
+           LIMIT 1`,
+          [fromNumber, fromNumber.replace('+', '')]
+        );
+        if (clientRes.rows.length) {
+          clienteInfo = clientRes.rows[0];
+        } else if (!esDueno) {
+          // Registrar automáticamente como prospecto nuevo
+          const camposTabla = tablaClientes.fields.filter(f =>
+            f.name !== 'id' && ['nombre', 'telefono', 'fuente', 'etapa', 'estado'].includes(f.name)
+          );
+          if (camposTabla.length > 0) {
+            const cols = camposTabla.map(f => `"${f.name}"`).join(', ');
+            const vals = camposTabla.map(f => {
+              if (f.name === 'nombre') return 'Prospecto WhatsApp';
+              if (f.name === 'telefono') return fromNumber;
+              if (f.name === 'fuente') return 'WhatsApp';
+              if (f.name === 'etapa') return 'Nuevo Lead';
+              if (f.name === 'estado') return 'activo';
+              return null;
+            });
+            const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
+            await pool.query(
+              `INSERT INTO ${schemaName}."${tablaClientes.name}" (${cols}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
+              vals
+            );
+            console.log(`[WhatsApp] Nuevo prospecto registrado: ${fromNumber}`);
+          }
+        }
+      } catch (e) {
+        console.log('[WhatsApp] Error consultando clientes:', e.message);
+      }
+    }
+
+    // 4. Consultar datos relevantes según la pregunta del usuario
+    let datosContexto = '';
+    const preguntaLower = Body.toLowerCase();
+
+    for (const tabla of tables.slice(0, 6)) {
+      const esRelevante = (
+        preguntaLower.includes(tabla.name.slice(0, 5)) ||
+        (preguntaLower.includes('inventa') && tabla.name.includes('inventar')) ||
+        (preguntaLower.includes('cita') && tabla.name.includes('cita')) ||
+        (preguntaLower.includes('paciente') && tabla.name.includes('paciente')) ||
+        (preguntaLower.includes('prospect') && tabla.name.includes('prospect')) ||
+        (preguntaLower.includes('cobr') && tabla.name.includes('cobr')) ||
+        (preguntaLower.includes('pago') && tabla.name.includes('cobr')) ||
+        (preguntaLower.includes('carro') && tabla.name.includes('inventar')) ||
+        (preguntaLower.includes('vehiculo') && tabla.name.includes('inventar')) ||
+        (preguntaLower.includes('honda') && tabla.name.includes('inventar')) ||
+        (preguntaLower.includes('toyota') && tabla.name.includes('inventar')) ||
+        (esDueno && ['clientes','inventario','pedidos','cobros','citas','prospectos'].includes(tabla.name))
+      );
+
+      if (esRelevante) {
+        try {
+          const data = await pool.query(
+            `SELECT * FROM ${schemaName}."${tabla.name}" LIMIT 10`
+          );
+          if (data.rows.length) {
+            datosContexto += `\n[${tabla.name.toUpperCase()}]:\n${JSON.stringify(data.rows, null, 2)}\n`;
+          }
+        } catch (e) {
+          // tabla no existe o error — ignorar
+        }
+      }
+    }
+
+    // 5. Generar respuesta con IA
+    const Groq = require('groq-sdk');
+    const groq = new Groq({ apiKey: process.env.STUDIO_GROQ_KEY });
+
+    const systemPrompt = esDueno
+      ? `Eres el asistente inteligente de "${company}" (${industry}). El dueño del negocio te está escribiendo. Tienes acceso completo a todos sus datos. Responde como un cerebro operativo de su empresa — consulta los datos, calcula métricas, responde preguntas sobre su negocio, y sugiere acciones. Sé directo y útil. Respuestas cortas para WhatsApp (máx 3 párrafos).`
+      : `Eres el asistente de WhatsApp de "${company}" (${industry}). Un cliente o prospecto te está escribiendo. Responde como representante del negocio — profesional, amable, útil. Si preguntan por productos/servicios disponibles, usa los datos reales. No compartas información interna del negocio. Respuestas cortas para WhatsApp (máx 2 párrafos).`;
+
+    const userPrompt = esDueno
+      ? `Mensaje del dueño: "${Body}"\n\nDatos actuales del negocio:${datosContexto || '\n(No se encontraron datos específicos para esta consulta)'}`
+      : `Mensaje del cliente (${clienteInfo ? 'ya registrado: ' + (clienteInfo.nombre || fromNumber) : 'nuevo contacto'}): "${Body}"\n\nDatos del negocio disponibles:${datosContexto || '\n(Información general del negocio)'}`;
+
+    const aiResponse = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 500,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ]
+    });
+
+    const respuesta = aiResponse.choices[0].message.content.trim();
+
+    // 6. Enviar respuesta por Twilio
+    const twilio = require('twilio');
+    const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
+    await twilioClient.messages.create({
+      from: `whatsapp:${toNumber}`,
+      to: `whatsapp:${fromNumber}`,
+      body: respuesta
+    });
+
+    // 7. Guardar conversación en historial del CRM
+    const tablaHistorial = tables.find(t =>
+      ['historial_contacto', 'conversaciones', 'mensajes', 'historial'].includes(t.name)
+    );
+
+    if (tablaHistorial) {
+      try {
+        await pool.query(
+          `INSERT INTO ${schemaName}."${tablaHistorial.name}"
+           (canal, mensaje, direccion, fecha)
+           VALUES ('WhatsApp', $1, 'entrante', NOW())`,
+          [`De ${fromNumber}: ${Body} | Respuesta: ${respuesta}`]
+        );
+        await pool.query(
+          `INSERT INTO ${schemaName}."${tablaHistorial.name}"
+           (canal, mensaje, direccion, fecha)
+           VALUES ('WhatsApp', $1, 'saliente', NOW())`,
+          [respuesta]
+        );
+      } catch (e) {
+        // tabla de historial con esquema diferente — ignorar
+      }
+    }
+
+    console.log(`[WhatsApp] Respuesta enviada a ${fromNumber}`);
+    res.status(200).send('OK');
+
+  } catch (err) {
+    console.error('[WhatsApp] Error en webhook:', err.message);
+    res.status(200).send('OK'); // Siempre 200 a Twilio para evitar reintentos
+  }
+});
+
+// POST /v1/factory/project/:id/integrations/whatsapp-twilio/configurar-dueno
+// Registra el teléfono del dueño del negocio para que el agente lo reconozca
+app.post('/v1/factory/project/:id/integrations/whatsapp-twilio/configurar-dueno', factoryAuth, async (req, res) => {
+  const { id: project_id } = req.params;
+  const { telefono_dueno } = req.body;
+
+  if (!telefono_dueno) {
+    return res.status(400).json({ error: 'telefono_dueno requerido (formato +1XXXXXXXXXX)' });
+  }
+
+  try {
+    await pool.query(
+      `UPDATE factory_integrations
+       SET credenciales = credenciales || $1::jsonb, updated_at = NOW()
+       WHERE project_id = $2 AND tipo = 'whatsapp-twilio'`,
+      [JSON.stringify({ telefono_dueno }), project_id]
+    );
+    res.json({ ok: true, mensaje: 'Teléfono del dueño registrado correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
 
 // ---------- Boot ----------
 (async () => {
