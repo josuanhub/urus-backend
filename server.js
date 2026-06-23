@@ -8637,7 +8637,7 @@ app.post('/v1/factory/project/:id/integrations/:tipo/conectar', factoryAuth, asy
 
 const multer = require('multer');
 const XLSX = require('xlsx');
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } }).any();
 
 // POST /v1/factory/project/:id/upload-data
 // Sube cualquier archivo (xlsx, csv, pdf, png, jpg) y lo inserta
