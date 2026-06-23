@@ -8261,6 +8261,34 @@ async function backendEngineerAgent(project_id, masterSpec, schemaName) {
   };
 }
 
+// ============================================================
+// REMOUNT CRUD AL ARRANQUE — recupera rutas /v1/client/:pid/api/:tabla
+// después de cada restart de Railway. No toca nada que ya funcione.
+// ============================================================
+async function remountAllProjectCRUDs() {
+  try {
+    const { rows } = await pool.query(
+      `SELECT project_id, spec FROM factory_specs WHERE spec IS NOT NULL`
+    );
+    let ok = 0, fail = 0;
+    for (const r of rows) {
+      try {
+        const schemaName = `client_${r.project_id.replace(/-/g, '_').slice(0, 20)}`;
+        await backendEngineerAgent(r.project_id, r.spec, schemaName);
+        ok++;
+      } catch (e) {
+        fail++;
+        console.error(`[Remount] ${r.project_id} falló:`, e.message);
+      }
+    }
+    console.log(`[Remount] CRUD re-montado: ${ok} ok, ${fail} fallidos`);
+  } catch (e) {
+    console.error('[Remount] Error global:', e.message);
+  }
+}
+
+
+
 async function integrationDetectorAgent(project_id, masterSpec) {
   console.log(`[IntegrationDetector] Iniciando para proyecto ${project_id}`);
 
@@ -9254,6 +9282,7 @@ app.post('/v1/factory/project/:id/integrations/whatsapp-twilio/configurar-dueno'
 (async () => {
   try {
     await ensureSchema();
+    await remountAllProjectCRUDs();    
     app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'trust-landing.html'));
 });
