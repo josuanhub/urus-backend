@@ -798,6 +798,8 @@
           <div class="chip" onclick="quickSend('Dame el código del endpoint de prospects para Iván')">Código prospects</div>
           <div class="chip" onclick="quickSend('¿Qué falta para GovTech con Jeremy?')">GovTech pipeline</div>
           <div class="chip" onclick="quickSend('¿Cómo está JARVIS configurado?')">Estado JARVIS</div>
+          <div class="chip" onclick="quickSend('/edit agrega la regla fundamental en masterPlannerAgent antes de Devuelve ÚNICAMENTE este JSON')">✏️ Editar masterPlanner</div>
+          <div class="chip" onclick="quickSend('/preview cambia el modelo a gpt-4o')">👁 Preview cambio</div>
         </div>
       </div>
     </div>
@@ -1022,36 +1024,70 @@
   }
 
   // ── SEND ──
+// ============================================================
+// CAMBIO EN studio.html (o donde tengas el Studio)
+//
+// Busca esta función en el HTML:
+//   async function sendMessage() {
+//
+// Reemplaza TODA esa función por esta:
+// ============================================================
+
   async function sendMessage() {
     const input = document.getElementById('input');
-    const text = input.value.trim();
+    const text  = input.value.trim();
     if (!text) return;
 
     const btn = document.getElementById('send-btn');
-    btn.disabled = true;
-    input.value = '';
+    btn.disabled  = true;
+    input.value   = '';
     updateCount();
 
     addMessage('user', text);
 
+    // ── COMANDO ESPECIAL: /edit ───────────────────────────
+    // Si el mensaje empieza con /edit aplica self-edit
+    // Ejemplo: /edit agrega la regla fundamental en masterPlannerAgent
+    if (text.startsWith('/edit ')) {
+      const instruction = text.slice(6).trim();
+      await handleSelfEdit(instruction, false);
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+
+    // ── COMANDO ESPECIAL: /preview ────────────────────────
+    // Ve qué cambiaría sin aplicarlo
+    // Ejemplo: /preview agrega log en el webhook de twilio
+    if (text.startsWith('/preview ')) {
+      const instruction = text.slice(9).trim();
+      await handleSelfEdit(instruction, true);
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+
+    // ── CHAT NORMAL ───────────────────────────────────────
     const projectCtx = projectContexts[currentProject] || '';
-    history.push({ role: 'user', content: `[PROYECTO: ${currentProject}]\n${projectCtx}\n\n${text}` });
+    history.push({
+      role:    'user',
+      content: `[PROYECTO: ${currentProject}]\n${projectCtx}\n\n${text}`
+    });
 
     document.getElementById('typing-indicator').style.display = 'flex';
     stopTTS();
 
     try {
       const res = await fetch('/api/studio/chat', {
-        method: 'POST',
+        method:  'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type':      'application/json',
           'x-studio-password': password
         },
         body: JSON.stringify({ messages: history })
       });
 
       const data = await res.json();
-
       document.getElementById('typing-indicator').style.display = 'none';
 
       if (data.reply) {
@@ -1059,7 +1095,7 @@
         addMessage('assistant', data.reply);
         if (autoSpeak) speakText(data.reply);
       } else {
-        addMessage('assistant', 'Error: ' + (data.error || 'Sin respuesta del servidor'));
+        addMessage('assistant', 'Error: ' + (data.error || 'Sin respuesta'));
       }
 
     } catch (err) {
@@ -1071,6 +1107,75 @@
     input.focus();
   }
 
+// ============================================================
+// FUNCIÓN NUEVA — agregar DESPUÉS de sendMessage()
+// ============================================================
+
+  async function handleSelfEdit(instruction, previewOnly) {
+    const endpoint = previewOnly
+      ? '/v1/studio/self-edit/preview'
+      : '/v1/studio/self-edit';
+
+    const modeLabel = previewOnly ? '👁 PREVIEW' : '⚡ APLICANDO EDICIÓN';
+
+    addMessage('assistant',
+      `${modeLabel}\n\n` +
+      `Instrucción: **${instruction}**\n\n` +
+      `Leyendo server.js → detectando sección → aplicando con Claude → commit GitHub...`
+    );
+
+    document.getElementById('typing-indicator').style.display = 'flex';
+
+    try {
+      const res = await fetch(endpoint, {
+        method:  'POST',
+        headers: {
+          'Content-Type':      'application/json',
+          'x-studio-password': password
+        },
+        body: JSON.stringify({ instruction })
+      });
+
+      document.getElementById('typing-indicator').style.display = 'none';
+
+      const data = await res.json();
+
+      if (data.ok) {
+        if (previewOnly) {
+          addMessage('assistant',
+            `✅ **PREVIEW GENERADO**\n\n` +
+            `Sección detectada: \`${data.section}\`\n` +
+            `Líneas: \`${data.lines}\`\n\n` +
+            `**Original (primeros 500 chars):**\n\`\`\`\n${data.original}\n\`\`\`\n\n` +
+            `**Modificado (primeros 500 chars):**\n\`\`\`\n${data.modified}\n\`\`\`\n\n` +
+            `Para aplicar el cambio usa:\n\`/edit ${instruction}\``
+          );
+        } else {
+          addMessage('assistant',
+            `✅ **CAMBIO APLICADO**\n\n` +
+            `Sección editada: \`${data.section}\`\n` +
+            `Líneas: \`${data.lines_edited}\`\n` +
+            `Commit: \`${data.commit}\`\n\n` +
+            `Railway redesplegará en ~2 minutos.\n` +
+            `El cambio estará en producción automáticamente.`
+          );
+          showNotif('✅ Cambio aplicado — Railway redesplegando...');
+        }
+      } else {
+        addMessage('assistant',
+          `❌ **ERROR**\n\n${data.error}\n\n` +
+          `Intenta de nuevo con una instrucción más específica.`
+        );
+      }
+
+    } catch (err) {
+      document.getElementById('typing-indicator').style.display = 'none';
+      addMessage('assistant', `❌ Error de conexión: ${err.message}`);
+    }
+  }
+
+
+  
   function quickSend(text) {
     document.getElementById('input').value = text;
     sendMessage();
