@@ -9787,6 +9787,49 @@ app.get('/v1/studio/self-edit/status', studioAuth, async (req, res) => {
 });
 
 
+app.post('/v1/studio/memory/save', studioAuth, async (req, res) => {
+  try {
+    const { type, content, metadata, project } = req.body;
+    if (!type || !content) return res.status(400).json({ ok: false, error: 'type y content requeridos' });
+    const result = await pool.query(
+      'INSERT INTO studio_memory (type, content, metadata, project) VALUES ($1, $2, $3, $4) RETURNING id, created_at',
+      [type, String(content).slice(0, 10000), JSON.stringify(metadata || {}), project || 'GENERAL']
+    );
+    return res.json({ ok: true, id: result.rows[0].id });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/v1/studio/memory/load', studioAuth, async (req, res) => {
+  try {
+    const edits = await pool.query('SELECT content, metadata, created_at FROM studio_memory WHERE type = $1 ORDER BY created_at DESC LIMIT 5', ['edit']);
+    const errors = await pool.query('SELECT content, metadata, created_at FROM studio_memory WHERE type = $1 ORDER BY created_at DESC LIMIT 3', ['error']);
+    const conversations = await pool.query('SELECT content, project, created_at FROM studio_memory WHERE type = $1 ORDER BY created_at DESC LIMIT 10', ['conversation']);
+    return res.json({ ok: true, recent_edits: edits.rows, recent_errors: errors.rows, recent_conversations: conversations.rows });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/v1/studio/memory/search', studioAuth, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.status(400).json({ ok: false, error: 'q requerido' });
+    const result = await pool.query(
+      'SELECT type, content, metadata, project, created_at FROM studio_memory WHERE content ILIKE $1 ORDER BY created_at DESC LIMIT 20',
+      ['%' + q + '%']
+    );
+    return res.json({ ok: true, query: q, results: result.rows });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+
+
+
 // ---------- Boot ----------
 (async () => {
   try {
