@@ -7497,35 +7497,36 @@ const studioAuth = (req, res, next) => {
   next();
 };
 
-// Studio chat endpoint
 app.post('/api/studio/chat', studioAuth, async (req, res) => {
   try {
     const { messages } = req.body;
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${STUDIO_GROQ_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: STUDIO_CONTEXT },
-          ...messages
-        ],
-        temperature: 0.2,
-        max_tokens: 4000
-      })
+    // Cargar memoria reciente
+    let memContext = '';
+    try {
+      const memResult = await pool.query(
+        'SELECT type, content FROM studio_memory ORDER BY created_at DESC LIMIT 15'
+      );
+      memContext = memResult.rows
+        .map(r => '[' + r.type.toUpperCase() + '] ' + r.content.slice(0, 200))
+        .join('\n');
+    } catch(e) {}
+
+    const systemPrompt = STUDIO_CONTEXT + (memContext ? '\n\nMEMORIA RECIENTE:\n' + memContext : '');
+
+    const Anthropic = require('@anthropic-ai/sdk');
+    const anthropicClient = new Anthropic({
+      apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
     });
 
-    const data = await response.json();
+    const claudeMsg = await anthropicClient.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      system: systemPrompt,
+      messages: messages
+    });
 
-    if (!response.ok) {
-      return res.status(500).json({ error: data.error?.message || 'Error Groq' });
-    }
-
-    res.json({ reply: data.choices[0].message.content });
+    res.json({ reply: claudeMsg.content[0].text });
 
   } catch (err) {
     console.error('STUDIO_ERROR:', err);
