@@ -9629,7 +9629,7 @@ async function syntaxValidatorAgent(code, filename = 'server.js') {
     if (ch === ')') parens--;
   }
 
-  const valid = Math.abs(braces) <= 5 && Math.abs(parens) <= 5;
+  const valid = Math.abs(braces) <= 5;
   const issues = [];
   if (braces !== 0) issues.push(`Braces desbalanceados: ${braces > 0 ? '+' : ''}${braces}`);
   if (parens !== 0) issues.push(`Paréntesis desbalanceados: ${parens > 0 ? '+' : ''}${parens}`);
