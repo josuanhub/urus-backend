@@ -391,13 +391,14 @@ app.use(
   express.static(path.join(__dirname, "generated_reports"))
 );
 
+app.post('/v1/studio/tts', studioAuth, async (req, res) => { try { const text = String(req.body?.text || '').trim().slice(0, 1000); if (!text) return res.status(400).json({ error: 'text requerido' }); const mp3 = await openai.audio.speech.create({ model: 'tts-1', voice: req.body?.voice || 'nova', input: text, speed: 1.0 }); const buffer = Buffer.from(await mp3.arrayBuffer()); res.set({ 'Content-Type': 'audio/mpeg', 'Content-Length': buffer.length }); res.send(buffer); } catch (err) { console.error('TTS_ERROR:', err); res.status(500).json({ error: err.message }); } });
+
 // ==============================
 // META BASIC URLS
 // ==============================
 
 app.get("/v1/intelligence/opportunities", async (req, res) => {
   try {
-
     const result = await pool.query(`
       SELECT
         id,
