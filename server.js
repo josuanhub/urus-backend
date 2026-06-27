@@ -9276,6 +9276,339 @@ app.post('/v1/factory/project/:id/integrations/whatsapp-twilio/configurar-dueno'
 });
 
 
+// ============================================================
+// URUS SELF-EDIT ENGINE
+// Permite que URUS Studio edite server.js desde el chat.
+//
+// DÓNDE VA EN server.js:
+// Busca esta línea exacta:
+//   // ---------- Boot ----------
+// Pega TODO este bloque JUSTO ANTES de esa línea.
+// ============================================================
+
+// ── SECCIONES CONOCIDAS DEL ARCHIVO ─────────────────────────
+// El sistema divide server.js por estos marcadores para no
+// exceder el límite de tokens de Claude.
+
+const FILE_SECTIONS = [
+  { name: 'whatsapp',      marker: 'WHATSAPP CLOUD API' },
+  { name: 'auth',          marker: '---------- Auth ----------' },
+  { name: 'billing',       marker: 'BILLING (Stripe)' },
+  { name: 'wa_leads',      marker: 'WHATSAPP LEAD ENGINE' },
+  { name: 'jarvis',        marker: 'JARVIS BRAIN CORE' },
+  { name: 'intelligence',  marker: 'MARKET INTELLIGENCE' },
+  { name: 'factory',       marker: 'URUS FACTORY' },
+  { name: 'masterplanner', marker: 'masterPlannerAgent' },
+  { name: 'dealer',        marker: 'DEALER OS' },
+  { name: 'studio',        marker: 'URUS STUDIO' },
+  { name: 'boot',          marker: '---------- Boot ----------' },
+];
+
+// ── LEER server.js DESDE GITHUB ──────────────────────────────
+async function githubReadServerJs() {
+  const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
+  const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
+  const REPO            = 'urus-backend';
+  const FILE_PATH       = 'server.js';
+
+  const res = await fetch(
+    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO}/contents/${FILE_PATH}`,
+    {
+      headers: {
+        Authorization: `token ${GITHUB_TOKEN}`,
+        'User-Agent':  'URUS-Studio',
+        Accept:        'application/vnd.github.v3+json'
+      }
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`GitHub read falló: ${JSON.stringify(err)}`);
+  }
+
+  const data    = await res.json();
+  const content = Buffer.from(data.content, 'base64').toString('utf8');
+  const sha     = data.sha;
+
+  return { content, sha };
+}
+
+// ── ESCRIBIR server.js A GITHUB ──────────────────────────────
+async function githubWriteServerJs(newContent, sha, commitMessage) {
+  const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
+  const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
+  const REPO            = 'urus-backend';
+  const FILE_PATH       = 'server.js';
+
+  const res = await fetch(
+    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO}/contents/${FILE_PATH}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization:  `token ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json',
+        'User-Agent':   'URUS-Studio'
+      },
+      body: JSON.stringify({
+        message: commitMessage || 'feat: URUS Studio self-edit',
+        content: Buffer.from(newContent).toString('base64'),
+        sha
+      })
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`GitHub write falló: ${JSON.stringify(err)}`);
+  }
+
+  return await res.json();
+}
+
+// ── DETECTAR SECCIÓN RELEVANTE ───────────────────────────────
+// Dado una instrucción en texto, detecta qué parte del archivo
+// hay que modificar para no exceder límite de tokens.
+
+function detectSection(instruction, fullContent) {
+  const text  = instruction.toLowerCase();
+  const lines = fullContent.split('\n');
+
+  // Palabras clave → sección
+  const keywordMap = {
+    masterplanner:  ['masterplanner', 'master planner', 'prompt1', 'prompt2', 'lovable_prompt', 'build manifest', 'regla fundamental'],
+    factory:        ['factory', 'orchestrator', 'runorchestrator', 'approve', 'session'],
+    dealer:         ['dealer', 'ivan', 'prospecto', 'inventario', 'lote'],
+    jarvis:         ['jarvis', 'brain', 'strategos', 'morning', 'day', 'protocol'],
+    intelligence:   ['intelligence', 'market', 'rss', 'serper', 'newsapi', 'briefing'],
+    whatsapp:       ['whatsapp', 'twilio', 'webhook', 'wa_leads', 'mensaje'],
+    auth:           ['auth', 'login', 'signup', 'token', 'jwt', 'usuario'],
+    billing:        ['billing', 'stripe', 'plan', 'checkout', 'membership'],
+    studio:         ['studio', 'self-edit', 'groq', 'studio_context'],
+    boot:           ['boot', 'ensureschema', 'listen', 'port', 'interval'],
+  };
+
+  // Detectar por keywords
+  for (const [section, keywords] of Object.entries(keywordMap)) {
+    if (keywords.some(kw => text.includes(kw))) {
+      return extractSection(section, fullContent, lines);
+    }
+  }
+
+  // Si no detecta nada específico, devuelve las últimas 800 líneas
+  // (donde suelen estar las funciones más recientes)
+  const start = Math.max(0, lines.length - 800);
+  return {
+    section:    'end',
+    startLine:  start,
+    endLine:    lines.length - 1,
+    content:    lines.slice(start).join('\n'),
+    totalLines: lines.length
+  };
+}
+
+function extractSection(sectionName, fullContent, lines) {
+  const marker = FILE_SECTIONS.find(s => s.name === sectionName)?.marker;
+  if (!marker) {
+    return {
+      section:    sectionName,
+      startLine:  0,
+      endLine:    lines.length - 1,
+      content:    fullContent,
+      totalLines: lines.length
+    };
+  }
+
+  // Encontrar línea del marcador
+  let startLine = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes(marker)) {
+      startLine = Math.max(0, i - 5);
+      break;
+    }
+  }
+
+  // Tomar 600 líneas desde ahí (suficiente para cualquier función)
+  const endLine = Math.min(lines.length - 1, startLine + 600);
+
+  return {
+    section:    sectionName,
+    startLine,
+    endLine,
+    content:    lines.slice(startLine, endLine + 1).join('\n'),
+    totalLines: lines.length
+  };
+}
+
+// ── APLICAR EDICIÓN CON CLAUDE ───────────────────────────────
+async function applyEditWithClaude(instruction, sectionInfo) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client    = new Anthropic({
+    apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
+  });
+
+  const prompt = `Eres el Motor de Auto-Edición de URUS Backend.
+
+Tu trabajo es aplicar exactamente la instrucción del operador al código.
+
+INSTRUCCIÓN DEL OPERADOR:
+${instruction}
+
+SECCIÓN DEL ARCHIVO (líneas ${sectionInfo.startLine} a ${sectionInfo.endLine} de ${sectionInfo.totalLines}):
+\`\`\`javascript
+${sectionInfo.content}
+\`\`\`
+
+REGLAS ABSOLUTAS:
+1. Devuelve ÚNICAMENTE el código JavaScript modificado
+2. Sin explicaciones, sin markdown, sin texto extra
+3. Sin \`\`\`javascript ni \`\`\` al inicio o final
+4. Aplica EXACTAMENTE lo que pide la instrucción, nada más
+5. No cambies nada que no esté relacionado con la instrucción
+6. Mantén el estilo y formato del código existente
+7. Si la instrucción pide agregar código nuevo, agrégalo en el lugar correcto
+8. Si la instrucción pide eliminar, elimina exactamente eso
+9. Si la instrucción pide cambiar, cambia exactamente eso
+10. El código debe ser válido JavaScript/Node.js
+
+Devuelve solo el código modificado:`;
+
+  const msg = await client.messages.create({
+    model:      'claude-sonnet-4-6',
+    max_tokens: 8000,
+    messages:   [{ role: 'user', content: prompt }]
+  });
+
+  let modified = msg.content[0].text.trim();
+
+  // Limpiar por si Claude puso markdown igual
+  modified = modified
+    .replace(/^```(javascript|js)?\n?/m, '')
+    .replace(/\n?```$/m, '')
+    .trim();
+
+  return modified;
+}
+
+// ── RECONSTRUIR ARCHIVO COMPLETO ─────────────────────────────
+function rebuildFile(originalContent, sectionInfo, modifiedSection) {
+  const lines = originalContent.split('\n');
+
+  const before = lines.slice(0, sectionInfo.startLine).join('\n');
+  const after  = lines.slice(sectionInfo.endLine + 1).join('\n');
+
+  // Unir las tres partes
+  const parts = [];
+  if (before) parts.push(before);
+  parts.push(modifiedSection);
+  if (after)  parts.push(after);
+
+  return parts.join('\n');
+}
+
+// ── ENDPOINT PRINCIPAL ───────────────────────────────────────
+// POST /v1/studio/self-edit
+// Body: { instruction: "texto de lo que quieres cambiar" }
+// Headers: x-studio-password: urus2026
+
+app.post('/v1/studio/self-edit', studioAuth, async (req, res) => {
+  const instruction = String(req.body?.instruction || '').trim();
+
+  if (!instruction) {
+    return res.status(400).json({
+      ok:    false,
+      error: 'instruction es requerida'
+    });
+  }
+
+  console.log(`[SelfEdit] Instrucción recibida: ${instruction.slice(0, 100)}...`);
+
+  // Stream de progreso para que el Studio muestre cada paso
+  res.setHeader('Content-Type', 'application/json');
+
+  try {
+    // PASO 1 — Leer archivo actual
+    console.log('[SelfEdit] Leyendo server.js desde GitHub...');
+    const { content: originalContent, sha } = await githubReadServerJs();
+    console.log(`[SelfEdit] Archivo leído: ${originalContent.length} caracteres`);
+
+    // PASO 2 — Detectar sección relevante
+    const sectionInfo = detectSection(instruction, originalContent);
+    console.log(`[SelfEdit] Sección detectada: ${sectionInfo.section} (líneas ${sectionInfo.startLine}-${sectionInfo.endLine})`);
+
+    // PASO 3 — Aplicar edición con Claude
+    console.log('[SelfEdit] Aplicando edición con Claude...');
+    const modifiedSection = await applyEditWithClaude(instruction, sectionInfo);
+    console.log('[SelfEdit] Edición aplicada');
+
+    // PASO 4 — Reconstruir archivo completo
+    const newContent = rebuildFile(originalContent, sectionInfo, modifiedSection);
+    console.log(`[SelfEdit] Archivo reconstruido: ${newContent.length} caracteres`);
+
+    // PASO 5 — Verificar que el archivo no quedó roto
+    // Chequeo básico: debe tener al menos el 80% del tamaño original
+    const sizeRatio = newContent.length / originalContent.length;
+    if (sizeRatio < 0.8) {
+      throw new Error(
+        `El archivo resultante es demasiado pequeño (${Math.round(sizeRatio * 100)}% del original). Abortando para proteger el backend.`
+      );
+    }
+
+    // PASO 6 — Commit a GitHub
+    const commitMsg = `feat(studio): ${instruction.slice(0, 60)}`;
+    console.log(`[SelfEdit] Haciendo commit: ${commitMsg}`);
+    await githubWriteServerJs(newContent, sha, commitMsg);
+    console.log('[SelfEdit] Commit exitoso. Railway redesplegará automáticamente.');
+
+    return res.json({
+      ok:          true,
+      section:     sectionInfo.section,
+      lines_edited: `${sectionInfo.startLine}-${sectionInfo.endLine}`,
+      commit:      commitMsg,
+      message:     'Cambio aplicado. Railway redesplegará en ~2 minutos.'
+    });
+
+  } catch (err) {
+    console.error('[SelfEdit] Error:', err.message);
+    return res.status(500).json({
+      ok:    false,
+      error: err.message
+    });
+  }
+});
+
+// ── ENDPOINT DE PREVIEW (sin hacer commit) ───────────────────
+// Útil para ver qué cambiaría antes de aplicarlo
+// POST /v1/studio/self-edit/preview
+
+app.post('/v1/studio/self-edit/preview', studioAuth, async (req, res) => {
+  const instruction = String(req.body?.instruction || '').trim();
+
+  if (!instruction) {
+    return res.status(400).json({ ok: false, error: 'instruction requerida' });
+  }
+
+  try {
+    const { content } = await githubReadServerJs();
+    const sectionInfo = detectSection(instruction, content);
+    const modified    = await applyEditWithClaude(instruction, sectionInfo);
+
+    return res.json({
+      ok:           true,
+      section:      sectionInfo.section,
+      lines:        `${sectionInfo.startLine}-${sectionInfo.endLine}`,
+      original:     sectionInfo.content.slice(0, 500) + '...',
+      modified:     modified.slice(0, 500) + '...',
+      message:      'Preview generado. Usa /self-edit para aplicar.'
+    });
+
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+
 
 
 // ---------- Boot ----------
