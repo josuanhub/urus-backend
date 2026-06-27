@@ -8444,7 +8444,6 @@ PROPUESTA YA APROBADA POR EL CLIENTE:
 ${JSON.stringify(project.proposal || {}, null, 2)}
 
 INSTRUCCIONES DE DISEÑO — sigue este proceso de pensamiento antes de responder:
-
 1. IDENTIFICA EL NEGOCIO REAL: no generes un "CRM genérico". Lee la transcripción y entiende exactamente qué vende esta empresa, cómo opera, quiénes son sus actores (dueño, empleados, clientes, proveedores), y cuál es su flujo de trabajo diario real, palabra por palabra de lo que dijeron.
 
 2. DISEÑA LOS MÓDULOS COMO UN SISTEMA OPERATIVO COMPLETO: piensa en todas las áreas que una empresa de este tipo necesita digitalizar — ventas, inventario o servicios, clientes, operaciones, finanzas/cobros, comunicación con clientes, reportes y métricas del dueño. No te limites a 2-3 módulos genéricos; incluye TODOS los módulos relevantes a este negocio específico, sin importar si parecen ambiciosos.
@@ -8454,6 +8453,8 @@ INSTRUCCIONES DE DISEÑO — sigue este proceso de pensamiento antes de responde
 4. PIENSA EN INTEGRACIONES REALES: si el negocio usa WhatsApp, el sistema debe tener pantalla de mensajes vía Twilio. Si maneja pagos, pantalla de cobros. Si maneja inventario físico, control de stock con alertas.
 
 5. DISEÑA EL DASHBOARD COMO RESUMEN EJECUTIVO: KPIs específicos del negocio según lo que dijo el dueño en la transcripción.
+
+REGLA FUNDAMENTAL: Este sistema puede ser cualquier tipo de software. No tiene que ser un CRM. Puede ser un agente autónomo, scraper, portal, lo que sea. Lee la transcripción y diseña exactamente lo que describe.
 
 Devuelve ÚNICAMENTE este JSON sin markdown ni texto extra:
 {
