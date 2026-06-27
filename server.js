@@ -9554,88 +9554,32 @@ El código debe empezar directamente.`;
 async function validatorAgent(instruction, original, modified, navigation) {
   console.log('[Validator] Verificando cambio...');
 
-  // Verificaciones automáticas primero
   const checks = {
-    size_ok:        modified.length > original.length * 0.5,
-    has_content:    modified.trim().length > 0,
-    no_truncation:  !modified.endsWith('...'),
-    brackets_ok:    countBrackets(modified) === countBrackets(original) ||
-                    Math.abs(countBrackets(modified) - countBrackets(original)) <= 2
+    size_ok:       modified.length > original.length * 0.5,
+    has_content:   modified.trim().length > 0,
+    no_truncation: !modified.endsWith('...'),
+    brackets_ok:   Math.abs(countBrackets(modified) - countBrackets(original)) <= 2
   };
 
   const autoPass = Object.values(checks).every(Boolean);
 
   if (!autoPass) {
-    console.log('[Validator] Checks automáticos fallaron:', checks);
+    console.log('[Validator] Checks fallaron:', checks);
     return {
       approved:   false,
       confidence: 2,
-      issues:     Object.entries(checks)
-                    .filter(([, v]) => !v)
-                    .map(([k]) => k),
-      suggestion: 'El cambio parece incompleto o corrupto. Reintenta.'
+      issues:     Object.entries(checks).filter(([, v]) => !v).map(([k]) => k),
+      suggestion: 'El cambio parece incompleto. Reintenta.'
     };
   }
 
-  // Validación con Claude para casos complejos
-  const systemPrompt = `Eres VALIDATOR — el agente de control de calidad de URUS.
-
-Tu trabajo es verificar que un cambio de código es correcto y seguro.
-
-Eres estricto pero pragmático:
-- Apruebas cambios que cumplen la instrucción aunque no sean perfectos
-- Rechazas cambios que rompan funcionalidad existente
-- Detectas errores de sintaxis obvios
-- Señalas riesgos de impacto en otras partes del sistema
-
-Devuelves ÚNICAMENTE JSON válido.`;
-
-  const userPrompt = `INSTRUCCIÓN ORIGINAL:
-"${instruction}"
-
-FUNCIÓN/SECCIÓN MODIFICADA: ${navigation.target_function}
-
-ORIGINAL (primeros 300 chars):
-${original.slice(0, 300)}
-
-MODIFICADO (primeros 300 chars):
-${modified.slice(0, 300)}
-
-VERIFICA:
-1. ¿El cambio cumple la instrucción?
-2. ¿Hay errores de sintaxis obvios?
-3. ¿Se preservó el código no relacionado?
-4. ¿Hay riesgos de romper algo?
-
-Devuelve ÚNICAMENTE:
-{
-  "approved": true/false,
-  "confidence": número del 1 al 10,
-  "issues": ["lista de problemas si hay"],
-  "suggestion": "qué hacer si no está aprobado, o null si está bien"
-}`;
-
- // Auto-aprobación cuando checks automáticos pasan
+  console.log('[Validator] ✅ APROBADO automáticamente');
   return {
-    approved:   autoPass,
+    approved:   true,
     confidence: 8,
     issues:     [],
     suggestion: null
   };
-
-    console.log(`[Validator] Resultado: ${result.approved ? '✅ APROBADO' : '❌ RECHAZADO'} | Confianza: ${result.confidence}/10`);
-    return result;
-
-  } catch (e) {
-    // Si el validator falla, aprobamos si los checks automáticos pasaron
-    console.log('[Validator] Usando resultado de checks automáticos');
-    return {
-      approved:   autoPass,
-      confidence: 7,
-      issues:     [],
-      suggestion: null
-    };
-  }
 }
 
 function countBrackets(code) {
