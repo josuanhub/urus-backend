@@ -1204,7 +1204,7 @@ let currentUtterance = null;
             `Para aplicar el cambio:\n\`/edit ${instruction}\``
           );
         } else {
-          addMessage('assistant',
+addMessage('assistant',
             `✅ **CAMBIO APLICADO** (${data.elapsed_seconds}s)\n\n` +
             `**Navigator:**\n` +
             `• Función: \`${data.navigation.function}\`\n` +
@@ -1216,6 +1216,7 @@ let currentUtterance = null;
             `El cambio estará en producción automáticamente.`
           );
           showNotif('✅ Cambio aplicado — Railway redesplegando...');
+          saveToMemory('edit', instruction, { commit: data.commit, section: data.navigation?.function });
         }
       } else {
         addMessage('assistant',
