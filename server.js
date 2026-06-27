@@ -9696,16 +9696,12 @@ async function healthMonitorAgent(commitSha, previousSha) {
 
 
 
-async function selfEditOrchestrator(instruction, previewOnly = false) {
+async function selfEditOrchestrator(instruction, previewOnly = false, targetFile = 'server.js') {
   console.log(`[Orchestrator v2] Iniciando ${previewOnly ? 'PREVIEW' : 'EDIT'}: "${instruction.slice(0, 80)}"`);
-
   const startTime = Date.now();
-
-  const { content: fileContent, sha } = await githubReadServerJs();
+  const { content: fileContent, sha } = await githubReadFile(targetFile);
   const previousSha = sha;
-
   const navigation = await navigatorAgent(instruction, fileContent);
-
   if (navigation.confidence < 4) {
     return {
       ok:    false,
@@ -9714,11 +9710,8 @@ async function selfEditOrchestrator(instruction, previewOnly = false) {
       hint:  'Menciona el nombre exacto de la función.'
     };
   }
-
   let modifiedSection = await editorAgent(instruction, navigation, fileContent);
-
   const syntaxCheck = await syntaxValidatorAgent(modifiedSection);
-
   if (!syntaxCheck.valid) {
     console.log('[Orchestrator] Sintaxis inválida. Auto-corrigiendo...');
     const fixInstruction = `Corrige estos errores de sintaxis sin cambiar la lógica: ${syntaxCheck.issues.join(', ')}`;
@@ -9728,25 +9721,19 @@ async function selfEditOrchestrator(instruction, previewOnly = false) {
       return { ok: false, stage: 'syntax_validator', error: `Sintaxis inválida: ${fixedSyntax.issues.join(', ')}` };
     }
   }
-
   const validation = await validatorAgent(instruction, navigation.content, modifiedSection, navigation);
-
   if (!validation.approved) {
     return { ok: false, stage: 'validator', error: `Validator rechazó: ${validation.issues?.join(', ')}`, suggestion: validation.suggestion };
   }
-
   const lines      = fileContent.split('\n');
   const before     = lines.slice(0, navigation.startIdx).join('\n');
   const after      = lines.slice(navigation.endIdx + 1).join('\n');
   const newContent = [before, modifiedSection, after].filter(Boolean).join('\n');
-
-  const sizeRatio = newContent.length / fileContent.length;
+  const sizeRatio  = newContent.length / fileContent.length;
   if (sizeRatio < 0.85) {
     return { ok: false, stage: 'size_check', error: `Archivo resultante es solo ${Math.round(sizeRatio * 100)}% del original. Abortado.` };
   }
-
   const elapsed = Math.round((Date.now() - startTime) / 1000);
-
   if (previewOnly) {
     return {
       ok: true, preview: true,
@@ -9757,11 +9744,9 @@ async function selfEditOrchestrator(instruction, previewOnly = false) {
       elapsed_seconds: elapsed
     };
   }
-
   const commitMsg    = `feat(studio-ai): ${instruction.slice(0, 72)}`;
-  const commitResult = await githubWriteServerJs(newContent, sha, commitMsg);
+  const commitResult = await githubWriteFile(targetFile, newContent, sha, commitMsg);
   const newSha       = commitResult?.content?.sha || sha;
-
   setImmediate(async () => {
     try {
       const health = await healthMonitorAgent(newSha, previousSha);
@@ -9775,7 +9760,6 @@ async function selfEditOrchestrator(instruction, previewOnly = false) {
       }
     } catch (e) { console.error('[HealthMonitor] Error:', e.message); }
   });
-
   return {
     ok: true, preview: false,
     navigation: { function: navigation.target_function, lines: `${navigation.start_line}-${navigation.end_line}`, confidence: navigation.confidence, edit_type: navigation.edit_type },
@@ -9786,6 +9770,7 @@ async function selfEditOrchestrator(instruction, previewOnly = false) {
     message:    'Cambio aplicado. Health Monitor activo por 3 minutos.'
   };
 }
+
 
 // ─────────────────────────────────────────────────────────────
 // ENDPOINTS
