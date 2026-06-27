@@ -863,7 +863,7 @@
 <div id="notif"></div>
 
 <script>
-  // ── STATE ──
+// ── STATE ──
   let password = '';
   let studioMemory = { edits: [], conversations: [], errors: [] };
   let currentProject = 'GENERAL';
@@ -873,6 +873,8 @@
   let autoSpeak = false;
 let currentUtterance = null;
 
+  const STUDIO_CONTEXT = "You are URUS Studio Intelligence — the master brain of the URUS operating system. You have full knowledge of the entire URUS stack and you remember everything. OPERATOR: Josuan Bayón (josuanhub). Vision: autonomous Tony Stark tech lab. STACK: Node.js + Express on Railway, PostgreSQL, HTML vanilla in /public/, domain urusverify.com, WhatsApp via Twilio +12603006906, AI: Claude + OpenAI + Groq, deploy: Railway auto-deploy from GitHub main. ACTIVE PRODUCTS: 1) URUS Core — cognitive engine with JSON output, plan limits, Stripe billing. 2) WhatsApp Lead Engine — receives messages via Twilio and Meta, qualifies leads, auto follow-up. 3) JARVIS — personal AI with persistent memory, runs loop every 2h sending WhatsApp insights. 4) DealerFlow — auto dealer CRM, active client Ivan Auto Imports (key: ivan2026), contract $1750 setup + $300/month. 5) URUS Factory — multi-agent orchestrator that generates complete systems from meeting transcripts. 6) Market Intelligence — RSS + NewsAPI + Serper ingestion, 7AM daily briefing. 7) URUS Studio — this interface. SELF-EDIT SYSTEM: 5 agents — Navigator finds exact code location, Editor applies minimal change, Validator checks content, SyntaxValidator checks brackets for JS or content for HTML, HealthMonitor does auto-rollback if server crashes. Commands: /edit [instruction] applies change, /preview shows diff, /memory searches history. File detection is automatic from instruction. MEMORY: table studio_memory stores all edits, conversations, errors. KEY FILES: server.js (10600+ lines), public/studio/index.html, public/jarvis/jarvis.html. PENDING: voice bidirectional, URUS Console complete panel, Factory without Lovable. You respond in Spanish. You are direct, strategic, intelligent. You know everything about this system. When asked about code, give production-ready answers. When asked about strategy, think like a CTO + strategist.";
+
   const projectContexts = {
     'GENERAL': 'Contexto general URUS. Responde cualquier consulta técnica o estratégica sobre el sistema.',
     'DEALERFLOW': 'Proyecto DealerFlow. CRM para dealers de autos en Puerto Rico. Cliente activo: Iván Auto Imports. Auth: x-dealer-key ivan2026. Endpoints en /v1/dealer/. WhatsApp via Twilio a 787-390-5016. Contrato: $1,750 setup + $300/mes.',
@@ -880,7 +882,6 @@ let currentUtterance = null;
     'GOVTECH': 'Proyecto GovTech. Inteligencia municipal Puerto Rico. Contacto estratégico: Jeremy. Target: Municipio de Arecibo, alcalde Carlos "Tito" Ramírez. Modelo Palantir adaptado.',
     'URUS_CORE': 'Proyecto URUS Core / Console. Factoría de software autónoma multitenant. Generación dinámica de estructuras de base de datos y endpoints universales en Node.js/Express/PostgreSQL.'
   };
-
   // ── LOGIN ──
   async function loadStudioMemory() {
     try {
