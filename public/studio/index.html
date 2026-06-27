@@ -1274,7 +1274,7 @@ addMessage('assistant',
     navigator.clipboard.writeText(code).then(() => {
       btn.textContent = '✓ COPIADO';
       setTimeout(() => btn.textContent = 'COPIAR', 2000);
-    });
+});
   }
 
   function copyText(btn, text) {
@@ -1286,39 +1286,30 @@ addMessage('assistant',
   }
 
   // ── TTS ──
-  function speakText(text) {
+  async function speakText(text) {
     stopTTS();
-    const clean = text
-      .replace(/```[\s\S]*?```/g, 'bloque de código.')
-      .replace(/`[^`]+`/g, '')
-      .replace(/#{1,3} /g, '')
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '')
-      .replace(/\[|\]/g, '')
-      .trim();
-
-    if (!clean) return;
-
-    const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.lang = 'es-PR';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-
-    // Try to pick a Spanish voice
-    const voices = window.speechSynthesis.getVoices();
-    const esVoice = voices.find(v => v.lang.startsWith('es')) || null;
-    if (esVoice) utterance.voice = esVoice;
-
-    utterance.onstart = () => {
+    const clean = text.replace(/```[\s\S]*?```/g, 'bloque de código.').replace(/`[^`]+`/g, '').replace(/#{1,3} /g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/\[|\]/g, '').trim();
+    if (!clean || clean.length < 5) return;
+    try {
+      const res = await fetch('/v1/studio/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+        body: JSON.stringify({ text: clean.slice(0, 800) })
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => {
+        document.getElementById('tts-bar').classList.remove('visible');
+        URL.revokeObjectURL(url);
+      };
       document.getElementById('tts-bar').classList.add('visible');
-    };
-    utterance.onend = utterance.onerror = () => {
-      document.getElementById('tts-bar').classList.remove('visible');
-      currentUtterance = null;
-    };
-
-    currentUtterance = utterance;
-    window.speechSynthesis.speak(utterance);
+      document.getElementById('tts-label').textContent = 'URUS hablando...';
+      audio.play();
+    } catch(e) {
+      console.log('TTS failed:', e.message);
+    }
   }
 
   function stopTTS() {
