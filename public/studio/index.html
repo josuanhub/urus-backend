@@ -1144,7 +1144,7 @@ const input = document.getElementById('input');
         headers: {
 'Content-Type':      'application/json',
           'x-studio-password': password
-        },
+},
         body: JSON.stringify({ messages: history })
       });
 
@@ -1155,7 +1155,7 @@ const input = document.getElementById('input');
         history.push({ role: 'assistant', content: data.reply });
         addMessage('assistant', data.reply);
         saveToMemory('conversation', 'TÚ: ' + text + '\nURUS: ' + data.reply, { project: currentProject });
-        if (autoSpeak) speakText(data.reply);
+        const wordCount = data.reply.split(' ').length; const hasCode = data.reply.includes('```'); if (autoSpeak && wordCount < 80 && !hasCode) speakText(data.reply);
       } else {
         addMessage('assistant', 'Error: ' + (data.error || 'Sin respuesta'));
       }
