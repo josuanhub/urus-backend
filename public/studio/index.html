@@ -1179,7 +1179,7 @@
           `${data.suggestion ? `💡 **Sugerencia:** ${data.suggestion}` : ''}` +
           `${data.hint ? `\n\n💡 **Tip:** ${data.hint}` : ''}`
         );
-      }
+}
 
     } catch (err) {
       document.getElementById('typing-indicator').style.display = 'none';
@@ -1190,7 +1190,7 @@
   
   function quickSend(text) {
     document.getElementById('input').value = text;
-    sendMessage();
+    document.getElementById('input').focus();
   }
 
   function handleKey(e) {
