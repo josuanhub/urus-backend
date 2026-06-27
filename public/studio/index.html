@@ -918,7 +918,7 @@ let currentUtterance = null;
           content: String(content).slice(0, 5000),
           metadata: metadata || {},
           project: currentProject
-        })
+})
       });
     } catch(e) {}
   }
@@ -930,6 +930,7 @@ let currentUtterance = null;
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
       document.getElementById('input').focus();
+      loadStudioMemory();
     } else {
       const inp = document.getElementById('pwd-input');
       inp.classList.add('error');
