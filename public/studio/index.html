@@ -870,7 +870,7 @@
   let recognition = null;
   let isRecording = false;
   let autoSpeak = false;
-  let currentUtterance = null;
+let currentUtterance = null;
 
   const projectContexts = {
     'GENERAL': 'Contexto general URUS. Responde cualquier consulta técnica o estratégica sobre el sistema.',
@@ -881,6 +881,48 @@
   };
 
   // ── LOGIN ──
+  async function loadStudioMemory() {
+    try {
+      const res = await fetch('/v1/studio/memory/load', {
+        headers: { 'x-studio-password': password }
+      });
+      const data = await res.json();
+      if (!data.ok) return;
+      studioMemory.edits = data.recent_edits || [];
+      studioMemory.conversations = data.recent_conversations || [];
+      studioMemory.errors = data.recent_errors || [];
+      if (data.recent_edits?.length || data.recent_errors?.length) {
+        const welcome = document.getElementById('welcome');
+        if (welcome) {
+          const div = document.createElement('div');
+          div.style.cssText = 'background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:12px 16px;margin-top:16px;max-width:500px;';
+          div.innerHTML = '<div style="font-size:0.6rem;letter-spacing:2px;color:#c9a84c;margin-bottom:6px;">MEMORIA CARGADA</div><div style="font-size:0.78rem;color:#e8e8e8;">' + data.recent_edits.length + ' cambios recientes. ' + data.recent_errors.length + ' errores.</div>';
+          welcome.appendChild(div);
+        }
+      }
+    } catch(e) {
+      console.log('Memory load failed:', e.message);
+    }
+  }
+
+  async function saveToMemory(type, content, metadata) {
+    try {
+      await fetch('/v1/studio/memory/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-studio-password': password
+        },
+        body: JSON.stringify({
+          type: type,
+          content: String(content).slice(0, 5000),
+          metadata: metadata || {},
+          project: currentProject
+        })
+      });
+    } catch(e) {}
+  }
+
   function login() {
     const pwd = document.getElementById('pwd-input').value;
     if (pwd === 'urus2026') {
