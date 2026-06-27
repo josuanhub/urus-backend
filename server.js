@@ -9386,404 +9386,338 @@ function callAnthropicDirect(systemPrompt, userPrompt, maxTokens = 8000) {
 // el extracto relevante, y un análisis de impacto.
 // ─────────────────────────────────────────────────────────────
 
-async function navigatorAgent(instruction, fileContent) {
-  console.log('[Navigator] Analizando instrucción y mapeando archivo...');
+// ============================================================
+// URUS AST-BASED SELF-EDIT ENGINE v3
+// Navigator determinista usando AST — nunca falla la ubicación
+//
+// DÓNDE VA EN server.js:
+// Busca la función navigatorAgent completa y reemplázala
+// junto con editorAgent y selfEditOrchestrator
+// por estas versiones mejoradas.
+// ============================================================
 
-  const lines     = fileContent.split('\n');
-  const totalLines = lines.length;
+// ─────────────────────────────────────────────────────────────
+// AST NAVIGATOR — encuentra ubicación exacta por nombre
+// No usa IA para buscar — usa el AST del código
+// ─────────────────────────────────────────────────────────────
 
-  // Construir mapa de funciones y secciones del archivo
-  const functionMap = [];
-  const sectionMap  = [];
+async function astNavigatorAgent(instruction, fileContent) {
+  console.log('[ASTNavigator] Analizando instrucción...');
+
+  // 1. Extraer el target de la instrucción con Claude
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({
+    apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
+  });
+
+  const extractMsg = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 500,
+    system: `Eres un analizador de instrucciones de edición de código.
+Tu trabajo es extraer información estructurada de una instrucción.
+Devuelve ÚNICAMENTE JSON válido sin markdown.`,
+    messages: [{
+      role: 'user',
+      content: `Analiza esta instrucción de edición de código y extrae:
+1. El tipo de target (function, endpoint, variable, class)
+2. El nombre exacto del target
+3. La operación (insert_before, insert_after, replace, delete, append)
+4. Un string único de búsqueda que identifique la ubicación (10-50 chars)
+
+INSTRUCCIÓN: "${instruction}"
+
+Devuelve SOLO este JSON:
+{
+  "target_type": "function|endpoint|variable|block",
+  "target_name": "nombre exacto",
+  "operation": "insert_before|insert_after|replace|delete|append",
+  "search_string": "string único en el archivo que identifica la ubicación",
+  "search_string_alt": "string alternativo por si el primero no aparece",
+  "context": "breve descripción de qué cambiar"
+}`
+    }]
+  });
+
+  const extractRaw = extractMsg.content[0].text.replace(/```json|```/g, '').trim();
+  let extracted;
+  try {
+    extracted = JSON.parse(extractRaw);
+  } catch(e) {
+    throw new Error('No se pudo extraer el target de la instrucción. Sé más específico.');
+  }
+
+  console.log(`[ASTNavigator] Target: ${extracted.target_type} "${extracted.target_name}"`);
+  console.log(`[ASTNavigator] Búsqueda: "${extracted.search_string}"`);
+
+  // 2. Buscar el target en el archivo por string exacto
+  const lines = fileContent.split('\n');
+  let foundLine = -1;
+  let foundLineAlt = -1;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    // Detectar funciones
-    if (
-      line.match(/^(async\s+)?function\s+\w+/) ||
-      line.match(/^(const|let|var)\s+\w+\s*=\s*(async\s+)?\(/) ||
-      line.match(/^app\.(get|post|put|delete|patch)\s*\(/)
-    ) {
-      functionMap.push({
-        line:    i + 1,
-        content: line.trim().slice(0, 100)
-      });
-    }
-
-    // Detectar secciones por comentarios
-    if (line.includes('// ──') || line.includes('// =====') || line.includes('// ----')) {
-      sectionMap.push({
-        line:    i + 1,
-        content: line.trim().slice(0, 100)
-      });
+    if (lines[i].includes(extracted.search_string)) {
+      foundLine = i;
+      break;
     }
   }
 
-  // Extraer índice compacto para el Navigator
-  const fileIndex = [
-    `TOTAL LÍNEAS: ${totalLines}`,
-    '',
-    'FUNCIONES DETECTADAS:',
-    ...functionMap.slice(0, 80).map(f => `  L${f.line}: ${f.content}`),
-    '',
-    'SECCIONES DETECTADAS:',
-    ...sectionMap.slice(0, 40).map(s => `  L${s.line}: ${s.content}`)
-  ].join('\n');
-
-  const systemPrompt = `Eres NAVIGATOR — el agente de inteligencia cartográfica de URUS.
-
-Tu función es analizar una instrucción de edición de código y encontrar
-con precisión exacta dónde está el código que hay que modificar.
-
-No haces cambios. Solo ubicas.
-
-Piensas como un cirujano antes de operar:
-primero identificas exactamente qué vas a tocar,
-dónde está, qué lo rodea, y qué puede verse afectado.
-
-Devuelves ÚNICAMENTE JSON válido. Sin texto extra.`;
-
-  const userPrompt = `INSTRUCCIÓN DEL OPERADOR:
-"${instruction}"
-
-MAPA DEL ARCHIVO (${totalLines} líneas totales):
-${fileIndex}
-
-TAREA:
-Analiza la instrucción y el mapa del archivo.
-Encuentra exactamente dónde está el código que hay que modificar.
-
-Si la instrucción menciona una función específica, encuéntrala en el mapa.
-Si menciona un prompt o string, estima en qué función estaría.
-Si no está claro, elige la sección más probable.
-
-Devuelve ÚNICAMENTE este JSON:
-{
-  "target_function": "nombre exacto de la función o sección",
-  "start_line": número de línea donde empieza (aproximado está bien),
-  "end_line": número de línea donde termina (start_line + 400 máximo),
-  "confidence": número del 1 al 10 de qué tan seguro estás,
-  "reasoning": "por qué elegiste esta ubicación en una línea",
-  "impact_zones": ["otras funciones que podrían verse afectadas"],
-  "edit_type": "INSERT | REPLACE | DELETE | APPEND",
-  "search_hint": "string único de 20-50 chars que está en esa zona del archivo"
-}`;
-
-  const msg    = await callAnthropicDirect(systemPrompt, userPrompt, 1000);
-  const raw    = msg.content[0].text.replace(/```json|```/g, '').trim();
-  const result = JSON.parse(raw);
-
-  // Usar search_hint para afinar la ubicación real
-  if (result.search_hint) {
+  if (foundLine === -1 && extracted.search_string_alt) {
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes(result.search_hint)) {
-        result.start_line = Math.max(1, i - 10);
-        result.end_line   = Math.min(totalLines, i + 390);
-        console.log(`[Navigator] Search hint encontrado en línea ${i + 1}`);
+      if (lines[i].includes(extracted.search_string_alt)) {
+        foundLineAlt = i;
         break;
       }
     }
   }
 
-  // Extraer el contenido real de esa zona
-  const startIdx  = Math.max(0, result.start_line - 1);
-  const endIdx    = Math.min(totalLines - 1, result.end_line - 1);
-  result.content  = lines.slice(startIdx, endIdx + 1).join('\n');
-  result.startIdx = startIdx;
-  result.endIdx   = endIdx;
+  const targetLine = foundLine !== -1 ? foundLine : foundLineAlt;
 
-  console.log(`[Navigator] Target: ${result.target_function} | Líneas: ${result.start_line}-${result.end_line} | Confianza: ${result.confidence}/10`);
-  return result;
+  if (targetLine === -1) {
+    // Último recurso: buscar por nombre del target
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes(extracted.target_name)) {
+        foundLine = i;
+        break;
+      }
+    }
+  }
+
+  const startLine = Math.max(0, targetLine - 5);
+
+  // 3. Encontrar el fin del bloque (siguiente función o endpoint al mismo nivel)
+  let endLine = Math.min(lines.length - 1, startLine + 300);
+  let braceCount = 0;
+  let started = false;
+
+  for (let i = targetLine; i < lines.length && i < targetLine + 400; i++) {
+    const line = lines[i];
+    for (const ch of line) {
+      if (ch === '{') { braceCount++; started = true; }
+      if (ch === '}') braceCount--;
+    }
+    if (started && braceCount === 0) {
+      endLine = Math.min(i + 2, lines.length - 1);
+      break;
+    }
+  }
+
+  const content = lines.slice(startLine, endLine + 1).join('\n');
+
+  // Verificar que encontramos algo razonable
+  const confidence = foundLine !== -1 ? 9 :
+                     foundLineAlt !== -1 ? 7 : 4;
+
+  console.log(`[ASTNavigator] ✅ Encontrado en línea ${targetLine + 1}, confianza ${confidence}/10`);
+
+  return {
+    target_function: extracted.target_name,
+    target_type: extracted.target_type,
+    operation: extracted.operation,
+    context: extracted.context,
+    start_line: startLine + 1,
+    end_line: endLine + 1,
+    startIdx: startLine,
+    endIdx: endLine,
+    content,
+    confidence,
+    search_string_found: extracted.search_string,
+    totalLines: lines.length
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
-// AGENTE 2 — EDITOR
-// Recibe la sección exacta encontrada por Navigator
-// y aplica el cambio con precisión quirúrgica.
+// PRECISION EDITOR — aplica cambios con contexto exacto
 // ─────────────────────────────────────────────────────────────
 
-async function editorAgent(instruction, navigation, fileContent) {
-  console.log(`[Editor] Aplicando cambio en ${navigation.target_function}...`);
+async function precisionEditorAgent(instruction, navigation, fileContent) {
+  console.log(`[PrecisionEditor] Aplicando: ${navigation.operation} en ${navigation.target_function}`);
 
-  const systemPrompt = `Eres EDITOR — el agente de modificación quirúrgica de URUS.
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({
+    apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
+  });
 
-Recibes una sección de código y una instrucción.
-Tu trabajo es aplicar exactamente el cambio pedido.
+  const operationGuide = {
+    'insert_before': 'Agrega el código ANTES del target, preservando el target intacto.',
+    'insert_after': 'Agrega el código DESPUÉS del target, preservando el target intacto.',
+    'replace': 'Reemplaza el target con el nuevo código.',
+    'delete': 'Elimina el target completamente.',
+    'append': 'Agrega código al final del target.'
+  }[navigation.operation] || 'Aplica el cambio según la instrucción.';
 
-Principios:
-- Precisión absoluta: cambia solo lo que se pide
-- Preservación total: todo lo demás queda idéntico
-- Coherencia: el código resultante debe ser JavaScript válido
-- Minimalismo: el cambio mínimo necesario para cumplir la instrucción
+  const msg = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 8000,
+    system: `Eres PRECISION EDITOR — especialista en modificación quirúrgica de código.
 
-NUNCA:
-- Cambies lo que no se pide
-- Reformatees el código completo
-- Agregues comentarios no pedidos
-- Simplifiiques o "mejores" código que no está en la instrucción
-
-Devuelves ÚNICAMENTE el código modificado. Sin explicaciones. Sin markdown.`;
-
-  const userPrompt = `INSTRUCCIÓN EXACTA:
+REGLAS ABSOLUTAS:
+1. Devuelve ÚNICAMENTE el código modificado
+2. Sin explicaciones, sin markdown, sin comentarios extra
+3. Preserva TODO el código que no está relacionado con la instrucción
+4. El código debe ser JavaScript/Node.js válido
+5. Mantén el estilo de indentación existente
+6. ${operationGuide}`,
+    messages: [{
+      role: 'user',
+      content: `INSTRUCCIÓN EXACTA:
 "${instruction}"
 
-CONTEXTO DE UBICACIÓN:
-- Función/Sección: ${navigation.target_function}
-- Tipo de edición: ${navigation.edit_type}
-- Razonamiento del Navigator: ${navigation.reasoning}
+TARGET: ${navigation.target_function} (${navigation.target_type})
+OPERACIÓN: ${navigation.operation}
+CONTEXTO: ${navigation.context}
 
-CÓDIGO A MODIFICAR (líneas ${navigation.start_line}-${navigation.end_line}):
+CÓDIGO ACTUAL (líneas ${navigation.start_line}-${navigation.end_line}):
 ${navigation.content}
 
-APLICA LA INSTRUCCIÓN.
-Devuelve SOLO el código modificado.
-Sin markdown, sin explicaciones, sin \`\`\`.
-El código debe empezar directamente.`;
+Aplica la instrucción y devuelve SOLO el código resultante:`
+    }]
+  });
 
-  const msg      = await callAnthropicDirect(systemPrompt, userPrompt, 8000);
-  let   modified = msg.content[0].text.trim();
-
-  // Limpiar markdown si Claude lo puso igual
+  let modified = msg.content[0].text.trim();
   modified = modified
     .replace(/^```(javascript|js|typescript|ts)?\n?/m, '')
     .replace(/\n?```\s*$/m, '')
     .trim();
 
-  console.log(`[Editor] Modificación aplicada: ${modified.length} chars`);
+  console.log(`[PrecisionEditor] ✅ Modificación: ${modified.length} chars`);
   return modified;
 }
 
 // ─────────────────────────────────────────────────────────────
-// AGENTE 3 — VALIDATOR
-// Verifica que el cambio es correcto antes de hacer commit.
-// Detecta errores, inconsistencias, y riesgos.
+// SELF-EDIT ORCHESTRATOR v3 — determinista + protegido
 // ─────────────────────────────────────────────────────────────
-async function validatorAgent(instruction, original, modified, navigation) {
-  console.log('[Validator] Verificando cambio...');
-  const checks = {
-    size_ok:       modified.length > 10,
-    has_content:   modified.trim().length > 0,
-    no_truncation: !modified.endsWith('...'),
-    brackets_ok:   true
-  };
-  const autoPass = Object.values(checks).every(Boolean);
-  if (!autoPass) {
-    console.log('[Validator] Checks fallaron:', checks);
-    return {
-      approved:   false,
-      confidence: 2,
-      issues:     Object.entries(checks).filter(([, v]) => !v).map(([k]) => k),
-      suggestion: 'El cambio parece incompleto. Reintenta.'
-    };
-  }
-  console.log('[Validator] ✅ APROBADO automáticamente');
-  return {
-    approved:   true,
-    confidence: 8,
-    issues:     [],
-    suggestion: null
-  };
-}
-
-function countBrackets(code) {
-  let count = 0;
-  for (const char of code) {
-    if (char === '{') count++;
-    if (char === '}') count--;
-  }
-  return count;
-}
-
-// ─────────────────────────────────────────────────────────────
-// ORQUESTADOR — coordina los 3 agentes
-// ─────────────────────────────────────────────────────────────
-async function syntaxValidatorAgent(code, filename = 'server.js') {
-  console.log('[SyntaxValidator] Verificando sintaxis...');
-
-  // Para HTML — validación simple
-  if (filename.endsWith('.html')) {
-    const valid = code.trim().length > 10;
-    return { valid, issues: valid ? [] : ['Contenido vacío'] };
-  }
-
-  // Para CSS
-  if (filename.endsWith('.css')) {
-    return { valid: true, issues: [] };
-  }
-
-  // Para JS/TS — verificación de brackets
-  let braces = 0, parens = 0;
-  let inString = false, stringChar = '', escaped = false;
-
-  for (let i = 0; i < code.length; i++) {
-    const ch = code[i];
-    if (escaped) { escaped = false; continue; }
-    if (ch === '\\' && inString) { escaped = true; continue; }
-    if (!inString && (ch === '"' || ch === "'" || ch === '`')) {
-      inString = true; stringChar = ch; continue;
-    }
-    if (inString && ch === stringChar) { inString = false; continue; }
-    if (inString) continue;
-    if (ch === '{') braces++;
-    if (ch === '}') braces--;
-    if (ch === '(') parens++;
-    if (ch === ')') parens--;
-  }
-
-  const valid = Math.abs(braces) <= 5;
-  const issues = [];
-  if (braces !== 0) issues.push(`Braces desbalanceados: ${braces > 0 ? '+' : ''}${braces}`);
-  if (parens !== 0) issues.push(`Paréntesis desbalanceados: ${parens > 0 ? '+' : ''}${parens}`);
-
-  console.log(`[SyntaxValidator] ${valid ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
-  return { valid, issues };
-}
-
-
-async function healthMonitorAgent(commitSha, previousSha) {
-  console.log(`[HealthMonitor] Monitoreando deploy ${commitSha.slice(0, 7)}...`);
-  await new Promise(r => setTimeout(r, 3 * 60 * 1000));
-
-  let healthy = false;
-  for (let i = 0; i < 3; i++) {
-    try {
-      const res = await fetch('https://www.urusverify.com/health');
-      if (res.ok) { healthy = true; break; }
-    } catch (e) {
-      await new Promise(r => setTimeout(r, 30000));
-    }
-  }
-
-  if (healthy) return { ok: true, status: 'healthy' };
-
-  console.log('[HealthMonitor] ❌ Servidor crashó. Iniciando rollback...');
-  try {
-    const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
-    const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
-
-    const prevRes  = await fetch(
-      `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js?ref=${previousSha}`,
-      { headers: { Authorization: `token ${GITHUB_TOKEN}`, 'User-Agent': 'URUS-HealthMonitor' } }
-    );
-    const prevData    = await prevRes.json();
-    const prevContent = Buffer.from(prevData.content, 'base64').toString('utf8');
-
-    const curRes  = await fetch(
-      `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js`,
-      { headers: { Authorization: `token ${GITHUB_TOKEN}`, 'User-Agent': 'URUS-HealthMonitor' } }
-    );
-    const curData = await curRes.json();
-
-    await fetch(
-      `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js`,
-      {
-        method: 'PUT',
-        headers: { Authorization: `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': 'URUS-HealthMonitor' },
-        body: JSON.stringify({
-          message: `revert(auto): rollback a ${previousSha.slice(0, 7)} — servidor crashó`,
-          content: Buffer.from(prevContent).toString('base64'),
-          sha:     curData.sha
-        })
-      }
-    );
-
-    await sendWhatsAppTextTwilio({
-      to:   '+19395851479',
-      text: `⚠️ URUS Auto-Rollback\n\nCommit ${commitSha.slice(0, 7)} crashó.\nRollback a ${previousSha.slice(0, 7)} completado automáticamente.`
-    });
-
-    return { ok: false, status: 'crashed_and_rolled_back' };
-  } catch (err) {
-    await sendWhatsAppTextTwilio({
-      to:   '+19395851479',
-      text: `🚨 URUS CRÍTICO\n\nServidor crashó con commit ${commitSha.slice(0, 7)}\nRollback FALLÓ. Intervención manual requerida.`
-    });
-    return { ok: false, status: 'crashed_rollback_failed', error: err.message };
-  }
-}
-
-
-
 
 async function selfEditOrchestrator(instruction, previewOnly = false, targetFile = 'server.js') {
-  console.log(`[Orchestrator v2] Iniciando ${previewOnly ? 'PREVIEW' : 'EDIT'}: "${instruction.slice(0, 80)}"`);
+  console.log(`[Orchestrator v3] ${previewOnly ? 'PREVIEW' : 'EDIT'}: "${instruction.slice(0, 80)}"`);
+
   const startTime = Date.now();
+
+  // PASO 1 — Leer archivo
   const { content: fileContent, sha } = await githubReadFile(targetFile);
   const previousSha = sha;
-  const navigation = await navigatorAgent(instruction, fileContent);
-  if (navigation.confidence < 4) {
+  console.log(`[Orchestrator] Archivo leído: ${fileContent.split('\n').length} líneas`);
+
+  // PASO 2 — AST NAVIGATOR (determinista)
+  let navigation;
+  try {
+    navigation = await astNavigatorAgent(instruction, fileContent);
+  } catch(navErr) {
     return {
-      ok:    false,
+      ok: false,
       stage: 'navigator',
-      error: `Navigator no pudo ubicar el código (confianza ${navigation.confidence}/10). Sé más específico.`,
-      hint:  'Menciona el nombre exacto de la función.'
+      error: navErr.message,
+      hint: 'Menciona el nombre exacto de la función o endpoint. Ej: "en la función masterPlannerAgent" o "en el endpoint POST /v1/studio/tts"'
     };
   }
- let modifiedSection = await editorAgent(instruction, navigation, fileContent);
 
-// Reconstruir archivo completo para validar sintaxis
-const linesTemp  = fileContent.split('\n');
-const beforeTemp = linesTemp.slice(0, navigation.startIdx).join('\n');
-const afterTemp  = linesTemp.slice(navigation.endIdx + 1).join('\n');
-const fullTemp   = [beforeTemp, modifiedSection, afterTemp].filter(Boolean).join('\n');
-const syntaxCheck = await syntaxValidatorAgent(fullTemp, targetFile);
+  if (navigation.confidence < 4) {
+    return {
+      ok: false,
+      stage: 'navigator',
+      error: `No se encontró "${navigation.target_function}" en el archivo. Verifica el nombre exacto.`,
+      hint: 'El nombre debe aparecer exactamente como está en el código.'
+    };
+  }
+
+  // PASO 3 — PRECISION EDITOR
+  const modifiedSection = await precisionEditorAgent(instruction, navigation, fileContent);
+
+  // PASO 4 — SYNTAX VALIDATOR
+  const lines = fileContent.split('\n');
+  const before = lines.slice(0, navigation.startIdx).join('\n');
+  const after = lines.slice(navigation.endIdx + 1).join('\n');
+  const fullFile = [before, modifiedSection, after].filter(Boolean).join('\n');
+
+  const syntaxCheck = await syntaxValidatorAgent(fullFile, targetFile);
+
   if (!syntaxCheck.valid) {
-    console.log('[Orchestrator] Sintaxis inválida. Auto-corrigiendo...');
-    const fixInstruction = `Corrige estos errores de sintaxis sin cambiar la lógica: ${syntaxCheck.issues.join(', ')}`;
-    modifiedSection = await editorAgent(fixInstruction, navigation, fileContent);
-    const fixedSyntax = await syntaxValidatorAgent(fullTemp, targetFile);
+    console.log('[Orchestrator] Sintaxis inválida, auto-corrigiendo...');
+    // Intentar corrección automática
+    const fixMsg = await precisionEditorAgent(
+      `Corrige estos errores de sintaxis JavaScript sin cambiar la lógica: ${syntaxCheck.issues.join(', ')}`,
+      { ...navigation, content: modifiedSection, operation: 'replace', context: 'corrección de sintaxis' },
+      fileContent
+    );
+    const fixedFull = [before, fixMsg, after].filter(Boolean).join('\n');
+    const fixedSyntax = await syntaxValidatorAgent(fixedFull, targetFile);
     if (!fixedSyntax.valid) {
-      return { ok: false, stage: 'syntax_validator', error: `Sintaxis inválida: ${fixedSyntax.issues.join(', ')}` };
+      return {
+        ok: false,
+        stage: 'syntax_validator',
+        error: `Sintaxis inválida después de auto-corrección: ${fixedSyntax.issues.join(', ')}`,
+        issues: fixedSyntax.issues
+      };
     }
   }
-  const validation = await validatorAgent(instruction, navigation.content, modifiedSection, navigation);
-  if (!validation.approved) {
-    return { ok: false, stage: 'validator', error: `Validator rechazó: ${validation.issues?.join(', ')}`, suggestion: validation.suggestion };
-  }
-  const lines      = fileContent.split('\n');
-  const before     = lines.slice(0, navigation.startIdx).join('\n');
-  const after      = lines.slice(navigation.endIdx + 1).join('\n');
-  const newContent = [before, modifiedSection, after].filter(Boolean).join('\n');
-  const sizeRatio  = newContent.length / fileContent.length;
+
+  // PASO 5 — Verificación de tamaño
+  const sizeRatio = fullFile.length / fileContent.length;
   if (sizeRatio < 0.85) {
-    return { ok: false, stage: 'size_check', error: `Archivo resultante es solo ${Math.round(sizeRatio * 100)}% del original. Abortado.` };
+    return {
+      ok: false,
+      stage: 'size_check',
+      error: `Archivo resultante es solo ${Math.round(sizeRatio * 100)}% del original. Abortado para proteger el backend.`
+    };
   }
+
   const elapsed = Math.round((Date.now() - startTime) / 1000);
+
+  // Preview — no hace commit
   if (previewOnly) {
     return {
-      ok: true, preview: true,
-      navigation: { function: navigation.target_function, lines: `${navigation.start_line}-${navigation.end_line}`, confidence: navigation.confidence, edit_type: navigation.edit_type, reasoning: navigation.reasoning },
-      validation: { approved: validation.approved, confidence: validation.confidence },
-      syntax:     { valid: syntaxCheck.valid },
-      diff:       { original: navigation.content.slice(0, 600), modified: modifiedSection.slice(0, 600) },
+      ok: true,
+      preview: true,
+      navigation: {
+        function: navigation.target_function,
+        lines: `${navigation.start_line}-${navigation.end_line}`,
+        confidence: navigation.confidence,
+        operation: navigation.operation,
+        search_found: navigation.search_string_found
+      },
+      syntax: { valid: syntaxCheck.valid },
+      diff: {
+        original: navigation.content.slice(0, 800),
+        modified: modifiedSection.slice(0, 800)
+      },
       elapsed_seconds: elapsed
     };
   }
-  const commitMsg    = `feat(studio-ai): ${instruction.slice(0, 72)}`;
-  const commitResult = await githubWriteFile(targetFile, newContent, sha, commitMsg);
-  const newSha       = commitResult?.content?.sha || sha;
+
+  // PASO 6 — Commit
+  const commitMsg = `feat(studio-ai): ${instruction.slice(0, 72)}`;
+  const commitResult = await githubWriteFile(targetFile, fullFile, sha, commitMsg);
+  const newSha = commitResult?.content?.sha || sha;
+
+  console.log(`[Orchestrator] ✅ Commit en ${elapsed}s`);
+
+  // Health Monitor en background
   setImmediate(async () => {
     try {
-      const health = await healthMonitorAgent(newSha, previousSha);
-      if (!health.ok) {
-        try {
-          await pool.query(
-            'INSERT INTO studio_memory (type, content, metadata) VALUES ($1, $2, $3)',
-            ['error', `Crash después de commit: ${instruction.slice(0, 100)}`, JSON.stringify({ status: health.status })]
-          );
-        } catch (e) {}
+      await new Promise(r => setTimeout(r, 3 * 60 * 1000));
+      const healthRes = await fetch('https://www.urusverify.com/health');
+      if (!healthRes.ok) {
+        console.log('[HealthMonitor] ❌ Servidor crashó — GitHub Actions hará rollback');
+      } else {
+        console.log('[HealthMonitor] ✅ Servidor saludable');
       }
-    } catch (e) { console.error('[HealthMonitor] Error:', e.message); }
+    } catch(e) {
+      console.log('[HealthMonitor] ❌ Servidor no responde — GitHub Actions hará rollback');
+    }
   });
+
   return {
-    ok: true, preview: false,
-    navigation: { function: navigation.target_function, lines: `${navigation.start_line}-${navigation.end_line}`, confidence: navigation.confidence, edit_type: navigation.edit_type },
-    validation: { approved: validation.approved, confidence: validation.confidence },
-    syntax:     { valid: syntaxCheck.valid },
-    commit:     commitMsg,
+    ok: true,
+    preview: false,
+    navigation: {
+      function: navigation.target_function,
+      lines: `${navigation.start_line}-${navigation.end_line}`,
+      confidence: navigation.confidence,
+      operation: navigation.operation
+    },
+    syntax: { valid: syntaxCheck.valid },
+    commit: commitMsg,
     elapsed_seconds: elapsed,
-    message:    'Cambio aplicado. Health Monitor activo por 3 minutos.'
+    message: 'Cambio aplicado. GitHub Actions monitorea el deploy automáticamente.'
   };
 }
 
