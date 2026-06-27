@@ -9310,12 +9310,12 @@ app.post('/v1/factory/project/:id/integrations/whatsapp-twilio/configurar-dueno'
 // UTILIDADES COMPARTIDAS
 // ─────────────────────────────────────────────────────────────
 
-async function githubReadServerJs() {
+async function githubReadFile(filename = 'server.js') {
   const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
   const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
 
   const res = await fetch(
-    `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js`,
+`https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/${filename}`,
     {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -9332,12 +9332,12 @@ async function githubReadServerJs() {
   return { content, sha: data.sha };
 }
 
-async function githubWriteServerJs(newContent, sha, commitMessage) {
+async function githubWriteFile(filename = 'server.js', newContent, sha, commitMessage) {
   const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
   const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
 
   const res = await fetch(
-    `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js`,
+    `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/${filename}`,
     {
       method: 'PUT',
       headers: {
