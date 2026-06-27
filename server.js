@@ -7862,6 +7862,28 @@ ${JSON.stringify(proposal, null, 2)}
 INVESTIGACIÓN DE PRESENCIA DIGITAL REAL (búsqueda en internet):
 ${research ? JSON.stringify(research, null, 2) : 'No se realizó investigación externa para esta sesión.'}
 
+app.post('/v1/studio/tts', studioAuth, async (req, res) => {
+  try {
+    const text = String(req.body?.text || '').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: 'text requerido' });
+    const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const mp3 = await openaiClient.audio.speech.create({
+      model: 'tts-1',
+      voice: 'nova',
+      input: text,
+      speed: 1.0
+    });
+    const buffer = Buffer.from(await mp3.arrayBuffer());
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': buffer.length
+    });
+    res.send(buffer);
+  } catch (err) {
+    console.error('TTS_ERROR:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 Convierte todo esto en una presentación ejecutiva persuasiva de tres actos. Si hay datos de investigación externa, ÚSALOS como evidencia dura — por ejemplo "Notamos que su negocio no tiene página web propia" genera más impacto que cualquier cosa que el cliente haya dicho, porque es un hecho verificable. Tono: directo, seguro, basado en números y evidencia, sin relleno emocional.
 
 
