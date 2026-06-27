@@ -9789,16 +9789,29 @@ const syntaxCheck = await syntaxValidatorAgent(fullTemp, targetFile);
 // ENDPOINTS
 // ─────────────────────────────────────────────────────────────
 
+function detectTargetFile(instruction) {
+  const text = instruction.toLowerCase();
+  if (text.includes('index.html') || text.includes('studio/index')) return 'public/studio/index.html';
+  if (text.includes('jarvis.html')) return 'public/jarvis/jarvis.html';
+  if (text.includes('dealer-crm')) return 'public/studio/dealer-crm.html';
+  if (text.includes('.html')) {
+    const match = instruction.match(/[\w\-\/]+\.html/);
+    if (match) return match[0];
+  }
+  return 'server.js';
+}
+
 // POST /v1/studio/self-edit
 app.post('/v1/studio/self-edit', studioAuth, async (req, res) => {
   const instruction = String(req.body?.instruction || '').trim();
+  const targetFile  = req.body?.targetFile || detectTargetFile(instruction);
 
   if (!instruction) {
     return res.status(400).json({ ok: false, error: 'instruction es requerida' });
   }
 
   try {
-    const result = await selfEditOrchestrator(instruction, false);
+   const result = await selfEditOrchestrator(instruction, false, targetFile);
     return res.json(result);
   } catch (err) {
     console.error('[SelfEdit] Error:', err.message);
@@ -9809,13 +9822,14 @@ app.post('/v1/studio/self-edit', studioAuth, async (req, res) => {
 // POST /v1/studio/self-edit/preview
 app.post('/v1/studio/self-edit/preview', studioAuth, async (req, res) => {
   const instruction = String(req.body?.instruction || '').trim();
+  const targetFile = req.body?.targetFile || detectTargetFile(instruction);
 
   if (!instruction) {
     return res.status(400).json({ ok: false, error: 'instruction es requerida' });
   }
 
   try {
-    const result = await selfEditOrchestrator(instruction, true);
+    const result = await selfEditOrchestrator(instruction, true, targetFile);
     return res.json(result);
   } catch (err) {
     console.error('[SelfEdit Preview] Error:', err.message);
