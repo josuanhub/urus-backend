@@ -1078,7 +1078,7 @@ let currentUtterance = null;
 // ============================================================
 
   async function sendMessage() {
-    const input = document.getElementById('input');
+const input = document.getElementById('input');
     const text  = input.value.trim();
     if (!text) return;
 
@@ -1088,6 +1088,21 @@ let currentUtterance = null;
     updateCount();
 
     addMessage('user', text);
+
+    // ── COMANDO ESPECIAL: /memory ──────────────────────────
+    if (text.startsWith('/memory ')) {
+      const query = text.slice(8).trim();
+      const res = await fetch('/v1/studio/memory/search?q=' + encodeURIComponent(query), { headers: { 'x-studio-password': password } });
+      const data = await res.json();
+      if (data.results?.length) {
+        addMessage('assistant', '🧠 MEMORIA: ' + data.results.slice(0,5).map(r => '[' + r.type.toUpperCase() + '] ' + r.content.slice(0,150)).join('\n\n'));
+      } else {
+        addMessage('assistant', '🧠 No encontré nada sobre: ' + query);
+      }
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
 
     // ── COMANDO ESPECIAL: /edit ───────────────────────────
     // Si el mensaje empieza con /edit aplica self-edit
