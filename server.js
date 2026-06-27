@@ -9601,117 +9601,189 @@ function countBrackets(code) {
 // ORQUESTADOR — coordina los 3 agentes
 // ─────────────────────────────────────────────────────────────
 
+async function syntaxValidatorAgent(code) {
+  console.log('[SyntaxValidator] Verificando sintaxis...');
+
+  let braces = 0, parens = 0;
+  let inString = false, stringChar = '', escaped = false;
+
+  for (let i = 0; i < code.length; i++) {
+    const ch = code[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\' && inString) { escaped = true; continue; }
+    if (!inString && (ch === '"' || ch === "'" || ch === '`')) {
+      inString = true; stringChar = ch; continue;
+    }
+    if (inString && ch === stringChar) { inString = false; continue; }
+    if (inString) continue;
+    if (ch === '{') braces++;
+    if (ch === '}') braces--;
+    if (ch === '(') parens++;
+    if (ch === ')') parens--;
+  }
+
+  const valid = braces === 0 && parens === 0;
+  const issues = [];
+  if (braces !== 0) issues.push(`Braces desbalanceados: ${braces > 0 ? '+' : ''}${braces}`);
+  if (parens !== 0) issues.push(`Paréntesis desbalanceados: ${parens > 0 ? '+' : ''}${parens}`);
+
+  console.log(`[SyntaxValidator] ${valid ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
+  return { valid, issues };
+}
+
+async function healthMonitorAgent(commitSha, previousSha) {
+  console.log(`[HealthMonitor] Monitoreando deploy ${commitSha.slice(0, 7)}...`);
+  await new Promise(r => setTimeout(r, 3 * 60 * 1000));
+
+  let healthy = false;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await fetch('https://www.urusverify.com/health');
+      if (res.ok) { healthy = true; break; }
+    } catch (e) {
+      await new Promise(r => setTimeout(r, 30000));
+    }
+  }
+
+  if (healthy) return { ok: true, status: 'healthy' };
+
+  console.log('[HealthMonitor] ❌ Servidor crashó. Iniciando rollback...');
+  try {
+    const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
+    const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
+
+    const prevRes  = await fetch(
+      `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js?ref=${previousSha}`,
+      { headers: { Authorization: `token ${GITHUB_TOKEN}`, 'User-Agent': 'URUS-HealthMonitor' } }
+    );
+    const prevData    = await prevRes.json();
+    const prevContent = Buffer.from(prevData.content, 'base64').toString('utf8');
+
+    const curRes  = await fetch(
+      `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js`,
+      { headers: { Authorization: `token ${GITHUB_TOKEN}`, 'User-Agent': 'URUS-HealthMonitor' } }
+    );
+    const curData = await curRes.json();
+
+    await fetch(
+      `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js`,
+      {
+        method: 'PUT',
+        headers: { Authorization: `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': 'URUS-HealthMonitor' },
+        body: JSON.stringify({
+          message: `revert(auto): rollback a ${previousSha.slice(0, 7)} — servidor crashó`,
+          content: Buffer.from(prevContent).toString('base64'),
+          sha:     curData.sha
+        })
+      }
+    );
+
+    await sendWhatsAppTextTwilio({
+      to:   '+19395851479',
+      text: `⚠️ URUS Auto-Rollback\n\nCommit ${commitSha.slice(0, 7)} crashó.\nRollback a ${previousSha.slice(0, 7)} completado automáticamente.`
+    });
+
+    return { ok: false, status: 'crashed_and_rolled_back' };
+  } catch (err) {
+    await sendWhatsAppTextTwilio({
+      to:   '+19395851479',
+      text: `🚨 URUS CRÍTICO\n\nServidor crashó con commit ${commitSha.slice(0, 7)}\nRollback FALLÓ. Intervención manual requerida.`
+    });
+    return { ok: false, status: 'crashed_rollback_failed', error: err.message };
+  }
+}
+
+
+
+
 async function selfEditOrchestrator(instruction, previewOnly = false) {
-  console.log(`[Orchestrator] Iniciando ${previewOnly ? 'PREVIEW' : 'EDIT'}: "${instruction.slice(0, 80)}..."`);
+  console.log(`[Orchestrator v2] Iniciando ${previewOnly ? 'PREVIEW' : 'EDIT'}: "${instruction.slice(0, 80)}"`);
 
   const startTime = Date.now();
 
-  // PASO 1 — Leer archivo
-  console.log('[Orchestrator] Leyendo server.js...');
   const { content: fileContent, sha } = await githubReadServerJs();
-  console.log(`[Orchestrator] Archivo leído: ${fileContent.split('\n').length} líneas`);
+  const previousSha = sha;
 
-  // PASO 2 — NAVIGATOR encuentra la ubicación
   const navigation = await navigatorAgent(instruction, fileContent);
 
   if (navigation.confidence < 4) {
     return {
-      ok:      false,
-      stage:   'navigator',
-      error:   `Navigator no pudo ubicar el código con suficiente confianza (${navigation.confidence}/10). Sé más específico en la instrucción.`,
-      hint:    `Menciona el nombre exacto de la función. Ej: "en la función masterPlannerAgent..."`
+      ok:    false,
+      stage: 'navigator',
+      error: `Navigator no pudo ubicar el código (confianza ${navigation.confidence}/10). Sé más específico.`,
+      hint:  'Menciona el nombre exacto de la función.'
     };
   }
 
-  // PASO 3 — EDITOR aplica el cambio
-  const modifiedSection = await editorAgent(instruction, navigation, fileContent);
+  let modifiedSection = await editorAgent(instruction, navigation, fileContent);
 
-  // PASO 4 — VALIDATOR verifica
-  const validation = await validatorAgent(
-    instruction,
-    navigation.content,
-    modifiedSection,
-    navigation
-  );
+  const syntaxCheck = await syntaxValidatorAgent(modifiedSection);
+
+  if (!syntaxCheck.valid) {
+    console.log('[Orchestrator] Sintaxis inválida. Auto-corrigiendo...');
+    const fixInstruction = `Corrige estos errores de sintaxis sin cambiar la lógica: ${syntaxCheck.issues.join(', ')}`;
+    modifiedSection = await editorAgent(fixInstruction, navigation, fileContent);
+    const fixedSyntax = await syntaxValidatorAgent(modifiedSection);
+    if (!fixedSyntax.valid) {
+      return { ok: false, stage: 'syntax_validator', error: `Sintaxis inválida: ${fixedSyntax.issues.join(', ')}` };
+    }
+  }
+
+  const validation = await validatorAgent(instruction, navigation.content, modifiedSection, navigation);
 
   if (!validation.approved) {
-    return {
-      ok:         false,
-      stage:      'validator',
-      error:      `Validator rechazó el cambio: ${validation.issues?.join(', ')}`,
-      suggestion: validation.suggestion,
-      navigation
-    };
+    return { ok: false, stage: 'validator', error: `Validator rechazó: ${validation.issues?.join(', ')}`, suggestion: validation.suggestion };
   }
 
-  // PASO 5 — Reconstruir archivo completo
-  const lines  = fileContent.split('\n');
-  const before = lines.slice(0, navigation.startIdx).join('\n');
-  const after  = lines.slice(navigation.endIdx + 1).join('\n');
+  const lines      = fileContent.split('\n');
+  const before     = lines.slice(0, navigation.startIdx).join('\n');
+  const after      = lines.slice(navigation.endIdx + 1).join('\n');
+  const newContent = [before, modifiedSection, after].filter(Boolean).join('\n');
 
-  const newContent = [before, modifiedSection, after]
-    .filter(Boolean)
-    .join('\n');
-
-  // Verificación de tamaño final
   const sizeRatio = newContent.length / fileContent.length;
   if (sizeRatio < 0.85) {
-    return {
-      ok:    false,
-      stage: 'size_check',
-      error: `El archivo resultante es solo ${Math.round(sizeRatio * 100)}% del original. Abortado para proteger el backend.`
-    };
+    return { ok: false, stage: 'size_check', error: `Archivo resultante es solo ${Math.round(sizeRatio * 100)}% del original. Abortado.` };
   }
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);
 
-  // Si es preview, devolver sin commit
   if (previewOnly) {
     return {
-      ok:         true,
-      preview:    true,
-      navigation: {
-        function:   navigation.target_function,
-        lines:      `${navigation.start_line}-${navigation.end_line}`,
-        confidence: navigation.confidence,
-        edit_type:  navigation.edit_type,
-        reasoning:  navigation.reasoning
-      },
-      validation: {
-        approved:   validation.approved,
-        confidence: validation.confidence
-      },
-      diff: {
-        original: navigation.content.slice(0, 600),
-        modified: modifiedSection.slice(0, 600)
-      },
+      ok: true, preview: true,
+      navigation: { function: navigation.target_function, lines: `${navigation.start_line}-${navigation.end_line}`, confidence: navigation.confidence, edit_type: navigation.edit_type, reasoning: navigation.reasoning },
+      validation: { approved: validation.approved, confidence: validation.confidence },
+      syntax:     { valid: syntaxCheck.valid },
+      diff:       { original: navigation.content.slice(0, 600), modified: modifiedSection.slice(0, 600) },
       elapsed_seconds: elapsed
     };
   }
 
-  // PASO 6 — Commit a GitHub
-  const commitMsg = `feat(studio-ai): ${instruction.slice(0, 72)}`;
-  console.log(`[Orchestrator] Haciendo commit: ${commitMsg}`);
-  await githubWriteServerJs(newContent, sha, commitMsg);
+  const commitMsg    = `feat(studio-ai): ${instruction.slice(0, 72)}`;
+  const commitResult = await githubWriteServerJs(newContent, sha, commitMsg);
+  const newSha       = commitResult?.content?.sha || sha;
 
-  console.log(`[Orchestrator] ✅ Completado en ${elapsed}s`);
+  setImmediate(async () => {
+    try {
+      const health = await healthMonitorAgent(newSha, previousSha);
+      if (!health.ok) {
+        try {
+          await pool.query(
+            'INSERT INTO studio_memory (type, content, metadata) VALUES ($1, $2, $3)',
+            ['error', `Crash después de commit: ${instruction.slice(0, 100)}`, JSON.stringify({ status: health.status })]
+          );
+        } catch (e) {}
+      }
+    } catch (e) { console.error('[HealthMonitor] Error:', e.message); }
+  });
 
   return {
-    ok:      true,
-    preview: false,
-    navigation: {
-      function:   navigation.target_function,
-      lines:      `${navigation.start_line}-${navigation.end_line}`,
-      confidence: navigation.confidence,
-      edit_type:  navigation.edit_type
-    },
-    validation: {
-      approved:   validation.approved,
-      confidence: validation.confidence
-    },
-    commit:          commitMsg,
+    ok: true, preview: false,
+    navigation: { function: navigation.target_function, lines: `${navigation.start_line}-${navigation.end_line}`, confidence: navigation.confidence, edit_type: navigation.edit_type },
+    validation: { approved: validation.approved, confidence: validation.confidence },
+    syntax:     { valid: syntaxCheck.valid },
+    commit:     commitMsg,
     elapsed_seconds: elapsed,
-    message:         'Cambio aplicado. Railway redesplegará en ~2 minutos.'
+    message:    'Cambio aplicado. Health Monitor activo por 3 minutos.'
   };
 }
 
