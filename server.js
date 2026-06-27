@@ -7863,6 +7863,41 @@ ${research ? JSON.stringify(research, null, 2) : 'No se realizó investigación 
 
 Convierte todo esto en una presentación ejecutiva persuasiva de tres actos. Si hay datos de investigación externa, ÚSALOS como evidencia dura — por ejemplo "Notamos que su negocio no tiene página web propia" genera más impacto que cualquier cosa que el cliente haya dicho, porque es un hecho verificable. Tono: directo, seguro, basado en números y evidencia, sin relleno emocional.
 
+app.post('/v1/studio/memory/save', studioAuth, async (req, res) => {
+  try {
+    const { type, content, metadata, project } = req.body;
+    if (!type || !content) return res.status(400).json({ ok: false, error: 'type y content requeridos' });
+    const result = await pool.query(`INSERT INTO studio_memory (type, content, metadata, project) VALUES ($1, $2, $3, $4) RETURNING id, created_at`, [type, String(content).slice(0, 10000), JSON.stringify(metadata || {}), project || 'GENERAL']);
+    return res.json({ ok: true, id: result.rows[0].id });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/v1/studio/memory/load', studioAuth, async (req, res) => {
+  try {
+    const edits = await pool.query(`SELECT content, metadata, created_at FROM studio_memory WHERE type = 'edit' ORDER BY created_at DESC LIMIT 5`);
+    const errors = await pool.query(`SELECT content, metadata, created_at FROM studio_memory WHERE type = 'error' ORDER BY created_at DESC LIMIT 3`);
+    const conversations = await pool.query(`SELECT content, project, created_at FROM studio_memory WHERE type = 'conversation' ORDER BY created_at DESC LIMIT 10`);
+    return res.json({ ok: true, recent_edits: edits.rows, recent_errors: errors.rows, recent_conversations: conversations.rows });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/v1/studio/memory/search', studioAuth, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.status(400).json({ ok: false, error: 'q requerido' });
+    const result = await pool.query(`SELECT type, content, metadata, project, created_at FROM studio_memory WHERE content ILIKE $1 ORDER BY created_at DESC LIMIT 20`, [`%${q}%`]);
+    return res.json({ ok: true, query: q, results: result.rows });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ---------- Boot ----------
+
 Devuelve ÚNICAMENTE este JSON, sin markdown ni texto extra:
 {
   "titulo_radiografia": "título corto y contundente, ej: 'Radiografía Operativa: ${company}'",
