@@ -9717,13 +9717,19 @@ async function selfEditOrchestrator(instruction, previewOnly = false, targetFile
       hint:  'Menciona el nombre exacto de la función.'
     };
   }
-  let modifiedSection = await editorAgent(instruction, navigation, fileContent);
-  const syntaxCheck = await syntaxValidatorAgent(modifiedSection, targetFile);
+ let modifiedSection = await editorAgent(instruction, navigation, fileContent);
+
+// Reconstruir archivo completo para validar sintaxis
+const linesTemp  = fileContent.split('\n');
+const beforeTemp = linesTemp.slice(0, navigation.startIdx).join('\n');
+const afterTemp  = linesTemp.slice(navigation.endIdx + 1).join('\n');
+const fullTemp   = [beforeTemp, modifiedSection, afterTemp].filter(Boolean).join('\n');
+const syntaxCheck = await syntaxValidatorAgent(fullTemp, targetFile);
   if (!syntaxCheck.valid) {
     console.log('[Orchestrator] Sintaxis inválida. Auto-corrigiendo...');
     const fixInstruction = `Corrige estos errores de sintaxis sin cambiar la lógica: ${syntaxCheck.issues.join(', ')}`;
     modifiedSection = await editorAgent(fixInstruction, navigation, fileContent);
-    const fixedSyntax = await syntaxValidatorAgent(modifiedSection);
+    const fixedSyntax = await syntaxValidatorAgent(fullTemp, targetFile);
     if (!fixedSyntax.valid) {
       return { ok: false, stage: 'syntax_validator', error: `Sintaxis inválida: ${fixedSyntax.issues.join(', ')}` };
     }
