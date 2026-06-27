@@ -9595,10 +9595,21 @@ function countBrackets(code) {
 // ─────────────────────────────────────────────────────────────
 // ORQUESTADOR — coordina los 3 agentes
 // ─────────────────────────────────────────────────────────────
-
-async function syntaxValidatorAgent(code) {
+async function syntaxValidatorAgent(code, filename = 'server.js') {
   console.log('[SyntaxValidator] Verificando sintaxis...');
 
+  // Para HTML — validación simple
+  if (filename.endsWith('.html')) {
+    const valid = code.trim().length > 10;
+    return { valid, issues: valid ? [] : ['Contenido vacío'] };
+  }
+
+  // Para CSS
+  if (filename.endsWith('.css')) {
+    return { valid: true, issues: [] };
+  }
+
+  // Para JS/TS — verificación de brackets
   let braces = 0, parens = 0;
   let inString = false, stringChar = '', escaped = false;
 
@@ -9625,6 +9636,7 @@ async function syntaxValidatorAgent(code) {
   console.log(`[SyntaxValidator] ${valid ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
   return { valid, issues };
 }
+
 
 async function healthMonitorAgent(commitSha, previousSha) {
   console.log(`[HealthMonitor] Monitoreando deploy ${commitSha.slice(0, 7)}...`);
@@ -9706,7 +9718,7 @@ async function selfEditOrchestrator(instruction, previewOnly = false, targetFile
     };
   }
   let modifiedSection = await editorAgent(instruction, navigation, fileContent);
-  const syntaxCheck = await syntaxValidatorAgent(modifiedSection);
+  const syntaxCheck = await syntaxValidatorAgent(modifiedSection, targetFile);
   if (!syntaxCheck.valid) {
     console.log('[Orchestrator] Sintaxis inválida. Auto-corrigiendo...');
     const fixInstruction = `Corrige estos errores de sintaxis sin cambiar la lógica: ${syntaxCheck.issues.join(', ')}`;
