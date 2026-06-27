@@ -1108,7 +1108,9 @@
   }
 
 // ============================================================
-// FUNCIÓN NUEVA — agregar DESPUÉS de sendMessage()
+// REEMPLAZA la función handleSelfEdit en index.html
+// Busca: async function handleSelfEdit(instruction, previewOnly) {
+// Reemplaza toda esa función por esta:
 // ============================================================
 
   async function handleSelfEdit(instruction, previewOnly) {
@@ -1120,8 +1122,10 @@
 
     addMessage('assistant',
       `${modeLabel}\n\n` +
-      `Instrucción: **${instruction}**\n\n` +
-      `Leyendo server.js → detectando sección → aplicando con Claude → commit GitHub...`
+      `**Instrucción:** ${instruction}\n\n` +
+      `🔍 Navigator analizando archivo...\n` +
+      `✏️ Editor preparando cambio...\n` +
+      `✅ Validator verificando...`
     );
 
     document.getElementById('typing-indicator').style.display = 'flex';
@@ -1137,34 +1141,43 @@
       });
 
       document.getElementById('typing-indicator').style.display = 'none';
-
       const data = await res.json();
 
       if (data.ok) {
         if (previewOnly) {
           addMessage('assistant',
-            `✅ **PREVIEW GENERADO**\n\n` +
-            `Sección detectada: \`${data.section}\`\n` +
-            `Líneas: \`${data.lines}\`\n\n` +
-            `**Original (primeros 500 chars):**\n\`\`\`\n${data.original}\n\`\`\`\n\n` +
-            `**Modificado (primeros 500 chars):**\n\`\`\`\n${data.modified}\n\`\`\`\n\n` +
-            `Para aplicar el cambio usa:\n\`/edit ${instruction}\``
+            `✅ **PREVIEW GENERADO** (${data.elapsed_seconds}s)\n\n` +
+            `**Navigator encontró:**\n` +
+            `• Función: \`${data.navigation.function}\`\n` +
+            `• Líneas: \`${data.navigation.lines}\`\n` +
+            `• Tipo: \`${data.navigation.edit_type}\`\n` +
+            `• Confianza: \`${data.navigation.confidence}/10\`\n` +
+            `• Razonamiento: ${data.navigation.reasoning}\n\n` +
+            `**Validator:** Confianza \`${data.validation.confidence}/10\`\n\n` +
+            `**Original:**\n\`\`\`javascript\n${data.diff.original}\n\`\`\`\n\n` +
+            `**Modificado:**\n\`\`\`javascript\n${data.diff.modified}\n\`\`\`\n\n` +
+            `Para aplicar el cambio:\n\`/edit ${instruction}\``
           );
         } else {
           addMessage('assistant',
-            `✅ **CAMBIO APLICADO**\n\n` +
-            `Sección editada: \`${data.section}\`\n` +
-            `Líneas: \`${data.lines_edited}\`\n` +
-            `Commit: \`${data.commit}\`\n\n` +
-            `Railway redesplegará en ~2 minutos.\n` +
+            `✅ **CAMBIO APLICADO** (${data.elapsed_seconds}s)\n\n` +
+            `**Navigator:**\n` +
+            `• Función: \`${data.navigation.function}\`\n` +
+            `• Líneas: \`${data.navigation.lines}\`\n` +
+            `• Confianza: \`${data.navigation.confidence}/10\`\n\n` +
+            `**Validator:** \`${data.validation.confidence}/10\`\n\n` +
+            `**Commit:** \`${data.commit}\`\n\n` +
+            `🚀 Railway redesplegará en ~2 minutos.\n` +
             `El cambio estará en producción automáticamente.`
           );
           showNotif('✅ Cambio aplicado — Railway redesplegando...');
         }
       } else {
         addMessage('assistant',
-          `❌ **ERROR**\n\n${data.error}\n\n` +
-          `Intenta de nuevo con una instrucción más específica.`
+          `❌ **${data.stage?.toUpperCase() || 'ERROR'}**\n\n` +
+          `${data.error}\n\n` +
+          `${data.suggestion ? `💡 **Sugerencia:** ${data.suggestion}` : ''}` +
+          `${data.hint ? `\n\n💡 **Tip:** ${data.hint}` : ''}`
         );
       }
 
@@ -1173,7 +1186,6 @@
       addMessage('assistant', `❌ Error de conexión: ${err.message}`);
     }
   }
-
 
   
   function quickSend(text) {
