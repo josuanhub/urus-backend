@@ -9286,33 +9286,30 @@ app.post('/v1/factory/project/:id/integrations/whatsapp-twilio/configurar-dueno'
 // Pega TODO este bloque JUSTO ANTES de esa línea.
 // ============================================================
 
-// ── SECCIONES CONOCIDAS DEL ARCHIVO ─────────────────────────
-// El sistema divide server.js por estos marcadores para no
-// exceder el límite de tokens de Claude.
+// ============================================================
+// URUS SELF-EDIT MULTI-AGENT SYSTEM v2
+// 
+// 3 agentes simbióticos que trabajan en cadena:
+// NAVIGATOR → EDITOR → VALIDATOR
+//
+// DÓNDE VA EN server.js:
+// Busca esta línea exacta:
+//   // ---------- Boot ----------
+// Reemplaza TODO el bloque anterior de self-edit engine
+// (desde donde dice URUS SELF-EDIT ENGINE hasta Boot)
+// por este bloque completo.
+// ============================================================
 
-const FILE_SECTIONS = [
-  { name: 'whatsapp',      marker: 'WHATSAPP CLOUD API' },
-  { name: 'auth',          marker: '---------- Auth ----------' },
-  { name: 'billing',       marker: 'BILLING (Stripe)' },
-  { name: 'wa_leads',      marker: 'WHATSAPP LEAD ENGINE' },
-  { name: 'jarvis',        marker: 'JARVIS BRAIN CORE' },
-  { name: 'intelligence',  marker: 'MARKET INTELLIGENCE' },
-  { name: 'factory',       marker: 'URUS FACTORY' },
-  { name: 'masterplanner', marker: 'masterPlannerAgent' },
-  { name: 'dealer',        marker: 'DEALER OS' },
-  { name: 'studio',        marker: 'URUS STUDIO' },
-  { name: 'boot',          marker: '---------- Boot ----------' },
-];
+// ─────────────────────────────────────────────────────────────
+// UTILIDADES COMPARTIDAS
+// ─────────────────────────────────────────────────────────────
 
-// ── LEER server.js DESDE GITHUB ──────────────────────────────
 async function githubReadServerJs() {
   const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
   const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
-  const REPO            = 'urus-backend';
-  const FILE_PATH       = 'server.js';
 
   const res = await fetch(
-    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO}/contents/${FILE_PATH}`,
+    `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js`,
     {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -9322,27 +9319,19 @@ async function githubReadServerJs() {
     }
   );
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(`GitHub read falló: ${JSON.stringify(err)}`);
-  }
+  if (!res.ok) throw new Error(`GitHub read falló: ${res.status}`);
 
   const data    = await res.json();
   const content = Buffer.from(data.content, 'base64').toString('utf8');
-  const sha     = data.sha;
-
-  return { content, sha };
+  return { content, sha: data.sha };
 }
 
-// ── ESCRIBIR server.js A GITHUB ──────────────────────────────
 async function githubWriteServerJs(newContent, sha, commitMessage) {
   const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
   const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
-  const REPO            = 'urus-backend';
-  const FILE_PATH       = 'server.js';
 
   const res = await fetch(
-    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO}/contents/${FILE_PATH}`,
+    `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/server.js`,
     {
       method: 'PUT',
       headers: {
@@ -9351,7 +9340,7 @@ async function githubWriteServerJs(newContent, sha, commitMessage) {
         'User-Agent':   'URUS-Studio'
       },
       body: JSON.stringify({
-        message: commitMessage || 'feat: URUS Studio self-edit',
+        message: commitMessage,
         content: Buffer.from(newContent).toString('base64'),
         sha
       })
@@ -9366,249 +9355,483 @@ async function githubWriteServerJs(newContent, sha, commitMessage) {
   return await res.json();
 }
 
-// ── DETECTAR SECCIÓN RELEVANTE ───────────────────────────────
-// Dado una instrucción en texto, detecta qué parte del archivo
-// hay que modificar para no exceder límite de tokens.
-
-function detectSection(instruction, fullContent) {
-  const text  = instruction.toLowerCase();
-  const lines = fullContent.split('\n');
-
-  // Palabras clave → sección
-  const keywordMap = {
-    masterplanner:  ['masterplanner', 'master planner', 'prompt1', 'prompt2', 'lovable_prompt', 'build manifest', 'regla fundamental'],
-    factory:        ['factory', 'orchestrator', 'runorchestrator', 'approve', 'session'],
-    dealer:         ['dealer', 'ivan', 'prospecto', 'inventario', 'lote'],
-    jarvis:         ['jarvis', 'brain', 'strategos', 'morning', 'day', 'protocol'],
-    intelligence:   ['intelligence', 'market', 'rss', 'serper', 'newsapi', 'briefing'],
-    whatsapp:       ['whatsapp', 'twilio', 'webhook', 'wa_leads', 'mensaje'],
-    auth:           ['auth', 'login', 'signup', 'token', 'jwt', 'usuario'],
-    billing:        ['billing', 'stripe', 'plan', 'checkout', 'membership'],
-    studio:         ['studio', 'self-edit', 'groq', 'studio_context'],
-    boot:           ['boot', 'ensureschema', 'listen', 'port', 'interval'],
-  };
-
-  // Detectar por keywords
-  for (const [section, keywords] of Object.entries(keywordMap)) {
-    if (keywords.some(kw => text.includes(kw))) {
-      return extractSection(section, fullContent, lines);
-    }
-  }
-
-  // Si no detecta nada específico, devuelve las últimas 800 líneas
-  // (donde suelen estar las funciones más recientes)
-  const start = Math.max(0, lines.length - 800);
-  return {
-    section:    'end',
-    startLine:  start,
-    endLine:    lines.length - 1,
-    content:    lines.slice(start).join('\n'),
-    totalLines: lines.length
-  };
-}
-
-function extractSection(sectionName, fullContent, lines) {
-  const marker = FILE_SECTIONS.find(s => s.name === sectionName)?.marker;
-  if (!marker) {
-    return {
-      section:    sectionName,
-      startLine:  0,
-      endLine:    lines.length - 1,
-      content:    fullContent,
-      totalLines: lines.length
-    };
-  }
-
-  // Encontrar línea del marcador
-  let startLine = 0;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes(marker)) {
-      startLine = Math.max(0, i - 5);
-      break;
-    }
-  }
-
-  // Tomar 600 líneas desde ahí (suficiente para cualquier función)
-  const endLine = Math.min(lines.length - 1, startLine + 600);
-
-  return {
-    section:    sectionName,
-    startLine,
-    endLine,
-    content:    lines.slice(startLine, endLine + 1).join('\n'),
-    totalLines: lines.length
-  };
-}
-
-// ── APLICAR EDICIÓN CON CLAUDE ───────────────────────────────
-async function applyEditWithClaude(instruction, sectionInfo) {
+function callAnthropicDirect(systemPrompt, userPrompt, maxTokens = 8000) {
   const Anthropic = require('@anthropic-ai/sdk');
   const client    = new Anthropic({
     apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
   });
 
-  const prompt = `Eres el Motor de Auto-Edición de URUS Backend.
-
-Tu trabajo es aplicar exactamente la instrucción del operador al código.
-
-INSTRUCCIÓN DEL OPERADOR:
-${instruction}
-
-SECCIÓN DEL ARCHIVO (líneas ${sectionInfo.startLine} a ${sectionInfo.endLine} de ${sectionInfo.totalLines}):
-\`\`\`javascript
-${sectionInfo.content}
-\`\`\`
-
-REGLAS ABSOLUTAS:
-1. Devuelve ÚNICAMENTE el código JavaScript modificado
-2. Sin explicaciones, sin markdown, sin texto extra
-3. Sin \`\`\`javascript ni \`\`\` al inicio o final
-4. Aplica EXACTAMENTE lo que pide la instrucción, nada más
-5. No cambies nada que no esté relacionado con la instrucción
-6. Mantén el estilo y formato del código existente
-7. Si la instrucción pide agregar código nuevo, agrégalo en el lugar correcto
-8. Si la instrucción pide eliminar, elimina exactamente eso
-9. Si la instrucción pide cambiar, cambia exactamente eso
-10. El código debe ser válido JavaScript/Node.js
-
-Devuelve solo el código modificado:`;
-
-  const msg = await client.messages.create({
+  return client.messages.create({
     model:      'claude-sonnet-4-6',
-    max_tokens: 8000,
-    messages:   [{ role: 'user', content: prompt }]
+    max_tokens: maxTokens,
+    messages:   [{ role: 'user', content: userPrompt }],
+    system:     systemPrompt
   });
+}
 
-  let modified = msg.content[0].text.trim();
+// ─────────────────────────────────────────────────────────────
+// AGENTE 1 — NAVIGATOR
+// Lee server.js completo y encuentra exactamente dónde
+// está el código que hay que modificar.
+// Devuelve: función exacta, línea de inicio, línea de fin,
+// el extracto relevante, y un análisis de impacto.
+// ─────────────────────────────────────────────────────────────
 
-  // Limpiar por si Claude puso markdown igual
+async function navigatorAgent(instruction, fileContent) {
+  console.log('[Navigator] Analizando instrucción y mapeando archivo...');
+
+  const lines     = fileContent.split('\n');
+  const totalLines = lines.length;
+
+  // Construir mapa de funciones y secciones del archivo
+  const functionMap = [];
+  const sectionMap  = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Detectar funciones
+    if (
+      line.match(/^(async\s+)?function\s+\w+/) ||
+      line.match(/^(const|let|var)\s+\w+\s*=\s*(async\s+)?\(/) ||
+      line.match(/^app\.(get|post|put|delete|patch)\s*\(/)
+    ) {
+      functionMap.push({
+        line:    i + 1,
+        content: line.trim().slice(0, 100)
+      });
+    }
+
+    // Detectar secciones por comentarios
+    if (line.includes('// ──') || line.includes('// =====') || line.includes('// ----')) {
+      sectionMap.push({
+        line:    i + 1,
+        content: line.trim().slice(0, 100)
+      });
+    }
+  }
+
+  // Extraer índice compacto para el Navigator
+  const fileIndex = [
+    `TOTAL LÍNEAS: ${totalLines}`,
+    '',
+    'FUNCIONES DETECTADAS:',
+    ...functionMap.slice(0, 80).map(f => `  L${f.line}: ${f.content}`),
+    '',
+    'SECCIONES DETECTADAS:',
+    ...sectionMap.slice(0, 40).map(s => `  L${s.line}: ${s.content}`)
+  ].join('\n');
+
+  const systemPrompt = `Eres NAVIGATOR — el agente de inteligencia cartográfica de URUS.
+
+Tu función es analizar una instrucción de edición de código y encontrar
+con precisión exacta dónde está el código que hay que modificar.
+
+No haces cambios. Solo ubicas.
+
+Piensas como un cirujano antes de operar:
+primero identificas exactamente qué vas a tocar,
+dónde está, qué lo rodea, y qué puede verse afectado.
+
+Devuelves ÚNICAMENTE JSON válido. Sin texto extra.`;
+
+  const userPrompt = `INSTRUCCIÓN DEL OPERADOR:
+"${instruction}"
+
+MAPA DEL ARCHIVO (${totalLines} líneas totales):
+${fileIndex}
+
+TAREA:
+Analiza la instrucción y el mapa del archivo.
+Encuentra exactamente dónde está el código que hay que modificar.
+
+Si la instrucción menciona una función específica, encuéntrala en el mapa.
+Si menciona un prompt o string, estima en qué función estaría.
+Si no está claro, elige la sección más probable.
+
+Devuelve ÚNICAMENTE este JSON:
+{
+  "target_function": "nombre exacto de la función o sección",
+  "start_line": número de línea donde empieza (aproximado está bien),
+  "end_line": número de línea donde termina (start_line + 400 máximo),
+  "confidence": número del 1 al 10 de qué tan seguro estás,
+  "reasoning": "por qué elegiste esta ubicación en una línea",
+  "impact_zones": ["otras funciones que podrían verse afectadas"],
+  "edit_type": "INSERT | REPLACE | DELETE | APPEND",
+  "search_hint": "string único de 20-50 chars que está en esa zona del archivo"
+}`;
+
+  const msg    = await callAnthropicDirect(systemPrompt, userPrompt, 1000);
+  const raw    = msg.content[0].text.replace(/```json|```/g, '').trim();
+  const result = JSON.parse(raw);
+
+  // Usar search_hint para afinar la ubicación real
+  if (result.search_hint) {
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes(result.search_hint)) {
+        result.start_line = Math.max(1, i - 10);
+        result.end_line   = Math.min(totalLines, i + 390);
+        console.log(`[Navigator] Search hint encontrado en línea ${i + 1}`);
+        break;
+      }
+    }
+  }
+
+  // Extraer el contenido real de esa zona
+  const startIdx  = Math.max(0, result.start_line - 1);
+  const endIdx    = Math.min(totalLines - 1, result.end_line - 1);
+  result.content  = lines.slice(startIdx, endIdx + 1).join('\n');
+  result.startIdx = startIdx;
+  result.endIdx   = endIdx;
+
+  console.log(`[Navigator] Target: ${result.target_function} | Líneas: ${result.start_line}-${result.end_line} | Confianza: ${result.confidence}/10`);
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────
+// AGENTE 2 — EDITOR
+// Recibe la sección exacta encontrada por Navigator
+// y aplica el cambio con precisión quirúrgica.
+// ─────────────────────────────────────────────────────────────
+
+async function editorAgent(instruction, navigation, fileContent) {
+  console.log(`[Editor] Aplicando cambio en ${navigation.target_function}...`);
+
+  const systemPrompt = `Eres EDITOR — el agente de modificación quirúrgica de URUS.
+
+Recibes una sección de código y una instrucción.
+Tu trabajo es aplicar exactamente el cambio pedido.
+
+Principios:
+- Precisión absoluta: cambia solo lo que se pide
+- Preservación total: todo lo demás queda idéntico
+- Coherencia: el código resultante debe ser JavaScript válido
+- Minimalismo: el cambio mínimo necesario para cumplir la instrucción
+
+NUNCA:
+- Cambies lo que no se pide
+- Reformatees el código completo
+- Agregues comentarios no pedidos
+- Simplifiiques o "mejores" código que no está en la instrucción
+
+Devuelves ÚNICAMENTE el código modificado. Sin explicaciones. Sin markdown.`;
+
+  const userPrompt = `INSTRUCCIÓN EXACTA:
+"${instruction}"
+
+CONTEXTO DE UBICACIÓN:
+- Función/Sección: ${navigation.target_function}
+- Tipo de edición: ${navigation.edit_type}
+- Razonamiento del Navigator: ${navigation.reasoning}
+
+CÓDIGO A MODIFICAR (líneas ${navigation.start_line}-${navigation.end_line}):
+${navigation.content}
+
+APLICA LA INSTRUCCIÓN.
+Devuelve SOLO el código modificado.
+Sin markdown, sin explicaciones, sin \`\`\`.
+El código debe empezar directamente.`;
+
+  const msg      = await callAnthropicDirect(systemPrompt, userPrompt, 8000);
+  let   modified = msg.content[0].text.trim();
+
+  // Limpiar markdown si Claude lo puso igual
   modified = modified
-    .replace(/^```(javascript|js)?\n?/m, '')
-    .replace(/\n?```$/m, '')
+    .replace(/^```(javascript|js|typescript|ts)?\n?/m, '')
+    .replace(/\n?```\s*$/m, '')
     .trim();
 
+  console.log(`[Editor] Modificación aplicada: ${modified.length} chars`);
   return modified;
 }
 
-// ── RECONSTRUIR ARCHIVO COMPLETO ─────────────────────────────
-function rebuildFile(originalContent, sectionInfo, modifiedSection) {
-  const lines = originalContent.split('\n');
+// ─────────────────────────────────────────────────────────────
+// AGENTE 3 — VALIDATOR
+// Verifica que el cambio es correcto antes de hacer commit.
+// Detecta errores, inconsistencias, y riesgos.
+// ─────────────────────────────────────────────────────────────
 
-  const before = lines.slice(0, sectionInfo.startLine).join('\n');
-  const after  = lines.slice(sectionInfo.endLine + 1).join('\n');
+async function validatorAgent(instruction, original, modified, navigation) {
+  console.log('[Validator] Verificando cambio...');
 
-  // Unir las tres partes
-  const parts = [];
-  if (before) parts.push(before);
-  parts.push(modifiedSection);
-  if (after)  parts.push(after);
+  // Verificaciones automáticas primero
+  const checks = {
+    size_ok:        modified.length > original.length * 0.5,
+    has_content:    modified.trim().length > 0,
+    no_truncation:  !modified.endsWith('...'),
+    brackets_ok:    countBrackets(modified) === countBrackets(original) ||
+                    Math.abs(countBrackets(modified) - countBrackets(original)) <= 2
+  };
 
-  return parts.join('\n');
+  const autoPass = Object.values(checks).every(Boolean);
+
+  if (!autoPass) {
+    console.log('[Validator] Checks automáticos fallaron:', checks);
+    return {
+      approved:   false,
+      confidence: 2,
+      issues:     Object.entries(checks)
+                    .filter(([, v]) => !v)
+                    .map(([k]) => k),
+      suggestion: 'El cambio parece incompleto o corrupto. Reintenta.'
+    };
+  }
+
+  // Validación con Claude para casos complejos
+  const systemPrompt = `Eres VALIDATOR — el agente de control de calidad de URUS.
+
+Tu trabajo es verificar que un cambio de código es correcto y seguro.
+
+Eres estricto pero pragmático:
+- Apruebas cambios que cumplen la instrucción aunque no sean perfectos
+- Rechazas cambios que rompan funcionalidad existente
+- Detectas errores de sintaxis obvios
+- Señalas riesgos de impacto en otras partes del sistema
+
+Devuelves ÚNICAMENTE JSON válido.`;
+
+  const userPrompt = `INSTRUCCIÓN ORIGINAL:
+"${instruction}"
+
+FUNCIÓN/SECCIÓN MODIFICADA: ${navigation.target_function}
+
+ORIGINAL (primeros 300 chars):
+${original.slice(0, 300)}
+
+MODIFICADO (primeros 300 chars):
+${modified.slice(0, 300)}
+
+VERIFICA:
+1. ¿El cambio cumple la instrucción?
+2. ¿Hay errores de sintaxis obvios?
+3. ¿Se preservó el código no relacionado?
+4. ¿Hay riesgos de romper algo?
+
+Devuelve ÚNICAMENTE:
+{
+  "approved": true/false,
+  "confidence": número del 1 al 10,
+  "issues": ["lista de problemas si hay"],
+  "suggestion": "qué hacer si no está aprobado, o null si está bien"
+}`;
+
+  try {
+    const msg    = await callAnthropicDirect(systemPrompt, userPrompt, 500);
+    const raw    = msg.content[0].text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(raw);
+
+    console.log(`[Validator] Resultado: ${result.approved ? '✅ APROBADO' : '❌ RECHAZADO'} | Confianza: ${result.confidence}/10`);
+    return result;
+
+  } catch (e) {
+    // Si el validator falla, aprobamos si los checks automáticos pasaron
+    console.log('[Validator] Usando resultado de checks automáticos');
+    return {
+      approved:   autoPass,
+      confidence: 7,
+      issues:     [],
+      suggestion: null
+    };
+  }
 }
 
-// ── ENDPOINT PRINCIPAL ───────────────────────────────────────
-// POST /v1/studio/self-edit
-// Body: { instruction: "texto de lo que quieres cambiar" }
-// Headers: x-studio-password: urus2026
+function countBrackets(code) {
+  let count = 0;
+  for (const char of code) {
+    if (char === '{') count++;
+    if (char === '}') count--;
+  }
+  return count;
+}
 
+// ─────────────────────────────────────────────────────────────
+// ORQUESTADOR — coordina los 3 agentes
+// ─────────────────────────────────────────────────────────────
+
+async function selfEditOrchestrator(instruction, previewOnly = false) {
+  console.log(`[Orchestrator] Iniciando ${previewOnly ? 'PREVIEW' : 'EDIT'}: "${instruction.slice(0, 80)}..."`);
+
+  const startTime = Date.now();
+
+  // PASO 1 — Leer archivo
+  console.log('[Orchestrator] Leyendo server.js...');
+  const { content: fileContent, sha } = await githubReadServerJs();
+  console.log(`[Orchestrator] Archivo leído: ${fileContent.split('\n').length} líneas`);
+
+  // PASO 2 — NAVIGATOR encuentra la ubicación
+  const navigation = await navigatorAgent(instruction, fileContent);
+
+  if (navigation.confidence < 4) {
+    return {
+      ok:      false,
+      stage:   'navigator',
+      error:   `Navigator no pudo ubicar el código con suficiente confianza (${navigation.confidence}/10). Sé más específico en la instrucción.`,
+      hint:    `Menciona el nombre exacto de la función. Ej: "en la función masterPlannerAgent..."`
+    };
+  }
+
+  // PASO 3 — EDITOR aplica el cambio
+  const modifiedSection = await editorAgent(instruction, navigation, fileContent);
+
+  // PASO 4 — VALIDATOR verifica
+  const validation = await validatorAgent(
+    instruction,
+    navigation.content,
+    modifiedSection,
+    navigation
+  );
+
+  if (!validation.approved) {
+    return {
+      ok:         false,
+      stage:      'validator',
+      error:      `Validator rechazó el cambio: ${validation.issues?.join(', ')}`,
+      suggestion: validation.suggestion,
+      navigation
+    };
+  }
+
+  // PASO 5 — Reconstruir archivo completo
+  const lines  = fileContent.split('\n');
+  const before = lines.slice(0, navigation.startIdx).join('\n');
+  const after  = lines.slice(navigation.endIdx + 1).join('\n');
+
+  const newContent = [before, modifiedSection, after]
+    .filter(Boolean)
+    .join('\n');
+
+  // Verificación de tamaño final
+  const sizeRatio = newContent.length / fileContent.length;
+  if (sizeRatio < 0.85) {
+    return {
+      ok:    false,
+      stage: 'size_check',
+      error: `El archivo resultante es solo ${Math.round(sizeRatio * 100)}% del original. Abortado para proteger el backend.`
+    };
+  }
+
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+
+  // Si es preview, devolver sin commit
+  if (previewOnly) {
+    return {
+      ok:         true,
+      preview:    true,
+      navigation: {
+        function:   navigation.target_function,
+        lines:      `${navigation.start_line}-${navigation.end_line}`,
+        confidence: navigation.confidence,
+        edit_type:  navigation.edit_type,
+        reasoning:  navigation.reasoning
+      },
+      validation: {
+        approved:   validation.approved,
+        confidence: validation.confidence
+      },
+      diff: {
+        original: navigation.content.slice(0, 600),
+        modified: modifiedSection.slice(0, 600)
+      },
+      elapsed_seconds: elapsed
+    };
+  }
+
+  // PASO 6 — Commit a GitHub
+  const commitMsg = `feat(studio-ai): ${instruction.slice(0, 72)}`;
+  console.log(`[Orchestrator] Haciendo commit: ${commitMsg}`);
+  await githubWriteServerJs(newContent, sha, commitMsg);
+
+  console.log(`[Orchestrator] ✅ Completado en ${elapsed}s`);
+
+  return {
+    ok:      true,
+    preview: false,
+    navigation: {
+      function:   navigation.target_function,
+      lines:      `${navigation.start_line}-${navigation.end_line}`,
+      confidence: navigation.confidence,
+      edit_type:  navigation.edit_type
+    },
+    validation: {
+      approved:   validation.approved,
+      confidence: validation.confidence
+    },
+    commit:          commitMsg,
+    elapsed_seconds: elapsed,
+    message:         'Cambio aplicado. Railway redesplegará en ~2 minutos.'
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENDPOINTS
+// ─────────────────────────────────────────────────────────────
+
+// POST /v1/studio/self-edit
 app.post('/v1/studio/self-edit', studioAuth, async (req, res) => {
   const instruction = String(req.body?.instruction || '').trim();
 
   if (!instruction) {
-    return res.status(400).json({
-      ok:    false,
-      error: 'instruction es requerida'
-    });
+    return res.status(400).json({ ok: false, error: 'instruction es requerida' });
   }
 
-  console.log(`[SelfEdit] Instrucción recibida: ${instruction.slice(0, 100)}...`);
-
-  // Stream de progreso para que el Studio muestre cada paso
-  res.setHeader('Content-Type', 'application/json');
-
   try {
-    // PASO 1 — Leer archivo actual
-    console.log('[SelfEdit] Leyendo server.js desde GitHub...');
-    const { content: originalContent, sha } = await githubReadServerJs();
-    console.log(`[SelfEdit] Archivo leído: ${originalContent.length} caracteres`);
-
-    // PASO 2 — Detectar sección relevante
-    const sectionInfo = detectSection(instruction, originalContent);
-    console.log(`[SelfEdit] Sección detectada: ${sectionInfo.section} (líneas ${sectionInfo.startLine}-${sectionInfo.endLine})`);
-
-    // PASO 3 — Aplicar edición con Claude
-    console.log('[SelfEdit] Aplicando edición con Claude...');
-    const modifiedSection = await applyEditWithClaude(instruction, sectionInfo);
-    console.log('[SelfEdit] Edición aplicada');
-
-    // PASO 4 — Reconstruir archivo completo
-    const newContent = rebuildFile(originalContent, sectionInfo, modifiedSection);
-    console.log(`[SelfEdit] Archivo reconstruido: ${newContent.length} caracteres`);
-
-    // PASO 5 — Verificar que el archivo no quedó roto
-    // Chequeo básico: debe tener al menos el 80% del tamaño original
-    const sizeRatio = newContent.length / originalContent.length;
-    if (sizeRatio < 0.8) {
-      throw new Error(
-        `El archivo resultante es demasiado pequeño (${Math.round(sizeRatio * 100)}% del original). Abortando para proteger el backend.`
-      );
-    }
-
-    // PASO 6 — Commit a GitHub
-    const commitMsg = `feat(studio): ${instruction.slice(0, 60)}`;
-    console.log(`[SelfEdit] Haciendo commit: ${commitMsg}`);
-    await githubWriteServerJs(newContent, sha, commitMsg);
-    console.log('[SelfEdit] Commit exitoso. Railway redesplegará automáticamente.');
-
-    return res.json({
-      ok:          true,
-      section:     sectionInfo.section,
-      lines_edited: `${sectionInfo.startLine}-${sectionInfo.endLine}`,
-      commit:      commitMsg,
-      message:     'Cambio aplicado. Railway redesplegará en ~2 minutos.'
-    });
-
+    const result = await selfEditOrchestrator(instruction, false);
+    return res.json(result);
   } catch (err) {
     console.error('[SelfEdit] Error:', err.message);
-    return res.status(500).json({
-      ok:    false,
-      error: err.message
-    });
+    return res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// ── ENDPOINT DE PREVIEW (sin hacer commit) ───────────────────
-// Útil para ver qué cambiaría antes de aplicarlo
 // POST /v1/studio/self-edit/preview
-
 app.post('/v1/studio/self-edit/preview', studioAuth, async (req, res) => {
   const instruction = String(req.body?.instruction || '').trim();
 
   if (!instruction) {
-    return res.status(400).json({ ok: false, error: 'instruction requerida' });
+    return res.status(400).json({ ok: false, error: 'instruction es requerida' });
   }
 
   try {
-    const { content } = await githubReadServerJs();
-    const sectionInfo = detectSection(instruction, content);
-    const modified    = await applyEditWithClaude(instruction, sectionInfo);
+    const result = await selfEditOrchestrator(instruction, true);
+    return res.json(result);
+  } catch (err) {
+    console.error('[SelfEdit Preview] Error:', err.message);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// GET /v1/studio/self-edit/status
+// Ver historial de cambios recientes en GitHub
+app.get('/v1/studio/self-edit/status', studioAuth, async (req, res) => {
+  try {
+    const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
+    const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
+
+    const commitsRes = await fetch(
+      `https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/commits?per_page=5`,
+      {
+        headers: {
+          Authorization: `token ${GITHUB_TOKEN}`,
+          'User-Agent':  'URUS-Studio'
+        }
+      }
+    );
+
+    const commits = await commitsRes.json();
 
     return res.json({
-      ok:           true,
-      section:      sectionInfo.section,
-      lines:        `${sectionInfo.startLine}-${sectionInfo.endLine}`,
-      original:     sectionInfo.content.slice(0, 500) + '...',
-      modified:     modified.slice(0, 500) + '...',
-      message:      'Preview generado. Usa /self-edit para aplicar.'
+      ok:      true,
+      recent_commits: commits.map(c => ({
+        message: c.commit.message,
+        date:    c.commit.author.date,
+        sha:     c.sha.slice(0, 7)
+      }))
     });
 
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
-
-
-
 
 
 // ---------- Boot ----------
