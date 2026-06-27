@@ -1,0 +1,41 @@
+name: URUS Health Monitor
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for Railway deploy
+        run: sleep 180
+
+      - name: Check server health
+        id: health
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://www.urusverify.com/health)
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "Server status: $STATUS"
+
+      - name: Auto rollback if crashed
+        if: steps.health.outputs.status != '200'
+        run: |
+          git config user.email "urus-monitor@urusverify.com"
+          git config user.name "URUS Health Monitor"
+          git revert HEAD --no-edit
+          git push origin main
+          echo "ROLLBACK ejecutado - status ${{ steps.health.outputs.status }}"
+
+      - name: Notify on rollback
+        if: steps.health.outputs.status != '200'
+        run: |
+          curl -X POST https://www.urusverify.com/v1/studio/notify \
+            -H "Content-Type: application/json" \
+            -H "x-studio-password: urus2026" \
+            -d "{\"message\": \"⚠️ Auto-Rollback ejecutado. Status: ${{ steps.health.outputs.status }}\"}"
