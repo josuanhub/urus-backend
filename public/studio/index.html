@@ -1112,8 +1112,8 @@ if (text.startsWith('/reindex')) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
         body: JSON.stringify({})
-      }).then(r => r.json()).then(data => {
-        addMessage('assistant', data.ok ? '✅ Índice actualizado: ' + data.total + ' entradas en ' + data.files.length + ' archivos.' : '❌ Error: ' + data.error
+    }).then(r => r.json()).then(data => {
+        addMessage('assistant', data.ok ? '✅ Índice actualizado: ' + data.entries + ' entradas.' : '❌ Error: ' + data.error);
       }).catch(e => addMessage('assistant', '❌ Error: ' + e.message));
       btn.disabled = false;
       input.focus();
