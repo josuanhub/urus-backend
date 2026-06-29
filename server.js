@@ -7512,6 +7512,41 @@ app.post('/v1/studio/notify', studioAuth, async (req, res) => {
   }
 });
 
+app.post('/v1/studio/diagnose', studioAuth, async (req, res) => {
+  try {
+    const RAILWAY_TOKEN = process.env.RAILWAY_TOKEN;
+    const serviceId = '54a5a827-6c27-49a5-8c32-1f5f046ee5a1';
+    const logsRes = await fetch('https://backboard.railway.app/graphql/v2', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + RAILWAY_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: '{ deploymentLogs(deploymentId: "' + serviceId + '", limit: 50) { message severity timestamp } }'
+      })
+    });
+    const logsData = await logsRes.json();
+    const logs = logsData?.data?.deploymentLogs || [];
+    const errorLogs = logs.filter(l => l.severity === 'error').map(l => l.message).join('\n');
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({
+      apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
+    });
+    const msg = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 500,
+      system: 'Eres un experto en Node.js y Railway. Analiza estos logs de error y explica en español: 1) Qué causó el crash, 2) En qué línea, 3) Cómo arreglarlo con /edit.',
+      messages: [{ role: 'user', content: 'LOGS DE ERROR:\n' + (errorLogs || 'Sin errores detectados') }]
+    });
+    const diagnosis = msg.content[0].text;
+    await pool.query('INSERT INTO studio_memory (type, content, metadata) VALUES ($1, $2, $3)', ['error', diagnosis, JSON.stringify({ source: 'auto-diagnose', timestamp: new Date() })]);
+    await sendWhatsAppTextTwilio({ to: '+19395851479', text: '🔍 DIAGNÓSTICO AUTO:\n\n' + diagnosis.slice(0, 500) });
+    return res.json({ ok: true, diagnosis });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
 app.post('/v1/studio/reindex', studioAuth, async (req, res) => {
   try {
     const filename = req.body?.filename;
