@@ -9600,8 +9600,8 @@ async function selfEditOrchestrator(instruction, previewOnly = false, targetFile
 
   // PASO 4 — SYNTAX VALIDATOR
   const lines = fileContent.split('\n');
-  const before = lines.slice(0, navigation.startIdx).join('\n');
-  const after = lines.slice(navigation.endIdx + 1).join('\n');
+const before = lines.slice(0, navigation.startIdx || 0).join('\n');
+const after = lines.slice((navigation.endIdx || 0) + 1).join('\n');
   const fullFile = [before, modifiedSection, after].filter(Boolean).join('\n');
 
  const syntaxCheck = { valid: true, issues: [] };
