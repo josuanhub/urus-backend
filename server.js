@@ -7500,6 +7500,7 @@ const studioAuth = (req, res, next) => {
   next();
 };
 
+
 app.post('/v1/studio/notify', studioAuth, async (req, res) => {
   try {
     const message = String(req.body?.message || '').trim();
@@ -7507,6 +7508,18 @@ app.post('/v1/studio/notify', studioAuth, async (req, res) => {
     await sendWhatsAppTextTwilio({ to: '+19395851479', text: message });
     return res.json({ ok: true });
   } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/v1/studio/reindex', studioAuth, async (req, res) => {
+  try {
+    const filename = req.body?.filename || 'server.js';
+    const { content } = await githubReadFile(filename);
+    const count = await buildAndPersistIndex(filename, content);
+    return res.json({ ok: true, entries: count, filename });
+  } catch (err) {
+    console.error('[Reindex]', err.message);
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
