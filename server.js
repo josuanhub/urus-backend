@@ -7501,6 +7501,64 @@ const studioAuth = (req, res, next) => {
 };
 
 
+app.get('/v1/studio/files', studioAuth, async (req, res) => {
+  try {
+    const path = req.query.path || '';
+    const r = await fetch('https://api.github.com/repos/' + process.env.GITHUB_USERNAME + '/urus-backend/contents/' + path, {
+      headers: {
+        Authorization: 'token ' + process.env.GITHUB_TOKEN,
+        'User-Agent': 'URUS-Studio'
+      }
+    });
+    const data = await r.json();
+    return res.json({ ok: true, files: Array.isArray(data) ? data.map(f => ({ name: f.name, type: f.type, path: f.path })) : data });
+  } catch(err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/v1/studio/build', studioAuth, async (req, res) => {
+  try {
+    const { filename, instruction, context } = req.body;
+    if (!filename || !instruction) return res.status(400).json({ ok: false, error: 'filename e instruction requeridos' });
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+    const msg = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 8000,
+      system: 'Eres un experto en Node.js, Express y HTML. Genera código completo y funcional. Sin explicaciones. Solo el código.',
+      messages: [{ role: 'user', content: 'Crea el archivo ' + filename + '.\n\nInstrucción: ' + instruction + (context ? '\n\nContexto adicional:\n' + context : '') }]
+    });
+    const code = msg.content[0].text.replace(/^```[\w]*\n?/m, '').replace(/\n?```\s*$/m, '').trim();
+    const existing = await fetch('https://api.github.com/repos/' + process.env.GITHUB_USERNAME + '/urus-backend/contents/' + filename, {
+      headers: {
+        Authorization: 'token ' + process.env.GITHUB_TOKEN,
+        'User-Agent': 'URUS-Studio'
+      }
+    });
+    const existingData = existing.ok ? await existing.json() : null;
+    const sha = existingData?.sha;
+    const writeRes = await fetch('https://api.github.com/repos/' + process.env.GITHUB_USERNAME + '/urus-backend/contents/' + filename, {
+      method: 'PUT',
+      headers: {
+        Authorization: 'token ' + process.env.GITHUB_TOKEN,
+        'Content-Type': 'application/json',
+        'User-Agent': 'URUS-Studio'
+      },
+      body: JSON.stringify({
+        message: 'build(studio-ai): ' + filename,
+        content: Buffer.from(code).toString('base64'),
+        ...(sha ? { sha } : {})
+      })
+    });
+    const writeData = await writeRes.json();
+    return res.json({ ok: true, filename, size: code.length, commit: writeData?.commit?.sha?.slice(0, 7) });
+  } catch(err) {
+    console.error('[Build]', err.message);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/v1/studio/notify', studioAuth, async (req, res) => {
   try {
     const message = String(req.body?.message || '').trim();
@@ -7511,7 +7569,6 @@ app.post('/v1/studio/notify', studioAuth, async (req, res) => {
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
-
 app.post('/v1/studio/diagnose', studioAuth, async (req, res) => {
   try {
     const RAILWAY_TOKEN = process.env.RAILWAY_TOKEN;
