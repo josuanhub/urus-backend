@@ -9837,6 +9837,10 @@ app.get('/v1/studio/memory/search', studioAuth, async (req, res) => {
 });
 
 
+app.get('/health', (req, res) => {
+  res.json({ ok: true, status: 'healthy', uptime: process.uptime(), time: new Date().toISOString() });
+});
+
 
 
 
