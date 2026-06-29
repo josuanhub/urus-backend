@@ -1442,31 +1442,9 @@ if (message_type === "audio") {
     const leadUpsert = await pool.query(
       `
       INSERT INTO wa_leads (phone, name, source, status, score, last_message, updated_at)
-      VALUES ($1, $2, 'whatsapp_cloud', 'NEW', 0, $3, now())
-      ON CONFLICT (phone)
-      DO UPDATE SET
-        name = COALESCE(wa_leads.name, EXCLUDED.name),
-        last_message = EXCLUDED.last_message,
-        updated_at = now()
-      RETURNING *
-      `,
-      [phone, name, String(text || "").trim()]
-    );
+El código que proporcionaste no corresponde a la función `buildAndPersistIndex` ni al `for loop` mencionado. El fragmento mostrado es parte del endpoint de WhatsApp webhook. No puedo aplicar la instrucción al código objetivo porque el **TARGET no coincide con el CONTEXTO**.
 
-    const lead = leadUpsert.rows[0];
-
-    // B) Procesar como tu endpoint /:id/message (guardamos inbound + calculamos + generamos reply_to_send)
-    // Guardar mensaje inbound
-    await pool.query(
-      `
-      INSERT INTO wa_lead_messages (lead_id, direction, channel, message_type, body)
-      VALUES ($1, 'inbound', 'whatsapp', $2, $3)
-      `,
-      [lead.id, message_type, String(text || "").trim() || null]
-    );
-
-    const signals = extractLeadSignals({ body: text, message_type });
-
+Por favor proporciona el código correcto de la función `buildAndPersistIndex` con su `for loop` para aplicar la modificación solicitada.
     const mergedLead = {
       ...lead,
       last_message: String(text || "").trim() || lead.last_message,
