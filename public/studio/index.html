@@ -1106,6 +1106,47 @@ const input = document.getElementById('input');
       return;
     }
 
+    if (text.startsWith('/files')) {
+      const path = text.slice(6).trim();
+      addMessage('assistant', '📁 Cargando archivos...');
+      fetch('/v1/studio/files' + (path ? '?path=' + encodeURIComponent(path) : ''), {
+        headers: { 'x-studio-password': password }
+      }).then(r => r.json()).then(data => {
+        if (data.ok && data.files) {
+          addMessage('assistant', '📁 **Archivos' + (path ? ' en ' + path : '') + ':**\n\n' + data.files.map(f => (f.type === 'dir' ? '📂 ' : '📄 ') + f.path).join('\n'));
+        } else {
+          addMessage('assistant', '❌ Error: ' + (data.error || 'No se pudo listar'));
+        }
+      }).catch(e => addMessage('assistant', '❌ ' + e.message));
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+    if (text.startsWith('/build ')) {
+      const parts = text.slice(7).trim().split(' → ');
+      const filename = parts[0]?.trim();
+      const instruction = parts[1]?.trim();
+      if (!filename || !instruction) {
+        addMessage('assistant', '💡 Uso: /build [archivo] → [instrucción]');
+        btn.disabled = false; input.focus(); return;
+      }
+      addMessage('assistant', '🔨 Construyendo ' + filename + '...');
+      fetch('/v1/studio/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+        body: JSON.stringify({ filename, instruction })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          addMessage('assistant', '✅ **ARCHIVO CREADO**\n\n📄 ' + data.filename + '\n📦 ' + data.size + ' chars\n🔗 Commit: ' + data.commit + '\n\n🚀 Railway redesplegará en ~2 minutos.');
+        } else {
+          addMessage('assistant', '❌ Error: ' + data.error);
+        }
+      }).catch(e => addMessage('assistant', '❌ ' + e.message));
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+    
 if (text.startsWith('/reindex')) {
       addMessage('assistant', '🔄 Indexando server.js...');
       fetch('/v1/studio/reindex', {
