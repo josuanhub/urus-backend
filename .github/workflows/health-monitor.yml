@@ -42,3 +42,11 @@ jobs:
             -H "Content-Type: application/json" \
             -H "x-studio-password: urus2026" \
             -d "{\"message\": \"⚠️ Auto-Rollback ejecutado. Status: ${{ steps.health.outputs.status }}\"}"
+            - name: Auto diagnose after rollback
+        if: steps.health.outputs.status != '200'
+        run: |
+          sleep 120
+          curl -X POST https://www.urusverify.com/v1/studio/diagnose \
+            -H "Content-Type: application/json" \
+            -H "x-studio-password: urus2026" \
+            -d '{"trigger": "auto-rollback"}'
