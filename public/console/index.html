@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>URUS Console</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: #1a1d2e;
+      border-bottom: 1px solid #2d3148;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #a78bfa;
+    }
+
+    header span {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    main {
+      flex: 1;
+      padding: 40px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 16px;
+    }
+
+    .cards {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background-color: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 28px 32px;
+      min-width: 220px;
+      flex: 1;
+      max-width: 320px;
+    }
+
+    .card-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+
+    .card-value {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      line-height: 1;
+    }
+
+    .card-value.mrr {
+      color: #34d399;
+    }
+
+    .card-sub {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #475569;
+    }
+
+    /* Status card */
+    .status-card {
+      background-color: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 28px 32px;
+      min-width: 220px;
+      flex: 1;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .status-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 0 6px #22c55e;
+        opacity: 1;
+      }
+      50% {
+        box-shadow: 0 0 14px #22c55e;
+        opacity: 0.8;
+      }
+    }
+
+    .status-text {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #22c55e;
+    }
+
+    .status-sub {
+      font-size: 0.8rem;
+      color: #475569;
+    }
+
+    footer {
+      padding: 16px 32px;
+      border-top: 1px solid #2d3148;
+      text-align: center;
+      font-size: 0.75rem;
+      color: #334155;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>⬡ URUS Console</h1>
+    <span>Dashboard v1.0</span>
+  </header>
+
+  <main>
+    <div>
+      <p class="section-title">Overview</p>
+      <div class="cards">
+
+        <div class="card">
+          <p class="card-label">Monthly Recurring Revenue</p>
+          <p class="card-value mrr">$300</p>
+          <p class="card-sub">MRR · current month</p>
+        </div>
+
+        <div class="status-card">
+          <p class="status-label">Server Status</p>
+          <div class="status-indicator">
+            <div class="dot"></div>
+            <p class="status-text">Online</p>
+          </div>
+          <p class="status-sub">All systems operational</p>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2025 URUS · All rights reserved
+  </footer>
+
+</body>
+</html>
