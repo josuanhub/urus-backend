@@ -9611,7 +9611,7 @@ async function selfEditOrchestrator(instruction, previewOnly = false, targetFile
     };
   }
 
-  if (navigation.confidence < 4) {
+ if ((navigation.confidence || 0) < 4) {
     return {
       ok: false,
       stage: 'navigator',
