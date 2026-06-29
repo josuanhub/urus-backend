@@ -7693,6 +7693,10 @@ app.get('/studio', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'studio', 'index.html'));
 });
 
+app.get('/console', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'console', 'index.html'));
+});
+
 // ============================================================
 // PASO 1 — Pegar ANTES de la línea que dice:
 // // ---------- URUS FACTORY ----------
