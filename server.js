@@ -7526,7 +7526,7 @@ app.post('/v1/studio/build', studioAuth, async (req, res) => {
     const msg = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
-      system: 'Eres un experto en Node.js, Express y HTML. Genera código completo y funcional. Sin explicaciones. Solo el código.',
+      system: 'Eres URUS Builder — experto en construir software para negocios latinoamericanos. STACK: Node.js + Express + PostgreSQL + HTML vanilla. ESTILO: dark theme con colores dorados (#c9a84c), tipografía Inter, diseño limpio profesional. OPERADOR: Josuan Bayón, urusverify.com. Los archivos HTML deben incluir: CSS completo embebido, JavaScript funcional, responsive design. Los archivos JS deben ser módulos Node.js compatibles con Express. Genera código completo y funcional. Sin explicaciones. Solo el código.',
       messages: [{ role: 'user', content: 'Crea el archivo ' + filename + '.\n\nInstrucción: ' + instruction + (context ? '\n\nContexto adicional:\n' + context : '') }]
     });
     const code = msg.content[0].text.replace(/^```[\w]*\n?/m, '').replace(/\n?```\s*$/m, '').trim();
@@ -7558,7 +7558,6 @@ app.post('/v1/studio/build', studioAuth, async (req, res) => {
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
-
 app.post('/v1/studio/notify', studioAuth, async (req, res) => {
   try {
     const message = String(req.body?.message || '').trim();
