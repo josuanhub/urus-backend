@@ -7540,41 +7540,51 @@ app.post('/v1/studio/tts', studioAuth, async (req, res) => {
 
 app.post('/api/studio/chat', studioAuth, async (req, res) => {
   try {
-    const { messages } = req.body;
-
-    // Cargar memoria reciente
+    const { messages, project } = req.body;
     let memContext = '';
+    let recentEdits = '';
+    let recentErrors = '';
+    let githubCommits = '';
     try {
-      const memResult = await pool.query(
-        'SELECT type, content FROM studio_memory ORDER BY created_at DESC LIMIT 15'
-      );
-      memContext = memResult.rows
-        .map(r => '[' + r.type.toUpperCase() + '] ' + r.content.slice(0, 200))
-        .join('\n');
+      const memResult = await pool.query('SELECT type, content FROM studio_memory ORDER BY created_at DESC LIMIT 20');
+      memContext = memResult.rows.map(r => '[' + r.type.toUpperCase() + '] ' + r.content.slice(0, 150)).join('\n');
+      const editsR = await pool.query('SELECT content, created_at FROM studio_memory WHERE type = $1 ORDER BY created_at DESC LIMIT 5', ['edit']);
+      recentEdits = editsR.rows.map(r => new Date(r.created_at).toLocaleString('es-PR') + ': ' + r.content.slice(0, 120)).join('\n');
+      const errorsR = await pool.query('SELECT content, created_at FROM studio_memory WHERE type = $1 ORDER BY created_at DESC LIMIT 3', ['error']);
+      recentErrors = errorsR.rows.map(r => new Date(r.created_at).toLocaleString('es-PR') + ': ' + r.content.slice(0, 120)).join('\n');
     } catch(e) {}
-
-    const systemPrompt = STUDIO_CONTEXT + (memContext ? '\n\nMEMORIA RECIENTE:\n' + memContext : '');
-
+    try {
+      const commitsRes = await fetch('https://api.github.com/repos/josuanhub/urus-backend/commits?per_page=5', {
+        headers: {
+          Authorization: 'token ' + process.env.GITHUB_TOKEN,
+          'User-Agent': 'URUS-Studio'
+        }
+      });
+      const commits = await commitsRes.json();
+      githubCommits = commits.map(c => c.commit.message.slice(0, 80) + ' (' + new Date(c.commit.author.date).toLocaleString('es-PR') + ')').join('\n');
+    } catch(e) {}
+    const now = new Date().toLocaleString('es-PR', { timeZone: 'America/Puerto_Rico' });
+    const systemPrompt = STUDIO_CONTEXT + '\n\n== CONTEXTO EN TIEMPO REAL ==\nFECHA: ' + now +
+      (recentEdits ? '\n\nÚLTIMOS CAMBIOS APLICADOS:\n' + recentEdits : '') +
+      (recentErrors ? '\n\nERRORES RECIENTES:\n' + recentErrors : '') +
+      (githubCommits ? '\n\nÚLTIMOS COMMITS:\n' + githubCommits : '') +
+      (memContext ? '\n\nMEMORIA COMPLETA:\n' + memContext : '');
     const Anthropic = require('@anthropic-ai/sdk');
     const anthropicClient = new Anthropic({
       apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
     });
-
     const claudeMsg = await anthropicClient.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 4000,
       system: systemPrompt,
       messages: messages
     });
-
     res.json({ reply: claudeMsg.content[0].text });
-
   } catch (err) {
     console.error('STUDIO_ERROR:', err);
     res.status(500).json({ error: 'Fallo en Studio' });
   }
 });
-
 // Studio UI
 app.get('/studio', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'studio', 'index.html'));
