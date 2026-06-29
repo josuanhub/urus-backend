@@ -7514,15 +7514,26 @@ app.post('/v1/studio/notify', studioAuth, async (req, res) => {
 
 app.post('/v1/studio/reindex', studioAuth, async (req, res) => {
   try {
-    const filename = req.body?.filename || 'server.js';
-    const { content } = await githubReadFile(filename);
-    const count = await buildAndPersistIndex(filename, content);
-    return res.json({ ok: true, entries: count, filename });
+    const filename = req.body?.filename;
+    const filesToIndex = filename ? [filename] : ['server.js', 'public/studio/index.html'];
+    const results = [];
+    for (const f of filesToIndex) {
+      try {
+        const { content } = await githubReadFile(f);
+        const count = await buildAndPersistIndex(f, content);
+        results.push({ filename: f, entries: count });
+      } catch(e) {
+        results.push({ filename: f, error: e.message });
+      }
+    }
+    const total = results.reduce((sum, r) => sum + (r.entries || 0), 0);
+    return res.json({ ok: true, total, files: results });
   } catch (err) {
     console.error('[Reindex]', err.message);
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
+
 
 app.post('/v1/studio/tts', studioAuth, async (req, res) => {
   try {
