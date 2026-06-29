@@ -9469,111 +9469,68 @@ async function buildAndPersistIndex(filename, fileContent) {
 // ── AST NAVIGATOR v4 ─────────────────────────────────────────
 
 async function astNavigatorAgent(instruction, fileContent) {
-  console.log('[ASTNavigator] Analizando instrucción...');
-
+  console.log('[ASTNavigator v5] Usando índice persistente...');
   const lines = fileContent.split('\n');
-
-  // PASO 1 — Construir índice exacto del archivo (sin IA)
-  const index = buildFileIndex(fileContent);
-  console.log(`[ASTNavigator] Índice: ${index.functions.length} funciones, ${index.endpoints.length} endpoints`);
-
-  // PASO 2 — Usar Claude solo para entender qué buscar
-  const Anthropic = require('@anthropic-ai/sdk');
-  const client = new Anthropic({
-    apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
-  });
-
-  // Construir lista compacta para que Claude elija
-  const functionList = index.functions
-    .map(f => `L${f.lineNum}: ${f.name}`)
-    .join('\n');
-
-  const endpointList = index.endpoints
-    .map(e => `L${e.lineNum}: ${e.method} ${e.path}`)
-    .join('\n');
-
-  const extractMsg = await client.messages.create({
-    model:      'claude-sonnet-4-6',
-    max_tokens: 200,
-    system:     'Eres un selector de código. Devuelve SOLO JSON. Sin markdown.',
-    messages:   [{
-      role:    'user',
-      content: `Instrucción: "${instruction}"
-
-FUNCIONES DISPONIBLES:
-${functionList.slice(0, 3000)}
-
-ENDPOINTS DISPONIBLES:
-${endpointList.slice(0, 2000)}
-
-Elige el target más relevante para la instrucción.
-Devuelve SOLO: {"line_number": N, "name": "nombre exacto", "operation": "replace|insert_after|insert_before"}`
-    }]
-  });
-
-  const raw = extractMsg.content[0].text.replace(/```json|```/g, '').trim();
-  let extracted;
+  let indexEntries = [];
   try {
-    extracted = JSON.parse(raw);
-  } catch(e) {
-    throw new Error('No se pudo parsear respuesta del Navigator');
-  }
-
-  console.log(`[ASTNavigator] Target: "${extracted.name}" en línea ${extracted.line_number}`);
-
-  // PASO 3 — Verificar que la línea elegida existe en el índice
-  const targetEntry = index.all.find(e => e.lineNum === extracted.line_number);
-  if (!targetEntry) {
-    // Buscar por nombre si el número de línea no coincide
-    const byName = index.all.find(e =>
-      e.name === extracted.name ||
-      e.nameAlt === extracted.name ||
-      e.name.includes(extracted.name) ||
-      extracted.name.includes(e.name)
+    const result = await pool.query(
+      `SELECT entry_type, name, path, line_start, line_end, signature FROM file_index WHERE filename = 'server.js' ORDER BY line_start ASC`
     );
-    if (byName) {
-      extracted.line_number = byName.lineNum;
-      console.log(`[ASTNavigator] Corregido a línea ${byName.lineNum} por nombre`);
-    } else {
-      throw new Error(`No se encontró "${extracted.name}" en el índice del archivo`);
+    indexEntries = result.rows;
+  } catch(e) {
+    console.log('[ASTNavigator] Índice no disponible, construyendo en memoria...');
+  }
+  if (indexEntries.length === 0) {
+    console.log('[ASTNavigator] Fallback: indexando en memoria...');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineNum = i + 1;
+      const asyncFn = line.match(/^(?:async\s+)?function\s+(\w+)\s*\(/);
+      if (asyncFn) indexEntries.push({ entry_type: 'function', name: asyncFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
+      const constFn = line.match(/^(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:function|\()/);
+      if (constFn) indexEntries.push({ entry_type: 'function', name: constFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
+      const endpoint = line.match(/^app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/);
+      if (endpoint) indexEntries.push({ entry_type: 'endpoint', name: `${endpoint[1].toUpperCase()} ${endpoint[2]}`, path: endpoint[2], line_start: lineNum, signature: line.trim().slice(0, 120) });
     }
   }
-
-  // PASO 4 — Encontrar el bloque completo desde esa línea
+  console.log(`[ASTNavigator] Índice: ${indexEntries.length} entradas`);
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+  const indexList = indexEntries.map(e => `L${e.line_start}: [${e.entry_type}] ${e.name}`).join('\n');
+  const extractMsg = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 300,
+    system: 'Eres un selector de código preciso. Devuelve SOLO JSON. Sin markdown. Si hay múltiples opciones con el mismo nombre, elige el que tiene el número de línea MÁS ALTO.',
+    messages: [{ role: 'user', content: `INSTRUCCIÓN: "${instruction}"\n\nÍNDICE (${indexEntries.length} entradas):\n${indexList.slice(0, 8000)}\n\nDevuelve SOLO: {"line_number": N, "name": "nombre exacto", "operation": "replace|insert_after|insert_before"}` }]
+  });
+  const raw = extractMsg.content[0].text.replace(/```json|```/g, '').trim();
+  let extracted;
+  try { extracted = JSON.parse(raw); } catch(e) { throw new Error('No se pudo parsear respuesta del Navigator'); }
+  console.log(`[ASTNavigator] Claude eligió: "${extracted.name}" en línea ${extracted.line_number}`);
+  let entry = indexEntries.find(e => e.line_start === extracted.line_number);
+  if (!entry) {
+    const byName = indexEntries.filter(e => e.name === extracted.name || e.name.includes(extracted.name)).sort((a, b) => b.line_start - a.line_start)[0];
+    if (byName) { extracted.line_number = byName.line_start; entry = byName; console.log(`[ASTNavigator] Corregido a línea ${byName.line_start}`); }
+    else throw new Error(`"${extracted.name}" no está en el índice`);
+  }
   const startIdx = Math.max(0, extracted.line_number - 1);
-  let endIdx     = Math.min(lines.length - 1, startIdx + 300);
-  let braceCount = 0;
-  let started    = false;
-
+  let endIdx = Math.min(lines.length - 1, startIdx + 300);
+  let braceCount = 0, started = false;
   for (let i = startIdx; i < lines.length && i < startIdx + 500; i++) {
     const line = lines[i] || '';
     for (const ch of line) {
       if (ch === '{') { braceCount++; started = true; }
       if (ch === '}') braceCount--;
     }
-    if (started && braceCount === 0) {
-      endIdx = Math.min(i + 1, lines.length - 1);
-      break;
-    }
+    if (started && braceCount === 0) { endIdx = Math.min(i + 1, lines.length - 1); break; }
   }
-
   const content = lines.slice(startIdx, endIdx + 1).join('\n');
-
   console.log(`[ASTNavigator] ✅ "${extracted.name}" líneas ${startIdx + 1}-${endIdx + 1}, confianza 9/10`);
-
   return {
-    target_function:     extracted.name,
-    target_type:         targetEntry?.type || 'unknown',
-    operation:           extracted.operation || 'replace',
-    context:             instruction,
-    start_line:          startIdx + 1,
-    end_line:            endIdx + 1,
-    startIdx,
-    endIdx,
-    content,
-    confidence:          9,
-    search_string_found: extracted.name,
-    totalLines:          lines.length
+    target_function: extracted.name, target_type: entry?.entry_type || 'unknown',
+    operation: extracted.operation || 'replace', context: instruction,
+    start_line: startIdx + 1, end_line: endIdx + 1, startIdx, endIdx,
+    content, confidence: 9, search_string_found: extracted.name, totalLines: lines.length
   };
 }
 
