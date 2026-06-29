@@ -9411,129 +9411,94 @@ function callAnthropicDirect(systemPrompt, userPrompt, maxTokens = 8000) {
 // No usa IA para buscar — usa el AST del código
 // ─────────────────────────────────────────────────────────────
 
-async function astNavigatorAgent(instruction, fileContent) {
+aasync function astNavigatorAgent(instruction, fileContent) {
   console.log('[ASTNavigator] Analizando instrucción...');
 
-  // 1. Extraer el target de la instrucción con Claude
-  const Anthropic = require('@anthropic-ai/sdk');
-  const client = new Anthropic({
-    apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
-  });
-
-  const extractMsg = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 500,
-    system: `Eres un analizador de instrucciones de edición de código.
-Tu trabajo es extraer información estructurada de una instrucción.
-Devuelve ÚNICAMENTE JSON válido sin markdown.`,
-    messages: [{
-      role: 'user',
-      content: `Analiza esta instrucción de edición de código y extrae:
-1. El tipo de target (function, endpoint, variable, class)
-2. El nombre exacto del target
-3. La operación (insert_before, insert_after, replace, delete, append)
-4. Un string único de búsqueda que identifique la ubicación (10-50 chars)
-
-INSTRUCCIÓN: "${instruction}"
-
-Devuelve SOLO este JSON:
-{
-  "target_type": "function|endpoint|variable|block",
-  "target_name": "nombre exacto",
-  "operation": "insert_before|insert_after|replace|delete|append",
-  "search_string": "string único en el archivo que identifica la ubicación",
-  "search_string_alt": "string alternativo por si el primero no aparece",
-  "context": "breve descripción de qué cambiar"
-}`
-    }]
-  });
-
-  const extractRaw = extractMsg.content[0].text.replace(/```json|```/g, '').trim();
-  let extracted;
-  try {
-    extracted = JSON.parse(extractRaw);
-  } catch(e) {
-    throw new Error('No se pudo extraer el target de la instrucción. Sé más específico.');
-  }
-
-  console.log(`[ASTNavigator] Target: ${extracted.target_type} "${extracted.target_name}"`);
-  console.log(`[ASTNavigator] Búsqueda: "${extracted.search_string}"`);
-
-  // 2. Buscar el target en el archivo por string exacto
   const lines = fileContent.split('\n');
-  let foundLine = -1;
-  let foundLineAlt = -1;
 
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes(extracted.search_string)) {
-      foundLine = i;
-      break;
-    }
-  }
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({
+      apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
+    });
 
-  if (foundLine === -1 && extracted.search_string_alt) {
+    const extractMsg = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 300,
+      system: 'Extrae información de una instrucción de edición de código. Devuelve SOLO JSON válido sin markdown ni texto extra.',
+      messages: [{
+        role: 'user',
+        content: `Instrucción: "${instruction}"\n\nDevuelve SOLO este JSON:\n{"target_name": "nombre exacto de función o endpoint", "search_string": "string único de 20-50 chars que aparece en el código", "operation": "insert_after"}`
+      }]
+    });
+
+    const raw = extractMsg.content[0].text.replace(/```json|```/g, '').trim();
+    const extracted = JSON.parse(raw);
+
+    console.log(`[ASTNavigator] Target: "${extracted.target_name}"`);
+    console.log(`[ASTNavigator] Búsqueda: "${extracted.search_string}"`);
+
+    let foundLine = -1;
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes(extracted.search_string_alt)) {
-        foundLineAlt = i;
-        break;
-      }
-    }
-  }
-
-  const targetLine = foundLine !== -1 ? foundLine : foundLineAlt;
-
-  if (targetLine === -1) {
-    // Último recurso: buscar por nombre del target
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes(extracted.target_name)) {
+      if (lines[i].includes(extracted.search_string)) {
         foundLine = i;
         break;
       }
     }
+
+    if (foundLine === -1) {
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes(extracted.target_name)) {
+          foundLine = i;
+          break;
+        }
+      }
+    }
+
+    if (foundLine === -1) {
+      throw new Error(`No se encontró "${extracted.target_name}" en el archivo. Verifica el nombre exacto.`);
+    }
+
+    const startLine = Math.max(0, foundLine - 2);
+    let endLine = Math.min(lines.length - 1, foundLine + 300);
+    let braceCount = 0;
+    let started = false;
+
+    for (let i = foundLine; i < lines.length && i < foundLine + 400; i++) {
+      const line = lines[i] || '';
+      for (const ch of line) {
+        if (ch === '{') { braceCount++; started = true; }
+        if (ch === '}') braceCount--;
+      }
+      if (started && braceCount === 0) {
+        endLine = Math.min(i + 2, lines.length - 1);
+        break;
+      }
+    }
+
+    const content = lines.slice(startLine, endLine + 1).join('\n');
+
+    console.log(`[ASTNavigator] ✅ Línea ${foundLine + 1}, confianza 8/10`);
+
+    return {
+      target_function: extracted.target_name,
+      target_type: 'endpoint',
+      operation: extracted.operation || 'insert_after',
+      context: instruction,
+      start_line: startLine + 1,
+      end_line: endLine + 1,
+      startIdx: startLine,
+      endIdx: endLine,
+      content,
+      confidence: 8,
+      search_string_found: extracted.search_string,
+      totalLines: lines.length
+    };
+
+  } catch(err) {
+    console.error('[ASTNavigator] Error:', err.message);
+    throw new Error(`Navigator falló: ${err.message}`);
   }
-
-  const startLine = Math.max(0, targetLine - 5);
-
-  // 3. Encontrar el fin del bloque (siguiente función o endpoint al mismo nivel)
-  let endLine = Math.min(lines.length - 1, startLine + 300);
-  let braceCount = 0;
-  let started = false;
-
-  const safeStart = Math.max(0, targetLine);
-for (let i = safeStart; i < lines.length && i < safeStart + 400; i++) {
-  const line = lines[i] || '';
-  for (const ch of line) {
-    if (ch === '{') { braceCount++; started = true; }
-    if (ch === '}') braceCount--;
-  }
-  if (started && braceCount === 0) {
-    endLine = Math.min(i + 2, lines.length - 1);
-    break;
-  }
-}
-
-  const content = lines.slice(startLine, endLine + 1).join('\n');
-
-  // Verificar que encontramos algo razonable
-  const confidence = foundLine !== -1 ? 9 :
-                     foundLineAlt !== -1 ? 7 : 4;
-
-  console.log(`[ASTNavigator] ✅ Encontrado en línea ${targetLine + 1}, confianza ${confidence}/10`);
-
-  return {
-    target_function: extracted.target_name,
-    target_type: extracted.target_type,
-    operation: extracted.operation,
-    context: extracted.context,
-    start_line: startLine + 1,
-    end_line: endLine + 1,
-    startIdx: startLine,
-    endIdx: endLine,
-    content,
-    confidence,
-    search_string_found: extracted.search_string,
-    totalLines: lines.length
-  };
 }
 
 // ─────────────────────────────────────────────────────────────
