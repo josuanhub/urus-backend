@@ -3235,6 +3235,9 @@ console.log("✅ Dealer OS tables ready");
   
   
   await pool.query(`CREATE TABLE IF NOT EXISTS studio_memory (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), type TEXT NOT NULL, content TEXT NOT NULL, metadata JSONB NOT NULL DEFAULT '{}'::jsonb, project TEXT NOT NULL DEFAULT 'GENERAL', created_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS file_index (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), filename TEXT NOT NULL, entry_type TEXT NOT NULL, name TEXT NOT NULL, path TEXT, line_start INTEGER NOT NULL, line_end INTEGER, signature TEXT, updated_at TIMESTAMPTZ DEFAULT now())`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_file_index_filename ON file_index(filename)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_file_index_name ON file_index(name)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_studio_memory_type ON studio_memory(type, created_at DESC)`);
   console.log("DB schema ensured");
 }
