@@ -9711,6 +9711,7 @@ const after = lines.slice((navigation.endIdx || 0) + 1).join('\n');
   const newSha = commitResult?.content?.sha || sha;
 
   console.log(`[Orchestrator] ✅ Commit en ${elapsed}s`);
+  setImmediate(() => buildAndPersistIndex('server.js', fullFile).catch(e => console.error('[AutoReindex]', e.message)));
 
   // Health Monitor en background
   setImmediate(async () => {
@@ -9742,7 +9743,6 @@ const after = lines.slice((navigation.endIdx || 0) + 1).join('\n');
     message: 'Cambio aplicado. GitHub Actions monitorea el deploy automáticamente.'
   };
 }
-
 
 // ─────────────────────────────────────────────────────────────
 // ENDPOINTS
