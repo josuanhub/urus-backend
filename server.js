@@ -9489,17 +9489,18 @@ Devuelve SOLO este JSON:
   let braceCount = 0;
   let started = false;
 
-  for (let i = targetLine; i < lines.length && i < targetLine + 400; i++) {
-    const line = lines[i];
-    for (const ch of line) {
-      if (ch === '{') { braceCount++; started = true; }
-      if (ch === '}') braceCount--;
-    }
-    if (started && braceCount === 0) {
-      endLine = Math.min(i + 2, lines.length - 1);
-      break;
-    }
+  const safeStart = Math.max(0, targetLine);
+for (let i = safeStart; i < lines.length && i < safeStart + 400; i++) {
+  const line = lines[i] || '';
+  for (const ch of line) {
+    if (ch === '{') { braceCount++; started = true; }
+    if (ch === '}') braceCount--;
   }
+  if (started && braceCount === 0) {
+    endLine = Math.min(i + 2, lines.length - 1);
+    break;
+  }
+}
 
   const content = lines.slice(startLine, endLine + 1).join('\n');
 
