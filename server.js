@@ -9419,57 +9419,52 @@ function callAnthropicDirect(systemPrompt, userPrompt, maxTokens = 8000) {
 // Línea por línea, con regex exactos
 // No usa IA — matemáticas puras
 
-function buildFileIndex(fileContent) {
+async function buildAndPersistIndex(filename, fileContent) {
+  console.log(`[FileIndex] Indexando ${filename}...`);
   const lines = fileContent.split('\n');
-  const index = {
-    functions:  [],   // { name, line, type }
-    endpoints:  [],   // { method, path, line }
-    all:        []    // combinado para búsqueda rápida
-  };
-
+  const entries = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNum = i + 1;
-
-    // Detectar funciones nombradas
-    // async function foo(
-    const fnMatch = line.match(/^\s*(?:async\s+)?function\s+(\w+)\s*\(/);
-    if (fnMatch) {
-      index.functions.push({ name: fnMatch[1], line: i, lineNum, type: 'function' });
-      index.all.push({ name: fnMatch[1], line: i, lineNum, type: 'function', raw: line.trim() });
+    const asyncFn = line.match(/^(?:async\s+)?function\s+(\w+)\s*\(/);
+    if (asyncFn) {
+      entries.push({ entry_type: 'function', name: asyncFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
     }
-
-    // const foo = async (  o  const foo = (
-    const constFnMatch = line.match(/^\s*(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(/);
-    if (constFnMatch) {
-      index.functions.push({ name: constFnMatch[1], line: i, lineNum, type: 'const_fn' });
-      index.all.push({ name: constFnMatch[1], line: i, lineNum, type: 'const_fn', raw: line.trim() });
+    const constFn = line.match(/^(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:function|\()/);
+    if (constFn) {
+      entries.push({ entry_type: 'function', name: constFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
     }
-
-    // const foo = async function(
-    const constFn2Match = line.match(/^\s*(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?function/);
-    if (constFn2Match && !constFnMatch) {
-      index.functions.push({ name: constFn2Match[1], line: i, lineNum, type: 'const_fn' });
-      index.all.push({ name: constFn2Match[1], line: i, lineNum, type: 'const_fn', raw: line.trim() });
-    }
-
-    // Detectar endpoints Express
-    // app.get('/path',  app.post('/path',  etc.
-    const endpointMatch = line.match(/^\s*app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/);
-    if (endpointMatch) {
-      const method = endpointMatch[1].toUpperCase();
-      const path   = endpointMatch[2];
-      index.endpoints.push({ method, path, line: i, lineNum, type: 'endpoint' });
-      index.all.push({
-        name: `${method} ${path}`,
-        nameAlt: `app.${endpointMatch[1]}('${path}'`,
-        line: i, lineNum, type: 'endpoint', raw: line.trim()
-      });
+    const endpoint = line.match(/^app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/);
+    if (endpoint) {
+      const method = endpoint[1].toUpperCase();
+      const path   = endpoint[2];
+      entries.push({ entry_type: 'endpoint', name: `${method} ${path}`, path, line_start: lineNum, signature: line.trim().slice(0, 120) });
     }
   }
-
-  return index;
+  for (let i = 0; i < entries.length; i++) {
+    const startIdx = entries[i].line_start - 1;
+    let braceCount = 0, started = false, endLine = Math.min(lines.length, startIdx + 400);
+    for (let j = startIdx; j < lines.length && j < startIdx + 500; j++) {
+      const l = lines[j] || '';
+      for (const ch of l) {
+        if (ch === '{') { braceCount++; started = true; }
+        if (ch === '}') braceCount--;
+      }
+      if (started && braceCount === 0) { endLine = j + 1; break; }
+    }
+    entries[i].line_end = endLine;
+  }
+  await pool.query('DELETE FROM file_index WHERE filename = $1', [filename]);
+  for (const entry of entries) {
+    await pool.query(
+      `INSERT INTO file_index (filename, entry_type, name, path, line_start, line_end, signature) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [filename, entry.entry_type, entry.name, entry.path || null, entry.line_start, entry.line_end, entry.signature]
+    );
+  }
+  console.log(`[FileIndex] ✅ ${entries.length} entradas indexadas para ${filename}`);
+  return entries.length;
 }
+
 
 // ── AST NAVIGATOR v4 ─────────────────────────────────────────
 
