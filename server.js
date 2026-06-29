@@ -9411,7 +9411,7 @@ function callAnthropicDirect(systemPrompt, userPrompt, maxTokens = 8000) {
 // No usa IA para buscar — usa el AST del código
 // ─────────────────────────────────────────────────────────────
 
-aasync function astNavigatorAgent(instruction, fileContent) {
+async function astNavigatorAgent(instruction, fileContent) {
   console.log('[ASTNavigator] Analizando instrucción...');
 
   const lines = fileContent.split('\n');
