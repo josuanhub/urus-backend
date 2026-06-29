@@ -7497,7 +7497,17 @@ const studioAuth = (req, res, next) => {
   next();
 };
 
-app.post('/v1/studio/tts', studioAuth, async (req, res) => { try { const text = String(req.body?.text || '').trim().slice(0, 1000); if (!text) return res.status(400).json({ error: 'text requerido' }); const mp3 = await openai.audio.speech.create({ model: 'tts-1', voice: req.body?.voice || 'nova', input: text, speed: 1.0 }); const buffer = Buffer.from(await mp3.arrayBuffer()); res.set({ 'Content-Type': 'audio/mpeg', 'Content-Length': buffer.length }); res.send(buffer); } catch (err) { console.error('TTS_ERROR:', err); res.status(500).json({ error: err.message }); } });
+app.post('/v1/studio/notify', studioAuth, async (req, res) => {
+  try {
+    const message = String(req.body?.message || '').trim();
+    if (!message) return res.status(400).json({ ok: false });
+    await sendWhatsAppTextTwilio({ to: '+19395851479', text: message });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 
 app.post('/api/studio/chat', studioAuth, async (req, res) => {
   try {
