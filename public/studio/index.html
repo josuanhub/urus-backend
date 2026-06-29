@@ -1106,6 +1106,20 @@ const input = document.getElementById('input');
       return;
     }
 
+if (text.startsWith('/reindex')) {
+      addMessage('assistant', '🔄 Indexando server.js...');
+      fetch('/v1/studio/reindex', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+        body: JSON.stringify({ filename: 'server.js' })
+      }).then(r => r.json()).then(data => {
+        addMessage('assistant', data.ok ? '✅ Índice actualizado: ' + data.entries + ' entradas.' : '❌ Error: ' + data.error);
+      }).catch(e => addMessage('assistant', '❌ Error: ' + e.message));
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+    
     // ── COMANDO ESPECIAL: /edit ───────────────────────────
     // Si el mensaje empieza con /edit aplica self-edit
     // Ejemplo: /edit agrega la regla fundamental en masterPlannerAgent
