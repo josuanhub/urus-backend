@@ -1171,7 +1171,7 @@ const input = document.getElementById('input');
 
 
 
-  async function handleSelfEdit(instruction, previewOnly) {
+ async function handleSelfEdit(instruction, previewOnly) {
     const endpoint = previewOnly
       ? '/v1/studio/self-edit/preview'
       : '/v1/studio/self-edit';
@@ -1199,55 +1199,63 @@ const input = document.getElementById('input');
       });
 
       document.getElementById('typing-indicator').style.display = 'none';
-      const rawText = await res.text();
-let data;
-try { data = JSON.parse(rawText); } catch(e) { data = { ok: false, error: 'Error del servidor: ' + rawText.slice(0, 300) }; }
-      
+
+      let data;
+      try {
+        const rawText = await res.text();
+        data = JSON.parse(rawText);
+      } catch(e) {
+        data = { ok: false, error: 'Error del servidor (no JSON)' };
+      }
+      if (!data) data = { ok: false, error: 'Respuesta vacía' };
+
       if (data.ok) {
+        const nav = data.navigation || {};
+        const val = data.validation || {};
+        const diff = data.diff || {};
+
         if (previewOnly) {
           addMessage('assistant',
-            `✅ **PREVIEW GENERADO** (${data.elapsed_seconds}s)\n\n` +
+            `✅ **PREVIEW GENERADO** (${data.elapsed_seconds || 0}s)\n\n` +
             `**Navigator encontró:**\n` +
-            `• Función: \`${data.navigation.function}\`\n` +
-            `• Líneas: \`${data.navigation.lines}\`\n` +
-            `• Tipo: \`${data.navigation.edit_type}\`\n` +
-            `• Confianza: \`${data.navigation.confidence}/10\`\n` +
-            `• Razonamiento: ${data.navigation.reasoning}\n\n` +
-            `**Validator:** Confianza \`${data.validation.confidence}/10\`\n\n` +
-            `**Original:**\n\`\`\`javascript\n${data.diff.original}\n\`\`\`\n\n` +
-            `**Modificado:**\n\`\`\`javascript\n${data.diff.modified}\n\`\`\`\n\n` +
+            `• Función: \`${nav.function || 'N/A'}\`\n` +
+            `• Líneas: \`${nav.lines || 'N/A'}\`\n` +
+            `• Tipo: \`${nav.operation || nav.edit_type || 'N/A'}\`\n` +
+            `• Confianza: \`${nav.confidence || 'N/A'}/10\`\n\n` +
+            `**Validator:** Confianza \`${val.confidence || 8}/10\`\n\n` +
+            `**Original:**\n\`\`\`javascript\n${diff.original || ''}\n\`\`\`\n\n` +
+            `**Modificado:**\n\`\`\`javascript\n${diff.modified || ''}\n\`\`\`\n\n` +
             `Para aplicar el cambio:\n\`/edit ${instruction}\``
           );
         } else {
-addMessage('assistant',
-            `✅ **CAMBIO APLICADO** (${data.elapsed_seconds}s)\n\n` +
+          addMessage('assistant',
+            `✅ **CAMBIO APLICADO** (${data.elapsed_seconds || 0}s)\n\n` +
             `**Navigator:**\n` +
-            `• Función: \`${data.navigation.function}\`\n` +
-            `• Líneas: \`${data.navigation.lines}\`\n` +
-            `• Confianza: \`${data.navigation.confidence}/10\`\n\n` +
-            `**Validator:** \`${data.validation.confidence}/10\`\n\n` +
-            `**Commit:** \`${data.commit}\`\n\n` +
+            `• Función: \`${nav.function || 'N/A'}\`\n` +
+            `• Líneas: \`${nav.lines || 'N/A'}\`\n` +
+            `• Confianza: \`${nav.confidence || 'N/A'}/10\`\n\n` +
+            `**Validator:** \`${val.confidence || 8}/10\`\n\n` +
+            `**Commit:** \`${data.commit || 'N/A'}\`\n\n` +
             `🚀 Railway redesplegará en ~2 minutos.\n` +
             `El cambio estará en producción automáticamente.`
           );
           showNotif('✅ Cambio aplicado — Railway redesplegando...');
-          saveToMemory('edit', instruction, { commit: data.commit, section: data.navigation?.function });
+          saveToMemory('edit', instruction, { commit: data.commit, section: nav.function });
         }
       } else {
         addMessage('assistant',
-          `❌ **${data.stage?.toUpperCase() || 'ERROR'}**\n\n` +
-          `${data.error}\n\n` +
-          `${data.suggestion ? `💡 **Sugerencia:** ${data.suggestion}` : ''}` +
-          `${data.hint ? `\n\n💡 **Tip:** ${data.hint}` : ''}`
+          `❌ **${(data.stage || 'ERROR').toUpperCase()}**\n\n` +
+          `${data.error || 'Error desconocido'}\n\n` +
+          `${data.suggestion ? '💡 **Sugerencia:** ' + data.suggestion : ''}` +
+          `${data.hint ? '\n\n💡 **Tip:** ' + data.hint : ''}`
         );
-}
+      }
 
     } catch (err) {
       document.getElementById('typing-indicator').style.display = 'none';
       addMessage('assistant', `❌ Error de conexión: ${err.message}`);
     }
   }
-
   
   function quickSend(text) {
     document.getElementById('input').value = text;
