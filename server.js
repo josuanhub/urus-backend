@@ -10006,6 +10006,7 @@ app.post('/v1/factory/project/:id/test-builder', factoryAuth, async (req, res) =
     const masterSpec = specRes.rows[0].spec;
     const project = { company: specRes.rows[0].company, industry: specRes.rows[0].industry, transcript: specRes.rows[0].transcript };
     console.log('[TestBuilder] Iniciando prueba para ' + project_id);
+    console.log('[TestBuilder] DEBUG company=' + JSON.stringify(specRes.rows[0].company) + ' system_name=' + JSON.stringify(masterSpec.system_name));
     const result = await builderAgent(project_id, masterSpec, project);
     res.json({ ok: true, result });
   } catch (err) {
