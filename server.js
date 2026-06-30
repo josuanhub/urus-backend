@@ -10226,6 +10226,100 @@ function buildFallbackConfigs(project, masterSpec, project_id, apiBase, factoryK
 }
 
 
+// ========== URUS OS CONTROL PLANE ==========
+const URUS_OS_KEY = process.env.URUS_OS_KEY || 'urus-os-secret';
+
+function osAuth(req, res, next) {
+  const key = req.headers['x-os-key'];
+  if (key !== URUS_OS_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+}
+
+// Leer archivo (con rango de líneas opcional)
+app.get('/v1/os/file', osAuth, (req, res) => {
+  const fs = require('fs');
+  const { path: filePath, from, to } = req.query;
+  if (!filePath) return res.status(400).json({ error: 'path requerido' });
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.split('\n');
+    const start = from ? parseInt(from) - 1 : 0;
+    const end = to ? parseInt(to) : lines.length;
+    const slice = lines.slice(start, end);
+    res.json({
+      path: filePath,
+      from: start + 1,
+      to: end,
+      total_lines: lines.length,
+      lines: slice,
+      text: slice.join('\n')
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Ejecutar comando shell
+app.post('/v1/os/exec', osAuth, (req, res) => {
+  const { exec } = require('child_process');
+  const { cmd } = req.body;
+  if (!cmd) return res.status(400).json({ error: 'cmd requerido' });
+  exec(cmd, { cwd: '/app', timeout: 15000 }, (err, stdout, stderr) => {
+    res.json({ stdout, stderr, err: err?.message || null });
+  });
+});
+
+// Escribir archivo completo
+app.post('/v1/os/write', osAuth, (req, res) => {
+  const fs = require('fs');
+  const { path: filePath, content } = req.body;
+  if (!filePath || content === undefined) return res.status(400).json({ error: 'path y content requeridos' });
+  try {
+    fs.writeFileSync(filePath, content, 'utf8');
+    res.json({ ok: true, path: filePath, bytes: content.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Reemplazar líneas específicas en un archivo
+app.post('/v1/os/patch', osAuth, (req, res) => {
+  const fs = require('fs');
+  const { path: filePath, from, to, replacement } = req.body;
+  if (!filePath || !from || !to || replacement === undefined) {
+    return res.status(400).json({ error: 'path, from, to, replacement requeridos' });
+  }
+  try {
+    const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+    const before = lines.slice(0, from - 1);
+    const after = lines.slice(to);
+    const newLines = [...before, ...replacement.split('\n'), ...after];
+    fs.writeFileSync(filePath, newLines.join('\n'), 'utf8');
+    res.json({ ok: true, total_lines: newLines.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Buscar texto en archivo
+app.post('/v1/os/grep', osAuth, (req, res) => {
+  const fs = require('fs');
+  const { path: filePath, pattern } = req.body;
+  if (!filePath || !pattern) return res.status(400).json({ error: 'path y pattern requeridos' });
+  try {
+    const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+    const regex = new RegExp(pattern, 'i');
+    const matches = [];
+    lines.forEach((line, i) => {
+      if (regex.test(line)) matches.push({ line: i + 1, text: line });
+    });
+    res.json({ matches, count: matches.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 
 
 // ---------- Boot ----------
