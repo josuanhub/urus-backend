@@ -10120,8 +10120,15 @@ async function generatePageFiles(client, masterSpec, project, project_id, apiBas
           max_tokens: 6000,
           messages: [{ role: 'user', content: buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) }]
         });
+        
         let code = msg.content[0].text.trim();
         code = code.replace(/^```(jsx?|javascript|tsx?|typescript)?\n?/m, '').replace(/\n?```\s*$/m, '').trim();
+        const check = validarSintaxisJS(code.replace(/^import .*/gm, '').replace(/^export default /m, 'const __export__ = '));
+        if (!check.valido && intentos < 2) {
+          console.log(`[BuilderAgent] ⚠️ ${fileSpec.path} sintaxis inválida: ${check.error}, reintentando...`);
+          intentos++;
+          continue;
+        }
         files[fileSpec.path] = code;
         console.log(`[BuilderAgent] ✅ ${fileSpec.path} (${code.length} chars)`);
         break;
