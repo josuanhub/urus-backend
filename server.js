@@ -8197,6 +8197,7 @@ await logAgentMemory(project_id, 'builder_agent', { lovable_prompt: masterSpec.l
       // AGENTE 3 — Deploy Agent (Vercel)
       // NOTA: repoFullName todavía no existe en tu pipeline — viene del paso de GitHub Sync
       // que es lo que vamos a construir justo después de esto.
+    const repoFullName = buildResult.repoFullName;
       await updateProjectStatus(project_id, 'building', 'deploy_agent');
       const deployResult = await deployAgent(project_id, masterSpec, repoFullName);
       await logAgentMemory(project_id, 'deploy_agent', { repo: repoFullName }, deployResult, 'done');
