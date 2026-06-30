@@ -9996,10 +9996,26 @@ app.get('/v1/studio/memory/search', studioAuth, async (req, res) => {
 });
 
 
+app.post('/v1/factory/project/:id/test-builder', factoryAuth, async (req, res) => {
+  const project_id = req.params.id;
+  try {
+    const specRes = await pool.query('SELECT fs.spec, fp.session_id, fsess.client_name, fsess.company, fsess.industry, fsess.transcript FROM factory_specs fs JOIN factory_projects fp ON fp.id = fs.project_id JOIN factory_sessions fsess ON fsess.id = fp.session_id WHERE fs.project_id = $1', [project_id]);
+    if (!specRes.rows.length) {
+      return res.status(404).json({ ok: false, error: 'No hay spec guardado para este project_id' });
+    }
+    const masterSpec = specRes.rows[0].spec;
+    const project = { company: specRes.rows[0].company, industry: specRes.rows[0].industry, transcript: specRes.rows[0].transcript };
+    console.log('[TestBuilder] Iniciando prueba para ' + project_id);
+    const result = await builderAgent(project_id, masterSpec, project);
+    res.json({ ok: true, result });
+  } catch (err) {
+    console.error('[TestBuilder] Error:', err.message, err.stack);
+    res.status(500).json({ ok: false, error: err.message, stack: err.stack });
+  }
+});
 app.get('/health', (req, res) => {
   res.json({ ok: true, status: 'healthy', uptime: process.uptime(), time: new Date().toISOString() });
 });
-
 
 
 async function builderAgent(project_id, masterSpec, project) {
