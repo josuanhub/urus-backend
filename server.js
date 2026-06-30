@@ -10016,6 +10016,14 @@ app.post('/v1/factory/project/:id/test-builder', factoryAuth, async (req, res) =
     res.status(500).json({ ok: false, error: err.message, stack: err.stack });
   }
 });
+function validarSintaxisJS(codigo) {
+  try {
+    new Function(codigo);
+    return { valido: true, error: null };
+  } catch (err) {
+    return { valido: false, error: err.message };
+  }
+}
 app.get('/health', (req, res) => {
   res.json({ ok: true, status: 'healthy', uptime: process.uptime(), time: new Date().toISOString() });
 });
