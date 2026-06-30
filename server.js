@@ -8782,6 +8782,8 @@ app.post('/v1/factory/project/approve', factoryAuth, async (req, res) => {
 // GET /v1/factory/project/:id/status
 app.get('/v1/factory/project/:id/status', factoryAuth, async (req, res) => {
   try {
+    const debugCheck = await pool.query('SELECT company, industry, client_name FROM factory_sessions WHERE id = $1', [req.params.id]);
+    console.log('[StatusDebug]', JSON.stringify(debugCheck.rows));
     const result = await pool.query(
       `SELECT fp.id, fp.status, fp.current_agent, fp.deployed_url, fp.error_log,
               fs.spec, fs.version
@@ -8796,7 +8798,6 @@ app.get('/v1/factory/project/:id/status', factoryAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 // GET /v1/factory/project/:id/brain
 app.get('/v1/factory/project/:id/brain', factoryAuth, async (req, res) => {
   try {
