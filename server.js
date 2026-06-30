@@ -10001,7 +10001,6 @@ app.get('/health', (req, res) => {
 });
 
 
-En la función runOrchestrator, inserta ANTES de la línea que dice "// ---------- Boot ----------" el siguiente bloque completo:
 
 async function builderAgent(project_id, masterSpec, project) {
   console.log(`[BuilderAgent] Iniciando para proyecto ${project_id}`);
