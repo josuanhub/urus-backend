@@ -10079,6 +10079,118 @@ async function builderAgent(project_id, masterSpec, project) {
 }
 
 
+async function generatePageFiles(client, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) {
+  const files = {};
+  const filesToGenerate = buildFileList(masterSpec, tables);
+
+  for (const fileSpec of filesToGenerate) {
+    console.log(`[BuilderAgent] Generando ${fileSpec.path}...`);
+    let intentos = 0;
+    while (intentos < 3) {
+      try {
+        const msg = await client.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 6000,
+          messages: [{ role: 'user', content: buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) }]
+        });
+        let code = msg.content[0].text.trim();
+        code = code.replace(/^```(jsx?|javascript|tsx?|typescript)?\n?/m, '').replace(/\n?```\s*$/m, '').trim();
+        files[fileSpec.path] = code;
+        console.log(`[BuilderAgent] ✅ ${fileSpec.path} (${code.length} chars)`);
+        break;
+      } catch (e) {
+        if (e.status === 429 && intentos < 2) {
+          intentos++;
+          console.log(`[BuilderAgent] Rate limit ${fileSpec.path}, esperando 90s...`);
+          await new Promise(r => setTimeout(r, 90000));
+        } else {
+          console.error(`[BuilderAgent] Error generando ${fileSpec.path}:`, e.message);
+          files[fileSpec.path] = buildFallbackComponent(fileSpec.name);
+          break;
+        }
+      }
+    }
+    await new Promise(r => setTimeout(r, 8000));
+  }
+  return files;
+}
+
+function buildFileList(masterSpec, tables) {
+  const list = [];
+  list.push({ path: 'src/App.jsx', name: 'App', type: 'router', description: 'Router principal' });
+  list.push({ path: 'src/components/Sidebar.jsx', name: 'Sidebar', type: 'component', description: 'Navegación lateral colapsable' });
+  list.push({ path: 'src/components/Toast.jsx', name: 'Toast', type: 'component', description: 'Notificaciones globales' });
+  list.push({ path: 'src/components/LoadingSkeleton.jsx', name: 'LoadingSkeleton', type: 'component', description: 'Skeleton loader' });
+
+  const modules = masterSpec.modules || [];
+  for (const mod of modules) {
+    const screens = mod.screens || [];
+    for (const screen of screens) {
+      const componentName = screen.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+      if (!componentName) continue;
+      list.push({ path: `src/pages/${componentName}.jsx`, name: componentName, type: 'page', moduleName: mod.name, description: screen, endpoints: mod.endpoints || [] });
+    }
+  }
+  if (modules.length === 0) {
+    list.push({ path: 'src/pages/Dashboard.jsx', name: 'Dashboard', type: 'page', description: 'Dashboard principal con KPIs' });
+    list.push({ path: 'src/pages/ImportarDatos.jsx', name: 'ImportarDatos', type: 'page', description: 'Importar datos via drag & drop' });
+    list.push({ path: 'src/pages/Configuracion.jsx', name: 'Configuracion', type: 'page', description: 'Configuración del sistema' });
+  }
+  return list;
+}
+
+function buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) {
+  const baseContext = `SISTEMA: "${masterSpec.system_name}" para "${project.company}" (${project.industry})\nPALETA: ${palette}\nBACKEND API: ${apiBase}/{tabla} — header x-factory-key: ${factoryKey}\nTABLAS DISPONIBLES: ${tables.join(', ')}\nUPLOAD URL: ${uploadUrl} (sin Content-Type, header x-factory-key: ${factoryKey})`;
+  const styleRules = `REGLAS DE ESTILO:\n- Diseño oscuro profesional, fondo #0A0A0F\n- Tailwind puro, sin librerías UI externas\n- React 18 + hooks funcionales, sin TypeScript\n- Lucide React para íconos\n- Responsive mobile-first\n- Nunca uses localStorage\n- Fetch con URL completa y header x-factory-key: ${factoryKey}`;
+
+  if (fileSpec.type === 'router') {
+    return `${baseContext}\n\nGenera src/App.jsx completo.\n\nMÓDULOS:\n${masterSpec.modules?.map(m => `- ${m.name}: ${(m.screens || []).join(', ')}`).join('\n') || 'Dashboard, Importar Datos, Configuración'}\n\nDEBE INCLUIR: import React/useState, Routes/Route/Navigate de react-router-dom, Sidebar, import de cada página desde ./pages/, layout flex con Sidebar colapsable a la izquierda, Route por pantalla, Navigate por defecto.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+  }
+  if (fileSpec.name === 'Sidebar') {
+    const navItems = masterSpec.modules?.map(m => `- ${m.name}: ${(m.screens || []).join(', ')}`).join('\n') || '';
+    return `${baseContext}\n\nGenera src/components/Sidebar.jsx completo.\n\nITEMS:\n${navItems}\n\nDEBE INCLUIR: prop collapsed+onToggle, logo "${masterSpec.system_name}" arriba, useLocation para item activo, Link de react-router-dom, ícono lucide-react por sección, nombre empresa "${project.company}" abajo, transición suave.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+  }
+  if (fileSpec.name === 'Toast') {
+    return `${baseContext}\n\nGenera src/components/Toast.jsx completo.\n\nDEBE INCLUIR: Context API ToastContext + useToast hook exportado, ToastProvider, tipos success/error/info/warning, auto-dismiss 4s, posición inferior derecha, animación entrada/salida, máximo 3 toasts.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+  }
+  if (fileSpec.name === 'LoadingSkeleton') {
+    return `${baseContext}\n\nGenera src/components/LoadingSkeleton.jsx.\n\nDEBE INCLUIR: props rows(5) cols(3) type('table'|'cards'|'list'), animate-pulse de Tailwind, variantes para cada type.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+  }
+
+  const isImport = fileSpec.name === 'ImportarDatos' || fileSpec.description?.toLowerCase().includes('import');
+  const isDashboard = fileSpec.name === 'Dashboard' || fileSpec.description?.toLowerCase().includes('dashboard') || fileSpec.description?.toLowerCase().includes('kpi');
+
+  if (isImport) {
+    return `${baseContext}\n\nGenera src/pages/${fileSpec.name}.jsx — "${fileSpec.description}".\n\nDEBE INCLUIR: drag&drop zone + input file fallback, acepta .xlsx .xls .csv .pdf .png .jpg, upload a POST ${uploadUrl} con FormData key "file" y header x-factory-key (sin Content-Type), mostrar nombre/tamaño/ícono, barra de progreso, resultado filas_insertadas/tabla/errores, estados idle→dragging→uploading→success|error, botón Limpiar.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+  }
+  if (isDashboard) {
+    return `${baseContext}\n\nGenera src/pages/${fileSpec.name}.jsx — "${fileSpec.description}".\n\nDEBE INCLUIR: cards KPI con número+label+tendencia (fetch a ${apiBase}/{tabla} contando registros de ${tables.slice(0,3).join(', ')}), alertas críticas si hay estado='urgente', tabla actividad reciente (10 últimos), skeleton loader, useEffect+fetch al montar, manejo de error, grid responsive 4 cols desktop / 2 mobile.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+  }
+
+  const relevantTable = tables.find(t => fileSpec.description?.toLowerCase().includes(t.replace(/_/g, ' '))) || tables[0];
+  return `${baseContext}\n\nGenera src/pages/${fileSpec.name}.jsx — Módulo: ${fileSpec.moduleName || fileSpec.name} — "${fileSpec.description}".\n\nTABLA: ${relevantTable || 'primera disponible'}\nENDPOINT: ${apiBase}/${relevantTable || '{tabla}'}\n\nDEBE INCLUIR: listado en tabla con búsqueda/filtros, botón Nuevo abre modal/panel, formulario crear/editar con validación básica, editar/eliminar por fila con confirmación, skeleton loader, toast éxito/error en CRUD, paginación simple si hay +20 registros, estado vacío con CTA.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+}
+
+function slugifyCompany(text) {
+  return (text || 'cliente').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+}
+
+function buildFallbackComponent(name) {
+  return `import React from 'react';\n\nexport default function ${name}() {\n  return (\n    <div className="p-8">\n      <h1 className="text-2xl font-bold text-white mb-4">${name}</h1>\n      <p className="text-gray-400">Módulo en construcción.</p>\n    </div>\n  );\n}\n`;
+}
+
+function buildFallbackConfigs(project, masterSpec, project_id, apiBase, factoryKey, palette) {
+  const slug = slugifyCompany(project.company);
+  return {
+    'package.json': JSON.stringify({ name: `${slug}-system`, version: '0.1.0', private: true, scripts: { dev: 'vite', build: 'vite build', preview: 'vite preview' }, dependencies: { react: '^18.2.0', 'react-dom': '^18.2.0', 'react-router-dom': '^6.22.0', 'lucide-react': '^0.383.0' }, devDependencies: { vite: '^5.0.0', '@vitejs/plugin-react': '^4.2.0', tailwindcss: '^3.4.0', postcss: '^8.4.0', autoprefixer: '^10.4.0' } }, null, 2),
+    'index.html': `<!DOCTYPE html>\n<html lang="es">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${masterSpec.system_name || 'Sistema URUS'}</title>\n    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="/src/main.jsx"></script>\n  </body>\n</html>`,
+    'tailwind.config.js': `/** @type {import('tailwindcss').Config} */\nexport default {\n  content: ['./index.html', './src/**/*.{js,jsx}'],\n  theme: { extend: { colors: { primary: '${palette.split(',')[0]?.trim() || '#6C63FF'}', accent: '${palette.split(',')[1]?.trim() || '#00D4AA'}', surface: '#1A1A2E', base: '#0A0A0F' }, fontFamily: { sans: ['Inter', 'sans-serif'] } } },\n  plugins: [],\n}`,
+    'vite.config.js': `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: { port: 5173 },\n});`,
+    'src/main.jsx': `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport { BrowserRouter } from 'react-router-dom';\nimport App from './App';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')).render(\n  <React.StrictMode>\n    <BrowserRouter>\n      <App />\n    </BrowserRouter>\n  </React.StrictMode>\n);`,
+    'src/hooks/useApi.js': `const API_BASE = '${apiBase}';\nconst FACTORY_KEY = '${factoryKey}';\n\nexport default async function fetchApi(endpoint, options = {}) {\n  const res = await fetch(\`\${API_BASE}/\${endpoint}\`, { ...options, headers: { 'x-factory-key': FACTORY_KEY, 'Content-Type': 'application/json', ...(options.headers || {}) } });\n  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || \`Error \${res.status}\`); }\n  return res.json();\n}\n\nexport { fetchApi };`
+  };
+}
+
 
 
 
