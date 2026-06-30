@@ -10018,10 +10018,12 @@ app.post('/v1/factory/project/:id/test-builder', factoryAuth, async (req, res) =
 });
 function validarSintaxisJS(codigo) {
   try {
-    new Function(codigo);
+    const esbuild = require('esbuild');
+    esbuild.transformSync(codigo, { loader: 'jsx', jsx: 'automatic' });
     return { valido: true, error: null };
   } catch (err) {
-    return { valido: false, error: err.message };
+    const mensaje = err.errors?.[0]?.text || err.message;
+    return { valido: false, error: mensaje };
   }
 }
 app.get('/health', (req, res) => {
