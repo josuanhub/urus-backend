@@ -8629,7 +8629,9 @@ Devuelve ÚNICAMENTE este JSON sin markdown ni texto extra:
   "tech_stack": { "frontend": "React + Tailwind", "backend": "Node.js + Express", "database": "PostgreSQL", "hosting": "Railway + Lovable" }
 }`;
 
-  let estructura;
+ let estructura;
+let intentos1 = 0;
+while (intentos1 < 3) {
   try {
     const msg1 = await client.messages.create({
       model: 'claude-sonnet-4-6',
@@ -8638,17 +8640,26 @@ Devuelve ÚNICAMENTE este JSON sin markdown ni texto extra:
     });
     const raw1 = msg1.content[0].text.replace(/```json|```/g, '').trim();
     estructura = JSON.parse(raw1);
+    break;
   } catch (e) {
-    console.error('[MasterPlanner] Error llamada 1:', e.message);
-    estructura = {
-      system_name: `Sistema ${project.company}`,
-      description: 'Sistema generado por URUS Factory',
-      modules: [],
-      database_schema: { tables: [] },
-      integrations: ['whatsapp-twilio'],
-      tech_stack: { frontend: 'React + Tailwind', backend: 'Node.js + Express', database: 'PostgreSQL', hosting: 'Railway + Lovable' }
-    };
+    if (e.status === 429 && intentos1 < 2) {
+      intentos1++;
+      console.log(`[MasterPlanner] Rate limit llamada 1, esperando 90s (intento ${intentos1}/3)...`);
+      await new Promise(r => setTimeout(r, 90000));
+    } else {
+      console.error('[MasterPlanner] Error llamada 1:', e.message);
+      estructura = {
+        system_name: `Sistema ${project.company}`,
+        description: 'Sistema generado por URUS Factory',
+        modules: [],
+        database_schema: { tables: [] },
+        integrations: ['whatsapp-twilio'],
+        tech_stack: { frontend: 'React + Tailwind', backend: 'Node.js + Express', database: 'PostgreSQL', hosting: 'Railway + Lovable' }
+      };
+      break;
+    }
   }
+}
 
   await new Promise(r => setTimeout(r, 20000));
 
