@@ -10001,6 +10001,86 @@ app.get('/health', (req, res) => {
 });
 
 
+En la función runOrchestrator, inserta ANTES de la línea que dice "// ---------- Boot ----------" el siguiente bloque completo:
+
+async function builderAgent(project_id, masterSpec, project) {
+  console.log(`[BuilderAgent] Iniciando para proyecto ${project_id}`);
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+  const backendBase = 'https://www.urusverify.com';
+  const apiBase = `${backendBase}/v1/client/${project_id}/api`;
+  const uploadUrl = `${backendBase}/v1/factory/project/${project_id}/upload-data`;
+  const factoryKey = 'factory2026';
+  const tables = masterSpec.database_schema?.tables?.map(t => t.name) || [];
+  const palette = '#6C63FF, #00D4AA, #0A0A0F, #1A1A2E';
+
+  console.log(`[BuilderAgent] Llamada 1 — archivos de configuración...`);
+  const slug = slugifyCompany(project.company);
+  const configPrompt = `Eres un arquitecto frontend senior. Genera archivos de configuración base para React + Vite + Tailwind.\n\nPROYECTO: "${masterSpec.system_name}" para "${project.company}"\nPALETA: ${palette}\nAPI BASE: ${apiBase}\nFACTORY KEY: ${factoryKey}\nTABLAS: ${tables.join(', ')}\n\nDevuelve ÚNICAMENTE este JSON sin markdown:\n{\n  "package.json": "contenido",\n  "index.html": "contenido",\n  "tailwind.config.js": "contenido",\n  "vite.config.js": "contenido",\n  "src/main.jsx": "contenido",\n  "src/hooks/useApi.js": "contenido"\n}\n\nREGLAS:\n- package.json: name "${slug}-system", react 18, react-dom 18, react-router-dom 6, lucide-react, vite 5\n- index.html: Google Fonts Inter, div#root, script src="/src/main.jsx"\n- tailwind.config.js: content ["./index.html","./src/**/*.{js,jsx}"], colores primary/accent/surface/base\n- vite.config.js: @vitejs/plugin-react, port 5173\n- src/main.jsx: BrowserRouter wrapping App\n- src/hooks/useApi.js: fetchApi(endpoint, options) con headers x-factory-key y Content-Type automáticos`;
+
+  let configFiles = {};
+  let intentosConfig = 0;
+  while (intentosConfig < 3) {
+    try {
+      const msg = await client.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 8000, messages: [{ role: 'user', content: configPrompt }] });
+      const raw = msg.content[0].text.replace(/```json|```/g, '').trim();
+      configFiles = JSON.parse(raw);
+      console.log(`[BuilderAgent] Configs OK: ${Object.keys(configFiles).length} archivos`);
+      break;
+    } catch (e) {
+      if (e.status === 429 && intentosConfig < 2) { intentosConfig++; console.log(`[BuilderAgent] Rate limit configs, esperando 90s...`); await new Promise(r => setTimeout(r, 90000)); }
+      else { configFiles = buildFallbackConfigs(project, masterSpec, project_id, apiBase, factoryKey, palette); break; }
+    }
+  }
+  configFiles['src/index.css'] = '@tailwind base;\n@tailwind components;\n@tailwind utilities;\n\n* { box-sizing: border-box; }\nbody { font-family: \'Inter\', sans-serif; background: #0A0A0F; color: #F5F5F5; margin: 0; }';
+  await new Promise(r => setTimeout(r, 15000));
+
+  const pageFiles = await generatePageFiles(client, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables);
+  const allFiles = { ...configFiles, ...pageFiles };
+  console.log(`[BuilderAgent] Total archivos: ${Object.keys(allFiles).length}`);
+
+  const repoName = `urus-${slugifyCompany(project.company)}-${project_id.slice(0, 8)}`;
+  console.log(`[BuilderAgent] Creando repo: ${repoName}`);
+  const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+  const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
+
+  const createRepoRes = await fetch('https://api.github.com/user/repos', {
+    method: 'POST',
+    headers: { Authorization: `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': 'URUS-Factory' },
+    body: JSON.stringify({ name: repoName, description: `${masterSpec.system_name} — URUS Factory`, private: false, auto_init: false })
+  });
+  const repoData = await createRepoRes.json();
+  if (!createRepoRes.ok && repoData.errors?.[0]?.message !== 'name already exists on this account') {
+    throw new Error(`GitHub crear repo falló: ${JSON.stringify(repoData)}`);
+  }
+  const repoFullName = `${GITHUB_USERNAME}/${repoName}`;
+  console.log(`[BuilderAgent] Repo listo: ${repoFullName}`);
+
+  let uploadedCount = 0;
+  const failedFiles = [];
+  for (const [filePath, fileContent] of Object.entries(allFiles)) {
+    try {
+      let sha = null;
+      try {
+        const checkRes = await fetch(`https://api.github.com/repos/${repoFullName}/contents/${filePath}`, { headers: { Authorization: `token ${GITHUB_TOKEN}`, 'User-Agent': 'URUS-Factory' } });
+        if (checkRes.ok) { const existing = await checkRes.json(); sha = existing.sha; }
+      } catch (_) {}
+      const uploadRes = await fetch(`https://api.github.com/repos/${repoFullName}/contents/${filePath}`, {
+        method: 'PUT',
+        headers: { Authorization: `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': 'URUS-Factory' },
+        body: JSON.stringify({ message: `feat: add ${filePath}`, content: Buffer.from(String(fileContent)).toString('base64'), ...(sha ? { sha } : {}) })
+      });
+      if (!uploadRes.ok) { const e = await uploadRes.json(); failedFiles.push(filePath); console.error(`[BuilderAgent] Error ${filePath}:`, e.message); }
+      else { uploadedCount++; console.log(`[BuilderAgent] ✅ ${filePath}`); }
+      await new Promise(r => setTimeout(r, 300));
+    } catch (err) { failedFiles.push(filePath); }
+  }
+  console.log(`[BuilderAgent] Subida: ${uploadedCount} ok, ${failedFiles.length} fallidos`);
+  return { repoFullName, repoUrl: `https://github.com/${repoFullName}`, filesUploaded: uploadedCount, filesFailed: failedFiles, status: 'done' };
+}
+
+
+
 
 
 // ---------- Boot ----------
