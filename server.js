@@ -10026,10 +10026,55 @@ function validarSintaxisJS(codigo) {
     return { valido: false, error: mensaje };
   }
 }
+async function masterPlannerModulos(project) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+  const transcriptCompleto = (project.transcript || '').slice(0, 4000);
+  const prompt = 'Eres el Arquitecto Jefe de URUS Factory. Lee esta transcripcion de reunion con un negocio real y diseña SOLO la estructura de modulos del sistema (NO tablas todavia).\n\nEMPRESA: ' + project.company + '\nINDUSTRIA: ' + project.industry + '\n\nTRANSCRIPCION:\n' + transcriptCompleto + '\n\nDevuelve UNICAMENTE este JSON sin markdown ni texto extra:\n{\n  "system_name": "nombre corto y memorable",\n  "description": "dos frases que describen el sistema",\n  "modules": [{ "name": "nombre", "type": "frontend", "screens": ["pantalla"], "endpoints": ["/ruta"] }]\n}\n\nDiseña TODOS los modulos relevantes al negocio segun la transcripcion, sin limitarte a 2-3. Piensa como un CTO senior.';
+  let intentos = 0;
+  while (intentos < 3) {
+    try {
+      const msg = await client.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 3000, messages: [{ role: 'user', content: prompt }] });
+      const raw = msg.content[0].text.replace(/```json|```/g, '').trim();
+      return JSON.parse(raw);
+    } catch (e) {
+      if (e.status === 429 && intentos < 2) {
+        intentos++;
+        await new Promise(r => setTimeout(r, 60000));
+      } else {
+        console.error('[MasterPlannerModulos] Error:', e.message);
+        return { system_name: 'Sistema ' + project.company, description: 'Sistema generado por URUS Factory', modules: [] };
+      }
+    }
+  }
+}
+
+async function masterPlannerSchema(project, modulos) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
+  const modulosTexto = (modulos.modules || []).map(m => m.name + ': ' + (m.screens || []).join(', ')).join(' | ');
+  const prompt = 'Eres un arquitecto de bases de datos. Para el sistema "' + modulos.system_name + '" de la empresa ' + project.company + ' (' + project.industry + '), con estos modulos:\n' + modulosTexto + '\n\nDisena el esquema completo de base de datos. Devuelve UNICAMENTE este JSON sin markdown:\n{\n  "tables": [{ "name": "tabla", "fields": [{"name":"id","type":"UUID"},{"name":"campo","type":"TEXT"}] }]\n}\n\nUna tabla por cada entidad relevante de los modulos. Tipos validos: UUID, TEXT, NUMERIC, INTEGER, BOOLEAN, TIMESTAMP.';
+  let intentos = 0;
+  while (intentos < 3) {
+    try {
+      const msg = await client.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 3000, messages: [{ role: 'user', content: prompt }] });
+      const raw = msg.content[0].text.replace(/```json|```/g, '').trim();
+      return JSON.parse(raw);
+    } catch (e) {
+      if (e.status === 429 && intentos < 2) {
+        intentos++;
+        await new Promise(r => setTimeout(r, 60000));
+      } else {
+        console.error('[MasterPlannerSchema] Error:', e.message);
+        return { tables: [] };
+      }
+    }
+  }
+}
+
 app.get('/health', (req, res) => {
   res.json({ ok: true, status: 'healthy', uptime: process.uptime(), time: new Date().toISOString() });
 });
-
 
 async function builderAgent(project_id, masterSpec, project) {
   console.log(`[BuilderAgent] Iniciando para proyecto ${project_id}`);
