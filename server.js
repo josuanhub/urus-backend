@@ -9609,8 +9609,9 @@ async function astNavigatorAgent(instruction, fileContent) {
       const constFn = line.match(/^(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:function|\()/);
       if (constFn) indexEntries.push({ entry_type: 'function', name: constFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
       const endpoint = line.match(/^app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/);
-      if (endpoint) indexEntries.push({ entry_type: 'endpoint', name: `${endpoint[1].toUpperCase()} ${endpoint[2]}`, path: endpoint[2], line_start: lineNum, signature: line.trim().slice(0, 120) });
-    }
+Necesito ver el contexto completo de la función `astNavigatorAgent` para hacer el reemplazo correcto. Basándome en la instrucción, el cambio específico es:
+
+const indexList = indexEntries.map(e => `L${e.line_start}-${e.line_end || ''}: [${e.entry_type}] ${e.name} | sig: ${(e.signature||'').slice(0,60)}`).join('\n');
   }
   console.log(`[ASTNavigator] Índice: ${indexEntries.length} entradas`);
   const Anthropic = require('@anthropic-ai/sdk');
