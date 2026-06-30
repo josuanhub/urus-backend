@@ -8207,8 +8207,7 @@ await logAgentMemory(project_id, 'builder_agent', { lovable_prompt: masterSpec.l
       );
 
     
-    const builder = await builderRegistry.select('frontend');
-    const buildResult = await builder.build({ ...masterSpec, project_id });
+  
 
     await logAgentMemory(project_id, 'builder_adapter', masterSpec, buildResult, 'done');
 
