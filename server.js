@@ -8187,11 +8187,11 @@ const masterSpec = await masterPlannerAgent(project);
       await logAgentMemory(project_id, 'backend_engineer', { schema: dbResult.schema }, backendResult, 'done');
     
 
-     // AGENTE 2 — Builder Adapter (Lovable construye, queda esperando aquí)
-      await updateProjectStatus(project_id, 'building', 'builder_adapter');
-      // El pipeline se detiene aquí. Continúa cuando se llame
-      // a /v1/factory/project/:id/confirm-github más adelante.
-      return;
+  // AGENTE 2 — Builder Agent (genera repo automáticamente)
+await updateProjectStatus(project_id, 'building', 'builder_agent');
+const buildResult = await builderAgent(project_id, masterSpec, project);
+await logAgentMemory(project_id, 'builder_agent', { lovable_prompt: masterSpec.lovable_prompt?.slice(0, 200) }, buildResult, 'done');
+
 
     
       // AGENTE 3 — Deploy Agent (Vercel)
