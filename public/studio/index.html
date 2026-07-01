@@ -1226,7 +1226,8 @@ if (text.startsWith('/reindex')) {
 
 
 
- async function handleSelfEdit(instruction, previewOnly) {
+async function handleSelfEdit(instruction, previewOnly) {
+    console.log('[handleSelfEdit] instruction:', instruction, '| previewOnly:', previewOnly);
     const endpoint = previewOnly
       ? '/v1/studio/self-edit/preview'
       : '/v1/studio/self-edit';
@@ -1311,7 +1312,6 @@ if (text.startsWith('/reindex')) {
       addMessage('assistant', `❌ Error de conexión: ${err.message}`);
     }
   }
-  
   function quickSend(text) {
     document.getElementById('input').value = text;
     document.getElementById('input').focus();
