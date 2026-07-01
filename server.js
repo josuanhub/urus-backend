@@ -9581,20 +9581,7 @@ if (endpoint) {
   const path = endpoint[2];
   entries.push({ entry_type: 'endpoint', name: `${method} ${path}`, path, line_start: lineNum, signature: line.trim().slice(0, 120) });
 }
-    if (asyncFn) {
-      entries.push({ entry_type: 'function', name: asyncFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
-    }
-    const constFn = line.match(/^(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:function|\()/);
-    if (constFn) {
-      entries.push({ entry_type: 'function', name: constFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
-    }
-    const endpoint = line.match(/^app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/);
-    if (endpoint) {
-      const method = endpoint[1].toUpperCase();
-      const path   = endpoint[2];
-      entries.push({ entry_type: 'endpoint', name: `${method} ${path}`, path, line_start: lineNum, signature: line.trim().slice(0, 120) });
-    }
-  }
+
   for (let i = 0; i < entries.length; i++) {
     const startIdx = entries[i].line_start - 1;
     let braceCount = 0, started = false, endLine = Math.min(lines.length, startIdx + 400);
