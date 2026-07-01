@@ -9764,10 +9764,10 @@ async function selfEditOrchestrator(instruction, previewOnly = false, targetFile
   const previousSha = sha;
   console.log(`[Orchestrator] Archivo leído: ${fileContent.split('\n').length} líneas`);
 
-  // PASO 2 — AST NAVIGATOR (determinista)
+ // PASO 2 — AST NAVIGATOR (determinista)
   let navigation;
   try {
-    navigation = await astNavigatorAgent(instruction, fileContent);
+    navigation = await astNavigatorAgent(instruction, fileContent, targetFile);
   } catch(navErr) {
     return {
       ok: false,
