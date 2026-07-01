@@ -9562,7 +9562,7 @@ function callAnthropicDirect(systemPrompt, userPrompt, maxTokens = 8000) {
 
 async function buildAndPersistIndex(filename, fileContent) {
   console.log(`[FileIndex] Indexando ${filename}...`);
-  const lines = fileContent.split('\n');
+  const lines = fileContent.replace(/\r/g, '').split('\n');
   const entries = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -9605,7 +9605,6 @@ async function buildAndPersistIndex(filename, fileContent) {
   console.log(`[FileIndex] ✅ ${entries.length} entradas indexadas para ${filename}`);
   return entries.length;
 }
-
 
 // ── AST NAVIGATOR v4 ─────────────────────────────────────────
 
