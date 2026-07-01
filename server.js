@@ -9751,7 +9751,7 @@ async function selfEditOrchestrator(instruction, previewOnly = false, targetFile
   // PASO 2 — AST NAVIGATOR (determinista)
   let navigation;
   try {
-    navigation = await astNavigatorAgent(instruction, fileContent);
+   navigation = await astNavigatorAgent(instruction, fileContent, targetFile);
   } catch(navErr) {
     return {
       ok: false,
