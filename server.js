@@ -9655,7 +9655,7 @@ async function astNavigatorAgent(instruction, fileContent) {
     else throw new Error(`"${extracted.name}" no está en el índice`);
   }
   const startIdx = Math.max(0, extracted.line_number - 1);
-  let endIdx = Math.min(lines.length - 1, startIdx + 300);
+let endIdx = Math.min(lines.length - 1, startIdx + 600);
   let braceCount = 0, started = false;
   for (let i = startIdx; i < lines.length && i < startIdx + 500; i++) {
     const line = lines[i] || '';
