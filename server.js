@@ -9565,8 +9565,16 @@ async function buildAndPersistIndex(filename, fileContent) {
   
   let rawContent = fileContent;
   if (filename.endsWith('.html')) {
-    const scripts = fileContent.match(/<script[\s\S]*?<\/script>/gi) || [];
-    rawContent = scripts.map(s => s.replace(/<\/?script[^>]*>/gi, '')).join('\n');
+    const scripts = [];
+    const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
+    let match;
+    while ((match = scriptRegex.exec(fileContent)) !== null) {
+      const scriptStart = fileContent.substring(0, match.index).split('\n').length;
+      const innerContent = match[1];
+      const paddedLines = '\n'.repeat(scriptStart - 1) + innerContent;
+      scripts.push(paddedLines);
+    }
+    rawContent = scripts.join('\n');
   }
   
   const lines = rawContent.replace(/\r/g, '').split('\n');
