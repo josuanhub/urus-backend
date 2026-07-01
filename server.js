@@ -9609,13 +9609,14 @@ async function buildAndPersistIndex(filename, fileContent) {
 
 // ── AST NAVIGATOR v4 ─────────────────────────────────────────
 
-async function astNavigatorAgent(instruction, fileContent) {
+async function astNavigatorAgent(instruction, fileContent, targetFile = 'server.js') {
   console.log('[ASTNavigator v5] Usando índice persistente...');
   const lines = fileContent.split('\n');
   let indexEntries = [];
   try {
-    const result = await pool.query(
-      `SELECT entry_type, name, path, line_start, line_end, signature FROM file_index WHERE filename = 'server.js' ORDER BY line_start ASC`
+   const result = await pool.query(
+      `SELECT entry_type, name, path, line_start, line_end, signature FROM file_index WHERE filename = $1 ORDER BY line_start ASC`,
+      [targetFile]
     );
     indexEntries = result.rows;
   } catch(e) {
