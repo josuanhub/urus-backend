@@ -9624,7 +9624,7 @@ async function buildAndPersistIndex(filename, fileContent) {
 
 // ── AST NAVIGATOR v4 ─────────────────────────────────────────
 
-async function astNavigatorAgent(instruction, fileContent) {
+async function astNavigatorAgent(instruction, fileContent, targetFile = 'server.js') {
   console.log('[ASTNavigator v5] Usando índice persistente...');
   const lines = fileContent.split('\n');
   let indexEntries = [];
