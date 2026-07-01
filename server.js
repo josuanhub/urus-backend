@@ -10041,6 +10041,33 @@ function validarSintaxisJS(codigo) {
     return { valido: false, error: err.message };
   }
 }
+
+function validateGeneratedFile(filePath, content) {
+  if (filePath.endsWith('.jsx') || filePath.endsWith('.tsx')) {
+    try {
+      require('esbuild').transformSync(content, { loader: 'jsx', jsx: 'automatic' });
+      return { valido: true };
+    } catch (err) {
+      return { valido: false, error: err.message || String(err) };
+    }
+  } else if (filePath.endsWith('.js')) {
+    try {
+      require('esbuild').transformSync(content, { loader: 'js' });
+      return { valido: true };
+    } catch (err) {
+      return { valido: false, error: err.message || String(err) };
+    }
+  } else if (filePath.endsWith('.json')) {
+    try {
+      JSON.parse(content);
+      return { valido: true };
+    } catch (err) {
+      return { valido: false, error: err.message || String(err) };
+    }
+  } else {
+    return { valido: true };
+  }
+}
 app.get('/health', (req, res) => {
   res.json({ ok: true, status: 'healthy', uptime: process.uptime(), time: new Date().toISOString() });
 });
