@@ -10157,42 +10157,51 @@ async function generatePageFiles(client, masterSpec, project, project_id, apiBas
   for (const fileSpec of filesToGenerate) {
     console.log(`[BuilderAgent] Generando ${fileSpec.path}...`);
     let intentos = 0;
+    let success = false;
+
     while (intentos < 3) {
       try {
         const msg = await client.messages.create({
           model: 'claude-sonnet-4-6',
-        max_tokens: 16000,
+          max_tokens: 16000,
           messages: [{ role: 'user', content: buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) }]
         });
-        
-        let code = msg.content[0].text.trim();
-        code = code.replace(/^```(jsx?|javascript|tsx?|typescript)?\n?/m, '').replace(/\n?```\s*$/m, '').trim();
-        const check = validarSintaxisJS(code.replace(/^import .*/gm, '').replace(/^export default /m, 'const __export__ = '));
-        if (!check.valido && intentos < 2) {
-          console.log(`[BuilderAgent] ⚠️ ${fileSpec.path} sintaxis inválida: ${check.error}, reintentando...`);
+
+        let candidate = msg.content[0].text.trim();
+        candidate = candidate.replace(/^```(jsx?|javascript|tsx?|typescript)?\n?/m, '').replace(/\n?```\s*$/m, '').trim();
+
+        const validation = validateGeneratedFile(fileSpec.path, candidate);
+        if (validation.valid) {
+          files[fileSpec.path] = candidate;
+          console.log(`[BuilderAgent] ✅ ${fileSpec.path} generado exitosamente (${candidate.length} chars)`);
+          success = true;
+          break;
+        } else {
           intentos++;
-          continue;
+          console.log(`[BuilderAgent] ⚠️ ${fileSpec.path} validación fallida (intento ${intentos}): ${validation.error}`);
         }
-        files[fileSpec.path] = code;
-        console.log(`[BuilderAgent] ✅ ${fileSpec.path} (${code.length} chars)`);
-        break;
       } catch (e) {
         if (e.status === 429 && intentos < 2) {
           intentos++;
-          console.log(`[BuilderAgent] Rate limit ${fileSpec.path}, esperando 90s...`);
+          console.log(`[BuilderAgent] Rate limit ${fileSpec.path}, esperando 90s... (intento ${intentos})`);
           await new Promise(r => setTimeout(r, 90000));
         } else {
-          console.error(`[BuilderAgent] Error generando ${fileSpec.path}:`, e.message);
-          files[fileSpec.path] = buildFallbackComponent(fileSpec.name);
-          break;
+          intentos++;
+          console.log(`[BuilderAgent] ⚠️ Error en ${fileSpec.path} (intento ${intentos}): ${e.message}`);
         }
       }
     }
+
+    if (!success) {
+      files[fileSpec.path] = buildFallbackComponent(fileSpec.name);
+      console.log(`[BuilderAgent] ⚠️ ${fileSpec.path} usó fallback tras 3 intentos fallidos`);
+    }
+
     await new Promise(r => setTimeout(r, 8000));
   }
+
   return files;
 }
-
 function buildFileList(masterSpec, tables) {
   const list = [];
   list.push({ path: 'src/App.jsx', name: 'App', type: 'router', description: 'Router principal' });
