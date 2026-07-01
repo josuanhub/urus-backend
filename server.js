@@ -10126,6 +10126,28 @@ async function builderAgent(project_id, masterSpec, project) {
   const repoFullName = `${GITHUB_USERNAME}/${repoName}`;
   console.log(`[BuilderAgent] Repo listo: ${repoFullName}`);
 
+  const configErrors = [];
+  for (const [filePath, fileContent] of Object.entries(allFiles)) {
+    const validation = validateGeneratedFile(filePath, fileContent);
+    if (!validation.valid) {
+      if (filePath.endsWith('.jsx')) {
+        const componentName = filePath.split('/').pop().replace(/\.jsx$/, '');
+        allFiles[filePath] = buildFallbackComponent(componentName);
+        console.log(`[BuilderAgent] Archivo ${filePath} no válido, reemplazado por fallback component "${componentName}"`);
+      } else {
+        configErrors.push({ filePath, error: validation.error });
+      }
+    }
+  }
+  if (configErrors.length > 0) {
+    const errorDetails = configErrors.map(e => `  - ${e.filePath}: ${e.error}`).join('\n');
+    await sendWhatsAppTextTwilio(
+      '+19395851479',
+      `[BuilderAgent] Error de validación en proyecto ${project_id}.\nArchivos de configuración inválidos antes de subir a GitHub:\n${errorDetails}`
+    );
+    throw new Error(`Configuración inválida antes de subir a GitHub en proyecto ${project_id}. Archivos con error: ${configErrors.map(e => e.filePath).join(', ')}`);
+  }
+
   let uploadedCount = 0;
   const failedFiles = [];
   for (const [filePath, fileContent] of Object.entries(allFiles)) {
@@ -10148,7 +10170,6 @@ async function builderAgent(project_id, masterSpec, project) {
   console.log(`[BuilderAgent] Subida: ${uploadedCount} ok, ${failedFiles.length} fallidos`);
   return { repoFullName, repoUrl: `https://github.com/${repoFullName}`, filesUploaded: uploadedCount, filesFailed: failedFiles, status: 'done' };
 }
-
 
 async function generatePageFiles(client, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) {
   const files = {};
