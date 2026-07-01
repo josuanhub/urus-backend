@@ -7646,6 +7646,7 @@ app.post('/api/studio/chat', studioAuth, async (req, res) => {
     let memContext = '';
     let recentEdits = '';
     let recentErrors = '';
+    let recentLessons = '';
     let githubCommits = '';
     try {
       const memResult = await pool.query('SELECT type, content FROM studio_memory ORDER BY created_at DESC LIMIT 20');
@@ -7654,6 +7655,8 @@ app.post('/api/studio/chat', studioAuth, async (req, res) => {
       recentEdits = editsR.rows.map(r => new Date(r.created_at).toLocaleString('es-PR') + ': ' + r.content.slice(0, 120)).join('\n');
       const errorsR = await pool.query('SELECT content, created_at FROM studio_memory WHERE type = $1 ORDER BY created_at DESC LIMIT 3', ['error']);
       recentErrors = errorsR.rows.map(r => new Date(r.created_at).toLocaleString('es-PR') + ': ' + r.content.slice(0, 120)).join('\n');
+      const lessonsR = await pool.query('SELECT content, created_at FROM studio_memory WHERE type = $1 ORDER BY created_at ASC LIMIT 30', ['lesson']);
+      recentLessons = lessonsR.rows.map(r => r.content).join('\n');
     } catch(e) {}
     try {
       const commitsRes = await fetch('https://api.github.com/repos/josuanhub/urus-backend/commits?per_page=5', {
@@ -7670,6 +7673,7 @@ app.post('/api/studio/chat', studioAuth, async (req, res) => {
       (recentEdits ? '\n\nÚLTIMOS CAMBIOS APLICADOS:\n' + recentEdits : '') +
       (recentErrors ? '\n\nERRORES RECIENTES:\n' + recentErrors : '') +
       (githubCommits ? '\n\nÚLTIMOS COMMITS:\n' + githubCommits : '') +
+      (recentLessons ? '\n\nREGLAS OPERATIVAS APRENDIDAS:\n' + recentLessons : '') +
       (memContext ? '\n\nMEMORIA COMPLETA:\n' + memContext : '');
     const Anthropic = require('@anthropic-ai/sdk');
     const anthropicClient = new Anthropic({
