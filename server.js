@@ -10226,7 +10226,7 @@ function buildFallbackConfigs(project, masterSpec, project_id, apiBase, factoryK
 }
 
 
-// ========== URUS OS CONTROL PLANE ==========
+// ========== URUS OS CONTROL PLANE (v2 — seguro) ==========
 const URUS_OS_KEY = process.env.URUS_OS_KEY || 'urus-os-secret';
 
 function osAuth(req, res, next) {
@@ -10235,7 +10235,7 @@ function osAuth(req, res, next) {
   next();
 }
 
-// Leer archivo (con rango de líneas opcional)
+// Leer archivo (con rango de líneas opcional) — solo lectura, sin riesgo
 app.get('/v1/os/file', osAuth, (req, res) => {
   const fs = require('fs');
   const { path: filePath, from, to } = req.query;
@@ -10259,49 +10259,7 @@ app.get('/v1/os/file', osAuth, (req, res) => {
   }
 });
 
-// Ejecutar comando shell
-app.post('/v1/os/exec', osAuth, (req, res) => {
-  const { exec } = require('child_process');
-  const { cmd } = req.body;
-  if (!cmd) return res.status(400).json({ error: 'cmd requerido' });
-  exec(cmd, { cwd: '/app', timeout: 15000 }, (err, stdout, stderr) => {
-    res.json({ stdout, stderr, err: err?.message || null });
-  });
-});
-
-// Escribir archivo completo
-app.post('/v1/os/write', osAuth, (req, res) => {
-  const fs = require('fs');
-  const { path: filePath, content } = req.body;
-  if (!filePath || content === undefined) return res.status(400).json({ error: 'path y content requeridos' });
-  try {
-    fs.writeFileSync(filePath, content, 'utf8');
-    res.json({ ok: true, path: filePath, bytes: content.length });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Reemplazar líneas específicas en un archivo
-app.post('/v1/os/patch', osAuth, (req, res) => {
-  const fs = require('fs');
-  const { path: filePath, from, to, replacement } = req.body;
-  if (!filePath || !from || !to || replacement === undefined) {
-    return res.status(400).json({ error: 'path, from, to, replacement requeridos' });
-  }
-  try {
-    const lines = fs.readFileSync(filePath, 'utf8').split('\n');
-    const before = lines.slice(0, from - 1);
-    const after = lines.slice(to);
-    const newLines = [...before, ...replacement.split('\n'), ...after];
-    fs.writeFileSync(filePath, newLines.join('\n'), 'utf8');
-    res.json({ ok: true, total_lines: newLines.length });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Buscar texto en archivo
+// Buscar texto en archivo — solo lectura, sin riesgo
 app.post('/v1/os/grep', osAuth, (req, res) => {
   const fs = require('fs');
   const { path: filePath, pattern } = req.body;
@@ -10319,6 +10277,85 @@ app.post('/v1/os/grep', osAuth, (req, res) => {
   }
 });
 
+// Lista blanca de archivos que Studio puede tocar.
+const OS_ALLOWED_PATHS = [
+  'server.js',
+  'public/studio/index.html',
+  'public/console/index.html',
+  'public/jarvis/jarvis.html',
+];
+
+function isPathAllowed(filePath) {
+  const clean = String(filePath || '').trim();
+  if (!clean || clean.includes('..') || clean.startsWith('/') || clean.startsWith('~')) {
+    return false;
+  }
+  return OS_ALLOWED_PATHS.includes(clean);
+}
+
+function validarSintaxisReal(codigo) {
+  const { execSync } = require('child_process');
+  const fs = require('fs');
+  const os = require('os');
+  const tmpFile = `${os.tmpdir()}/urus_check_${Date.now()}.js`;
+  try {
+    fs.writeFileSync(tmpFile, codigo);
+    execSync(`node --check ${tmpFile}`, { stdio: 'pipe' });
+    return { valid: true, issues: [] };
+  } catch (err) {
+    return { valid: false, issues: [String(err.stderr || err.message)] };
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+  }
+}
+
+// Escribir archivo — vía commit a GitHub, con lista blanca y validación real
+app.post('/v1/os/write', osAuth, async (req, res) => {
+  const { path: filePath, content, commitMessage } = req.body;
+
+  if (!filePath || content === undefined) {
+    return res.status(400).json({ ok: false, error: 'path y content requeridos' });
+  }
+
+  if (!isPathAllowed(filePath)) {
+    return res.status(403).json({
+      ok: false,
+      error: 'path_not_allowed',
+      message: `"${filePath}" no está en la lista blanca. Archivos permitidos: ${OS_ALLOWED_PATHS.join(', ')}`
+    });
+  }
+
+  if (filePath.endsWith('.js')) {
+    const check = validarSintaxisReal(content);
+    if (!check.valid) {
+      return res.status(422).json({ ok: false, error: 'syntax_invalid', issues: check.issues });
+    }
+  }
+
+  try {
+    const { sha } = await githubReadFile(filePath);
+    const commitResult = await githubWriteFile(
+      filePath,
+      content,
+      sha,
+      commitMessage || `chore(os-write): actualizar ${filePath}`
+    );
+
+    await pool.query(
+      `INSERT INTO studio_memory (type, content, metadata) VALUES ($1, $2, $3)`,
+      ['edit', `OS_WRITE: ${filePath}`, JSON.stringify({ previousSha: sha, newSha: commitResult?.content?.sha, filePath })]
+    );
+
+    return res.json({
+      ok: true,
+      path: filePath,
+      commit: commitResult?.commit?.sha?.slice(0, 7),
+      previousSha: sha
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 
 
