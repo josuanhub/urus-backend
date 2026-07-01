@@ -9562,23 +9562,30 @@ function callAnthropicDirect(systemPrompt, userPrompt, maxTokens = 8000) {
 
 async function buildAndPersistIndex(filename, fileContent) {
   console.log(`[FileIndex] Indexando ${filename}...`);
-  const lines = fileContent.replace(/\r/g, '').split('\n');
+  
+  let rawContent = fileContent;
+  if (filename.endsWith('.html')) {
+    const scripts = fileContent.match(/<script[\s\S]*?<\/script>/gi) || [];
+    rawContent = scripts.map(s => s.replace(/<\/?script[^>]*>/gi, '')).join('\n');
+  }
+  
+  const lines = rawContent.replace(/\r/g, '').split('\n');
   const entries = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNum = i + 1;
-    const asyncFn = line.match(/^(?:async\s+)?function\s+(\w+)\s*\(/);
+    const asyncFn = line.match(/^\s*(?:async\s+)?function\s+(\w+)\s*\(/);
     if (asyncFn) {
       entries.push({ entry_type: 'function', name: asyncFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
     }
-    const constFn = line.match(/^(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:function|\()/);
+    const constFn = line.match(/^\s*(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:function|\()/);
     if (constFn) {
       entries.push({ entry_type: 'function', name: constFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
     }
-    const endpoint = line.match(/^app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/);
+    const endpoint = line.match(/^\s*app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/);
     if (endpoint) {
       const method = endpoint[1].toUpperCase();
-      const path   = endpoint[2];
+      const path = endpoint[2];
       entries.push({ entry_type: 'endpoint', name: `${method} ${path}`, path, line_start: lineNum, signature: line.trim().slice(0, 120) });
     }
   }
@@ -9605,6 +9612,7 @@ async function buildAndPersistIndex(filename, fileContent) {
   console.log(`[FileIndex] ✅ ${entries.length} entradas indexadas para ${filename}`);
   return entries.length;
 }
+
 
 // ── AST NAVIGATOR v4 ─────────────────────────────────────────
 
