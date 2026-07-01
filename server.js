@@ -10050,26 +10050,26 @@ function validateGeneratedFile(filePath, content) {
   if (filePath.endsWith('.jsx') || filePath.endsWith('.tsx')) {
     try {
       require('esbuild').transformSync(content, { loader: 'jsx', jsx: 'automatic' });
-      return { valido: true };
+      return { valid: true };
     } catch (err) {
-      return { valido: false, error: err.message || String(err) };
+      return { valid: false, error: err.message || String(err) };
     }
   } else if (filePath.endsWith('.js')) {
     try {
       require('esbuild').transformSync(content, { loader: 'js' });
-      return { valido: true };
+      return { valid: true };
     } catch (err) {
-      return { valido: false, error: err.message || String(err) };
+      return { valid: false, error: err.message || String(err) };
     }
   } else if (filePath.endsWith('.json')) {
     try {
       JSON.parse(content);
-      return { valido: true };
+      return { valid: true };
     } catch (err) {
-      return { valido: false, error: err.message || String(err) };
+      return { valid: false, error: err.message || String(err) };
     }
   } else {
-    return { valido: true };
+    return { valid: true };
   }
 }
 app.get('/health', (req, res) => {
