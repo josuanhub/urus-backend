@@ -9567,7 +9567,20 @@ async function buildAndPersistIndex(filename, fileContent) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNum = i + 1;
-    const asyncFn = line.match(/^(?:async\s+)?function\s+(\w+)\s*\(/);
+   const asyncFn = line.match(/^\s*(?:async\s+)?function\s+(\w+)\s*\(/);
+if (asyncFn) {
+  entries.push({ entry_type: 'function', name: asyncFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
+}
+const constFn = line.match(/^\s*(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:function|\()/);
+if (constFn) {
+  entries.push({ entry_type: 'function', name: constFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
+}
+const endpoint = line.match(/^\s*app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/);
+if (endpoint) {
+  const method = endpoint[1].toUpperCase();
+  const path = endpoint[2];
+  entries.push({ entry_type: 'endpoint', name: `${method} ${path}`, path, line_start: lineNum, signature: line.trim().slice(0, 120) });
+}
     if (asyncFn) {
       entries.push({ entry_type: 'function', name: asyncFn[1], line_start: lineNum, signature: line.trim().slice(0, 120) });
     }
