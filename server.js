@@ -9657,7 +9657,7 @@ async function astNavigatorAgent(instruction, fileContent) {
     model: 'claude-sonnet-4-6',
     max_tokens: 300,
     system: 'Eres un selector de código preciso. Devuelve SOLO JSON. Sin markdown. Si hay múltiples opciones con el mismo nombre, elige el que tiene el número de línea MÁS ALTO.',
-    messages: [{ role: 'user', content: `INSTRUCCIÓN: "${instruction}"\n\nÍNDICE (${indexEntries.length} entradas):\n${indexList.slice(0, 8000)}\n\nDevuelve SOLO: {"line_number": N, "name": "nombre exacto", "operation": "replace|insert_after|insert_before"}` }]
+messages: [{ role: 'user', content: `ARCHIVO TARGET: ${targetFile}\nINSTRUCCIÓN: "${instruction}"\n\nÍNDICE DE ${targetFile} (${indexEntries.length} entradas):\n${indexList.slice(0, 8000)}\n\nDevuelve SOLO JSON con líneas de ESTE archivo: {"line_number": N, "name": "nombre exacto", "operation": "replace|insert_after|insert_before"}` }]
   });
   const raw = extractMsg.content[0].text.replace(/```json|```/g, '').trim();
   let extracted;
