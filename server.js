@@ -7614,6 +7614,7 @@ app.post('/v1/studio/reindex', studioAuth, async (req, res) => {
         const count = await buildAndPersistIndex(f, content);
         results.push({ filename: f, entries: count });
       } catch(e) {
+        console.error('[Reindex] Error en ' + f + ':', e.message);
         results.push({ filename: f, error: e.message });
       }
     }
@@ -7624,7 +7625,6 @@ app.post('/v1/studio/reindex', studioAuth, async (req, res) => {
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
-
 
 app.post('/v1/studio/tts', studioAuth, async (req, res) => {
   try {
