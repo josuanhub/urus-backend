@@ -10117,7 +10117,7 @@ async function generatePageFiles(client, masterSpec, project, project_id, apiBas
       try {
         const msg = await client.messages.create({
           model: 'claude-sonnet-4-6',
-          max_tokens: 6000,
+        max_tokens: 16000,
           messages: [{ role: 'user', content: buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) }]
         });
         
