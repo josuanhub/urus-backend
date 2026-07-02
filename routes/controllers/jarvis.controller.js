@@ -274,7 +274,12 @@ async function chat(req, res) {
         ? `🔎 Datos en tiempo real:\n\n` + execResult.result.slice(0, 5).map(a => `• ${a.title} (${a.source})\n${a.url}`).join("\n\n")
         : "No pude obtener datos en tiempo real.";
     } else {
-      reply = await callAI(messages, 0.4);
+      const completionChat = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: messages,
+        temperature: 0.4
+      });
+      reply = completionChat.choices[0].message.content;
     }
 
     await pool.query(`INSERT INTO jarvis_chat_history (role, content) VALUES ($1, $2)`, ["user", userMessage]);
