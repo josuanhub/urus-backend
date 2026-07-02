@@ -7629,6 +7629,22 @@ app.post('/v1/studio/reindex', studioAuth, async (req, res) => {
   }
 });
 
+app.get('/v1/studio/index', studioAuth, async (req, res) => {
+  try {
+    const { filename } = req.query;
+    if (!filename) {
+      return res.status(400).json({ ok: false, error: 'filename_required' });
+    }
+    const result = await pool.query(
+      'SELECT entry_type, name, path, line_start, line_end, signature FROM file_index WHERE filename = $1 ORDER BY line_start ASC',
+      [filename]
+    );
+    return res.json({ ok: true, filename, count: result.rows.length, entries: result.rows });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/v1/studio/tts', studioAuth, async (req, res) => {
   try {
     const text = String(req.body?.text || '').trim().slice(0, 1000);
