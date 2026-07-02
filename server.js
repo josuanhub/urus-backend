@@ -9603,6 +9603,10 @@ async function buildAndPersistIndex(filename, fileContent) {
       const path = endpoint[2];
       entries.push({ entry_type: 'endpoint', name: `${method} ${path}`, path, line_start: lineNum, signature: line.trim().slice(0, 120) });
     }
+    const exportsMatch = line.match(/^\s*module\.exports\s*=/);
+    if (exportsMatch) {
+      entries.push({ entry_type: 'export', name: 'module.exports', line_start: lineNum, signature: line.trim().slice(0, 300) });
+    }
   }
   for (let i = 0; i < entries.length; i++) {
     const startIdx = entries[i].line_start - 1;
@@ -9627,7 +9631,6 @@ async function buildAndPersistIndex(filename, fileContent) {
   console.log(`[FileIndex] ✅ ${entries.length} entradas indexadas para ${filename}`);
   return entries.length;
 }
-
 
 // ── AST NAVIGATOR v4 ─────────────────────────────────────────
 
