@@ -5122,10 +5122,15 @@ Reglas de Estilo y Entrega:- Idioma: Español. - Tono: Élite, clínico, sintét
 
 Ejecuta el protocolo STRATEGOS V3 ahora:`;
 
-    const reply = await callAI([
-  { role: "system", content: "Eres JARVIS STRATEGOS (V3). INSTRUCCIÓN ABSOLUTA: Responde ÚNICAMENTE en español. Sin excepción. Nunca digas hola ni te presentes. Entra directo al diagnóstico estratégico." },
-  { role: "user", content: prompt }
-], 0.8);
+   const completionStrategos = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "Eres JARVIS STRATEGOS (V3). INSTRUCCIÓN ABSOLUTA: Responde ÚNICAMENTE en español. Sin excepción. Nunca digas hola ni te presentes. Entra directo al diagnóstico estratégico." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.8
+    });
+    const reply = completionStrategos.choices[0].message.content;
 
     await pool.query(`
       INSERT INTO jarvis_memory (content)
