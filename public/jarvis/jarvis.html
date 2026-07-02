@@ -1637,6 +1637,7 @@ function cleanForSpeech(raw) {
 }
 
 function speak(raw) {
+  if (window.currentAudio) { window.currentAudio.pause(); window.currentAudio.currentTime = 0; }
   const clean = cleanForSpeech(raw);
   if (!clean) return;
   fetch('/v1/studio/tts', {
@@ -1651,6 +1652,7 @@ function speak(raw) {
   .then(blob => {
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    window.currentAudio = audio;
     audio.play();
   })
   .catch(err => console.error('TTS error:', err));
