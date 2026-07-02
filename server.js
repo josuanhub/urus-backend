@@ -7661,6 +7661,47 @@ app.get('/v1/studio/index', studioAuth, async (req, res) => {
   }
 });
 
+app.post('/v1/studio/run', studioAuth, async (req, res) => {
+  try {
+    const { command, args } = req.body;
+    const base = 'https://www.urusverify.com';
+    const allowedCommands = {
+      'cleanup-memory': async () => {
+        const r = await fetch(base + '/v1/jarvis/cleanup-memory', { method: 'POST' });
+        return await r.json();
+      },
+      'embed-existing': async () => {
+        const r = await fetch(base + '/v1/jarvis/embed-existing', { method: 'POST' });
+        return await r.json();
+      },
+      'reindex': async () => {
+        const filename = args?.filename;
+        const r = await fetch(base + '/v1/studio/reindex', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-studio-password': STUDIO_PASSWORD },
+          body: JSON.stringify(filename ? { filename } : {})
+        });
+        return await r.json();
+      },
+      'check-index': async () => {
+        const filename = args?.filename;
+        if (!filename) return { ok: false, error: 'filename_required' };
+        const r = await fetch(base + '/v1/studio/index?filename=' + encodeURIComponent(filename), {
+          headers: { 'x-studio-password': STUDIO_PASSWORD }
+        });
+        return await r.json();
+      }
+    };
+    if (!allowedCommands[command]) {
+      return res.status(400).json({ ok: false, error: 'comando_no_permitido', allowed: Object.keys(allowedCommands) });
+    }
+    const result = await allowedCommands[command]();
+    return res.json({ ok: true, command, result });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/v1/studio/tts', studioAuth, async (req, res) => {
   try {
     const text = String(req.body?.text || '').trim().slice(0, 1000);
