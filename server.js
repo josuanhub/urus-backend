@@ -4967,10 +4967,15 @@ Reglas de Estilo y Comportamiento Implacables:- Idioma: Español. - Tono: Comand
 
 Activa JARVIS PROTOCOL V2 ahora:`;
 
-    const reply = await callAI([
-      { role: "system", content: "Eres JARVIS. Responde SIEMPRE en español." },
-      { role: "user", content: prompt }
-    ], 0.7);
+   const completionDay = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "Eres JARVIS. Responde SIEMPRE en español. Nunca saludes ni te presentes. Ejecuta el protocolo directamente sin introducción." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7
+    });
+    const reply = completionDay.choices[0].message.content;
 
     await pool.query(`
       INSERT INTO jarvis_memory (content)
