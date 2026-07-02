@@ -1146,6 +1146,29 @@ const input = document.getElementById('input');
       input.focus();
       return;
     }
+
+if (text.startsWith('/run ')) {
+      const parts = text.slice(5).trim().split(' ');
+      const command = parts[0];
+      const filename = parts[1] || null;
+      addMessage('assistant', '⚙️ Ejecutando: ' + command + '...');
+      fetch('/v1/studio/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+        body: JSON.stringify({ command, args: filename ? { filename } : {} })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          addMessage('assistant', '✅ Resultado:\n\n' + JSON.stringify(data.result, null, 2));
+        } else {
+          addMessage('assistant', '❌ Error: ' + (data.error || 'desconocido') + (data.allowed ? '\nComandos disponibles: ' + data.allowed.join(', ') : ''));
+        }
+      }).catch(e => addMessage('assistant', '❌ ' + e.message));
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+
+    if (text.startsWith('/reindex')) {
     
 if (text.startsWith('/reindex')) {
       const targetFilename = text.slice(9).trim();
