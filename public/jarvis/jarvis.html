@@ -1637,19 +1637,24 @@ function cleanForSpeech(raw) {
 }
 
 function speak(raw) {
-  if (!synth) return;
-  synth.cancel();
   const clean = cleanForSpeech(raw);
   if (!clean) return;
-  const u = new SpeechSynthesisUtterance(clean);
-  u.lang = 'es-US';
-  u.rate = 1.0;
-  u.pitch = 0.85;
-  u.volume = 1;
-  if (ttsVoice) u.voice = ttsVoice;
-  synth.speak(u);
+  fetch('/v1/studio/tts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-studio-password': 'urus2026'
+    },
+    body: JSON.stringify({ text: clean, voice: 'nova' })
+  })
+  .then(res => res.blob())
+  .then(blob => {
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.play();
+  })
+  .catch(err => console.error('TTS error:', err));
 }
-
 function speakText(text) {
   synth.cancel();
   speak(text);
