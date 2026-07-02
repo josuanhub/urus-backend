@@ -5041,10 +5041,15 @@ Reglas de Estilo y Comportamiento:- Idioma: Español. - Tono: Inteligencia super
 
 Responde ahora iniciando el protocolo de calibración e inicialización de sistema:`;
 
-    const reply = await callAI([
-      { role: "system", content: "Eres JARVIS. Responde SIEMPRE en español." },
-      { role: "user", content: prompt }
-    ], 0.7);
+   const completionMorning = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "Eres JARVIS. Responde SIEMPRE en español." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7
+    });
+    const reply = completionMorning.choices[0].message.content;
 
     await pool.query(`
       INSERT INTO jarvis_memory (content)
