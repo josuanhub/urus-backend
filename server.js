@@ -9928,9 +9928,12 @@ function detectTargetFile(instruction) {
     const match = instruction.match(/[\w\-\/]+\.html/);
     if (match) return match[0];
   }
+  if (text.includes('.js')) {
+    const match = instruction.match(/[\w\-\/]+\.js/);
+    if (match) return match[0];
+  }
   return 'server.js';
 }
-
 // POST /v1/studio/self-edit
 app.post('/v1/studio/self-edit', studioAuth, async (req, res) => {
   const instruction = String(req.body?.instruction || '').trim();
