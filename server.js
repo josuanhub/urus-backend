@@ -10238,7 +10238,7 @@ function buildFileList(masterSpec, tables) {
   for (const mod of modules) {
     const screens = mod.screens || [];
     for (const screen of screens) {
-      const componentName = screen.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+      const componentName = screen.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).slice(0, 5).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
       if (!componentName) continue;
       list.push({ path: `src/pages/${componentName}.jsx`, name: componentName, type: 'page', moduleName: mod.name, description: screen, endpoints: mod.endpoints || [] });
     }
@@ -10250,7 +10250,6 @@ function buildFileList(masterSpec, tables) {
   }
   return list;
 }
-
 function buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) {
   const baseContext = `SISTEMA: "${masterSpec.system_name}" para "${project.company}" (${project.industry})\nPALETA: ${palette}\nBACKEND API: ${apiBase}/{tabla} — header x-factory-key: ${factoryKey}\nTABLAS DISPONIBLES: ${tables.join(', ')}\nUPLOAD URL: ${uploadUrl} (sin Content-Type, header x-factory-key: ${factoryKey})`;
   const styleRules = `REGLAS DE ESTILO:\n- Diseño oscuro profesional, fondo #0A0A0F\n- Tailwind puro, sin librerías UI externas\n- React 18 + hooks funcionales, sin TypeScript\n- Lucide React para íconos\n- Responsive mobile-first\n- Nunca uses localStorage\n- Fetch con URL completa y header x-factory-key: ${factoryKey}`;
