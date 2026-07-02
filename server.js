@@ -3160,6 +3160,7 @@ await pool.query(`
 
 
   // ── JARVIS MEMORY ──────────────────────────────────────────────
+  await pool.query(`CREATE EXTENSION IF NOT EXISTS vector;`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS jarvis_memory (
       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3173,7 +3174,9 @@ await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_jarvis_memory_created_at
     ON jarvis_memory(created_at DESC);
   `);
-  
+  await pool.query(`ALTER TABLE jarvis_memory ADD COLUMN IF NOT EXISTS embedding vector(1536);`);
+  await pool.query(`ALTER TABLE jarvis_memory ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'jarvis';`);
+  await pool.query(`ALTER TABLE jarvis_memory ADD COLUMN IF NOT EXISTS agent TEXT;`);
 
   // ==============================
 // DEALER OS — IVAN AUTO IMPORTS
