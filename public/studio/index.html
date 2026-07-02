@@ -1148,11 +1148,13 @@ const input = document.getElementById('input');
     }
     
 if (text.startsWith('/reindex')) {
-      addMessage('assistant', '🔄 Indexando server.js...');
+      const targetFilename = text.slice(9).trim();
+      addMessage('assistant', '🔄 Indexando ' + (targetFilename || 'server.js') + '...');
       fetch('/v1/studio/reindex', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
-        body: JSON.stringify({})
+        body: JSON.stringify(targetFilename ? { filename: targetFilename } : {})
+        
     }).then(r => r.json()).then(data => {
         addMessage('assistant', data.ok ? '✅ Índice actualizado: ' + data.total + ' entradas en ' + (data.files ? data.files.length : 1) + ' archivos.' : '❌ Error: ' + data.error);
       }).catch(e => addMessage('assistant', '❌ Error: ' + e.message));
