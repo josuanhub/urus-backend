@@ -1379,6 +1379,7 @@ async function handleSelfEdit(instruction, previewOnly) {
   // ── TTS ──
 async function speakText(text) {
     stopTTS();
+    showNotif('🔊 Generando audio...');
     const clean = text.replace(/```[\s\S]*?```/g, 'bloque de código.').replace(/`[^`]+`/g, '').replace(/#{1,3} /g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/\[|\]/g, '').trim();
     if (!clean || clean.length < 5) return;
     try {
@@ -1387,7 +1388,7 @@ async function speakText(text) {
         headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
         body: JSON.stringify({ text: clean.slice(0, 4000) })
       });
-      if (!res.ok) return;
+      if (!res.ok) { showNotif('❌ Error generando audio'); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -1400,9 +1401,9 @@ async function speakText(text) {
       audio.play();
     } catch(e) {
       console.log('TTS failed:', e.message);
+      showNotif('❌ Error generando audio');
     }
   }
-  function stopTTS() {
     window.speechSynthesis.cancel();
     document.getElementById('tts-bar').classList.remove('visible');
     currentUtterance = null;
