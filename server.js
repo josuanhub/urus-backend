@@ -7767,6 +7767,63 @@ try {
     res.status(500).json({ error: 'Fallo en Studio' });
   }
 });
+
+app.post('/v1/studio/analyze-file', studioAuth, async (req, res) => {
+  try {
+    const { filename, mimeType, base64Data } = req.body;
+    const Anthropic = require('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({
+      apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
+    });
+
+    let contentBlocks = [];
+
+    if (mimeType && mimeType.startsWith('image/')) {
+      contentBlocks = [
+        {
+          type: 'image',
+          source: { type: 'base64', media_type: mimeType, data: base64Data }
+        },
+        {
+          type: 'text',
+          text: 'Por favor, describe y analiza el contenido de esta imagen en español.'
+        }
+      ];
+    } else if (mimeType === 'application/pdf') {
+      contentBlocks = [
+        {
+          type: 'document',
+          source: { type: 'base64', media_type: mimeType, data: base64Data }
+        },
+        {
+          type: 'text',
+          text: 'Por favor, describe y analiza el contenido de este documento en español.'
+        }
+      ];
+    } else {
+      return res.status(400).json({ ok: false, error: 'mimeType no soportado. Usa image/* o application/pdf' });
+    }
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: contentBlocks }]
+    });
+
+    const analysis = msg.content[0].text;
+
+    await pool.query(
+      `INSERT INTO jarvis_memory (content, type, source) VALUES ($1, $2, $3)`,
+      [`[ARCHIVO: ${filename}]\n${analysis}`, 'document', 'studio']
+    );
+
+    return res.json({ ok: true, analysis });
+  } catch (err) {
+    console.error('ANALYZE_FILE_ERROR', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Studio UI
 app.get('/studio', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'studio', 'index.html'));
