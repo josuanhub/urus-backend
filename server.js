@@ -9754,6 +9754,11 @@ messages: [{ role: 'user', content: `ARCHIVO TARGET: ${targetFile}\nINSTRUCCIÓN
     if (byName) { extracted.line_number = byName.line_start; entry = byName; console.log(`[ASTNavigator] Corregido a línea ${byName.line_start}`); }
     else throw new Error(`"${extracted.name}" no está en el índice`);
   }
+
+  if (entry && entry.signature && !entry.signature.toLowerCase().includes(String(extracted.name).toLowerCase())) {
+    throw new Error(`El nombre elegido por el Navigator ("${extracted.name}") no coincide con el contenido real en esa línea del índice ("${entry.signature}") — posible desincronización, ejecuta /reindex antes de reintentar`);
+  }
+  
   const startIdx = Math.max(0, extracted.line_number - 1);
 let endIdx = Math.min(lines.length - 1, startIdx + 600);
   let braceCount = 0, started = false;
