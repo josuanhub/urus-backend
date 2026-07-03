@@ -824,6 +824,12 @@
 
     <!-- INPUT -->
     <div id="input-area">
+      <div id="file-drop-zone" style="padding: 0 20px; margin-bottom: 8px;" ondragover="event.preventDefault(); this.style.borderColor='var(--gold)';" ondragleave="this.style.borderColor='var(--border2)';" ondrop="handleFileDrop(event)">
+  <div style="border: 1px dashed var(--border2); border-radius: 8px; padding: 10px; text-align: center; font-size: 0.7rem; color: var(--text3); cursor: pointer;" onclick="document.getElementById('hidden-file-input').click()">
+    📎 Arrastra una imagen o PDF aquí, o haz clic para seleccionar
+  </div>
+  <input type="file" id="hidden-file-input" accept="image/*,.pdf" style="display:none" onchange="handleFileSelect(event)">
+</div>
       <div id="input-wrapper">
         <textarea id="input" placeholder="Escribe tu instrucción..." onkeydown="handleKey(event)" oninput="updateCount()"></textarea>
         <div id="input-toolbar">
@@ -1479,8 +1485,48 @@ async function handleSelfEdit(instruction, previewOnly) {
     setTimeout(() => n.classList.remove('show'), 2500);
   }
 
+  
+  
   // Preload voices
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  function handleFileDrop(event) {
+  event.preventDefault();
+  event.currentTarget.style.borderColor = 'var(--border2)';
+  const file = event.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const base64Data = e.target.result.split(',')[1];
+    addMessage('user', '📎 Analizando: ' + file.name);
+    document.getElementById('typing-indicator').style.display = 'flex';
+    try {
+      const res = await fetch('/v1/studio/analyze-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+        body: JSON.stringify({ filename: file.name, mimeType: file.type, base64Data })
+      });
+      const data = await res.json();
+      document.getElementById('typing-indicator').style.display = 'none';
+      if (data.ok) {
+        addMessage('assistant', data.analysis);
+      } else {
+        addMessage('assistant', '❌ Error: ' + data.error);
+      }
+    } catch (err) {
+      document.getElementById('typing-indicator').style.display = 'none';
+      addMessage('assistant', '❌ Error de conexión: ' + err.message);
+    }
+  };
+  reader.readAsDataURL(file);
+}
 </script>
 </body>
 </html>
