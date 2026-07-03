@@ -1404,6 +1404,8 @@ async function speakText(text) {
       showNotif('❌ Error generando audio');
     }
   }
+
+  function stopTTS() {
     window.speechSynthesis.cancel();
     document.getElementById('tts-bar').classList.remove('visible');
     currentUtterance = null;
