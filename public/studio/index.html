@@ -947,6 +947,7 @@ async function loadStudioMemory() {
   }
 
 function login() {
+    console.log('test cache');
     const pwd = document.getElementById('pwd-input').value;
     if (pwd === 'urus2026') {
       if (!window.studioSessionId) { window.studioSessionId = crypto.randomUUID(); }
