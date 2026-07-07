@@ -7725,8 +7725,9 @@ app.post('/api/studio/chat', studioAuth, async (req, res) => {
     let recentLessons = '';
     let githubCommits = '';
 try {
-      const memResult = await pool.query('SELECT type, content FROM jarvis_memory WHERE source = $1 ORDER BY created_at DESC LIMIT 20', ['studio']);
-      memContext = memResult.rows.map(r => '[' + r.type.toUpperCase() + '] ' + r.content.slice(0, 150)).join('\n');
+     const { searchRelevantMemory } = require('./routes/controllers/jarvis.controller');
+      const userMsg = messages && messages.length > 0 ? messages[messages.length - 1].content : '';
+      memContext = userMsg ? await searchRelevantMemory(pool, userMsg, 10) : '';
       const editsR = await pool.query('SELECT content, created_at FROM jarvis_memory WHERE type = $1 AND source = $2 ORDER BY created_at DESC LIMIT 5', ['edit', 'studio']);
       recentEdits = editsR.rows.map(r => new Date(r.created_at).toLocaleString('es-PR') + ': ' + r.content.slice(0, 120)).join('\n');
       const errorsR = await pool.query('SELECT content, created_at FROM jarvis_memory WHERE type = $1 AND source = $2 ORDER BY created_at DESC LIMIT 3', ['error', 'studio']);
