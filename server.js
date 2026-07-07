@@ -9924,20 +9924,20 @@ REGLAS ABSOLUTAS:
 4. El código debe ser JavaScript/Node.js válido
 5. Mantén el estilo de indentación existente
 6. ${operationGuide}`,
-    messages: [{
-      role: 'user',
-      content: `INSTRUCCIÓN EXACTA:
-"${instruction}"
-
-TARGET: ${navigation.target_function} (${navigation.target_type})
-OPERACIÓN: ${navigation.operation}
-CONTEXTO: ${navigation.context}
-
-CÓDIGO ACTUAL (líneas ${navigation.start_line}-${navigation.end_line}):
-${navigation.content}
-
-Aplica la instrucción y devuelve SOLO el código resultante:`
-    }]
+   messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `CÓDIGO ACTUAL (líneas ${navigation.start_line}-${navigation.end_line}):\n${navigation.content}`,
+            cache_control: { type: 'ephemeral' }
+          },
+          {
+            type: 'text',
+            text: `INSTRUCCIÓN EXACTA:\n"${instruction}"\n\nTARGET: ${navigation.target_function} (${navigation.target_type})\nOPERACIÓN: ${navigation.operation}\nCONTEXTO: ${navigation.context}\n\nAplica la instrucción y devuelve SOLO el código resultante:`
+          }
+        ]
+      }]
   });
 
   let modified = msg.content[0].text.trim();
