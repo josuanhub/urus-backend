@@ -9829,8 +9829,15 @@ messages: [{ role: 'user', content: `ARCHIVO TARGET: ${targetFile}\nINSTRUCCIÓN
     else throw new Error(`"${extracted.name}" no está en el índice`);
   }
 
-  if (entry && entry.signature && !entry.signature.toLowerCase().includes(String(extracted.name).toLowerCase())) {
-    throw new Error(`El nombre elegido por el Navigator ("${extracted.name}") no coincide con el contenido real en esa línea del índice ("${entry.signature}") — posible desincronización, ejecuta /reindex antes de reintentar`);
+  if (entry && entry.signature) {
+    const rawName = String(extracted.name);
+    const endpointMatch = rawName.match(/^([A-Z]+)\s+(\/.*)/);
+    const normalizedName = endpointMatch
+      ? `${endpointMatch[1].toLowerCase()}('${endpointMatch[2]}`
+      : rawName.toLowerCase();
+    if (!entry.signature.toLowerCase().includes(normalizedName)) {
+      throw new Error(`El nombre elegido por el Navigator ("${extracted.name}") no coincide con el contenido real en esa línea del índice ("${entry.signature}") — posible desincronización, ejecuta /reindex antes de reintentar`);
+    }
   }
   
   const startIdx = Math.max(0, extracted.line_number - 1);
@@ -9853,7 +9860,6 @@ let endIdx = Math.min(lines.length - 1, startIdx + 600);
     content, confidence: 9, search_string_found: extracted.name, totalLines: lines.length
   };
 }
-
 // ─────────────────────────────────────────────────────────────
 // PRECISION EDITOR — aplica cambios con contexto exacto
 // ─────────────────────────────────────────────────────────────
