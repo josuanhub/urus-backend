@@ -398,7 +398,7 @@ async function embedExistingMemory(req, res) {
   try {
     const pool = getPool();
     const result = await pool.query(
-      `SELECT id, content FROM jarvis_memory WHERE embedding IS NULL LIMIT 20`
+      `SELECT id, content FROM jarvis_memory WHERE embedding IS NULL LIMIT 100`
     );
     let processed = 0;
     for (const row of result.rows) {
