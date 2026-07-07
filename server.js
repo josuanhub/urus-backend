@@ -9832,12 +9832,23 @@ let indexEntries = [];
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
   const indexList = indexEntries.map(e => `L${e.line_start}: [${e.entry_type}] ${e.name}`).join('\n');
-  const extractMsg = await client.messages.create({
+const extractMsg = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 300,
     system: 'Eres un selector de código preciso. Devuelve SOLO JSON. Sin markdown. Si hay múltiples opciones con el mismo nombre, elige el que tiene el número de línea MÁS ALTO.',
-messages: [{ role: 'user', content: `ARCHIVO TARGET: ${targetFile}\nINSTRUCCIÓN: "${instruction}"\n\nÍNDICE DE ${targetFile} (${indexEntries.length} entradas):\n${indexList.slice(0, 8000)}\n\nDevuelve SOLO JSON con líneas de ESTE archivo: {"line_number": N, "name": "nombre exacto", "operation": "replace|insert_after|insert_before"}` }]
+    messages: [{ role: 'user', content: [
+      {
+        type: 'text',
+        text: `ÍNDICE DE ${targetFile} (${indexEntries.length} entradas):\n${indexList.slice(0, 8000)}`,
+        cache_control: { type: 'ephemeral' }
+      },
+      {
+        type: 'text',
+        text: `ARCHIVO TARGET: ${targetFile}\nINSTRUCCIÓN: "${instruction}"\n\nDevuelve SOLO JSON con líneas de ESTE archivo: {"line_number": N, "name": "nombre exacto", "operation": "replace|insert_after|insert_before"}`
+      }
+    ]}]
   });
+  
   const raw = extractMsg.content[0].text.replace(/```json|```/g, '').trim();
   let extracted;
   try { extracted = JSON.parse(raw); } catch(e) { throw new Error('No se pudo parsear respuesta del Navigator'); }
