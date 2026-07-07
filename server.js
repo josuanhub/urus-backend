@@ -10172,15 +10172,34 @@ app.post('/v1/studio/memory/save', studioAuth, async (req, res) => {
     if (!type || !content) return res.status(400).json({ ok: false, error: 'type y content requeridos' });
     const finalMetadata = Object.assign({}, metadata || {});
     if (project) finalMetadata.project = project;
-    const result = await pool.query(
-      'INSERT INTO jarvis_memory (content, type, source, metadata) VALUES ($1, $2, $3, $4) RETURNING id, created_at',
-      [String(content).slice(0, 10000), type, 'studio', JSON.stringify(finalMetadata)]
-    );
+    let embedding = null;
+    try {
+      const vec = await generateEmbedding(String(content).slice(0, 10000));
+      if (vec && vec.length > 0) {
+        embedding = '[' + vec.join(',') + ']';
+      }
+    } catch (embErr) {
+      console.warn('[studio/memory/save] embedding falló, guardando sin vector:', embErr.message);
+    }
+    let result;
+    if (embedding) {
+      result = await pool.query(
+        'INSERT INTO jarvis_memory (content, type, source, metadata, embedding) VALUES ($1, $2, $3, $4, $5::vector) RETURNING id, created_at',
+        [String(content).slice(0, 10000), type, 'studio', JSON.stringify(finalMetadata), embedding]
+      );
+    } else {
+      result = await pool.query(
+        'INSERT INTO jarvis_memory (content, type, source, metadata) VALUES ($1, $2, $3, $4) RETURNING id, created_at',
+        [String(content).slice(0, 10000), type, 'studio', JSON.stringify(finalMetadata)]
+      );
+    }
     return res.json({ ok: true, id: result.rows[0].id });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+
 app.get('/v1/studio/memory/load', studioAuth, async (req, res) => {
   try {
     const edits = await pool.query('SELECT content, metadata, created_at FROM jarvis_memory WHERE type = $1 AND source = \'studio\' ORDER BY created_at DESC LIMIT 5', ['edit']);
