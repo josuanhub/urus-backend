@@ -7733,8 +7733,8 @@ try {
       recentEdits = editsR.rows.map(r => new Date(r.created_at).toLocaleString('es-PR') + ': ' + r.content.slice(0, 120)).join('\n');
       const errorsR = await pool.query('SELECT content, created_at FROM jarvis_memory WHERE type = $1 AND source = $2 ORDER BY created_at DESC LIMIT 3', ['error', 'studio']);
       recentErrors = errorsR.rows.map(r => new Date(r.created_at).toLocaleString('es-PR') + ': ' + r.content.slice(0, 120)).join('\n');
-      const lessonsR = await pool.query('SELECT content, created_at FROM jarvis_memory WHERE type = $1 AND source = $2 ORDER BY created_at ASC LIMIT 30', ['lesson', 'studio']);
-      recentLessons = lessonsR.rows.map(r => r.content).join('\n');
+      const lessonsR = await pool.query('SELECT content, created_at FROM jarvis_memory WHERE type = $1 AND source = $2 ORDER BY created_at ASC LIMIT 10', ['lesson', 'studio']);
+recentLessons = lessonsR.rows.map(r => r.content.slice(0, 200)).join('\n');
     } catch(e) {}
     try {
       const commitsRes = await fetch('https://api.github.com/repos/josuanhub/urus-backend/commits?per_page=5', {
