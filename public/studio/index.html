@@ -1085,7 +1085,7 @@ function login() {
 // Reemplaza TODA esa función por esta:
 // ============================================================
 
-  async function sendMessage() {
+async function sendMessage() {
 const input = document.getElementById('input');
     const text  = input.value.trim();
     if (!text) return;
@@ -1230,7 +1230,7 @@ if (text.startsWith('/reindex')) {
 'Content-Type':      'application/json',
           'x-studio-password': password
 },
-        body: JSON.stringify({ messages: history })
+        body: JSON.stringify({ messages: history, sessionId: window.studioSessionId, project: currentProject })
       });
 
       const data = await res.json();
@@ -1253,7 +1253,6 @@ if (text.startsWith('/reindex')) {
     btn.disabled = false;
     input.focus();
   }
-
 
 
 async function handleSelfEdit(instruction, previewOnly) {
