@@ -43,6 +43,7 @@ const moltbookRoutes = require("./routes/moltbook.routes");
 const decisionRoutes = require("./routes/decision.routes");
 const RSSParser = require("rss-parser");
 const { callAI } = require("./routes/controllers/jarvis.controller");
+const { saveMemoryWithEmbedding, generateEmbedding } = require('./routes/controllers/jarvis.controller');
 const rssParser = new RSSParser();
 const {
   generateExecutiveReport
