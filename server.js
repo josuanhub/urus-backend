@@ -7763,6 +7763,25 @@ try {
       system: systemPrompt,
       messages: messages
     });
+    const sessionId = req.body?.sessionId || null;
+    const conversationProject = req.body?.project || 'GENERAL';
+    const lastUserMsgForSave = messages && messages.length > 0 ? messages[messages.length - 1].content : '';
+
+    if (sessionId) {
+      try {
+        await pool.query(
+          'INSERT INTO studio_conversations (session_id, project, role, content) VALUES ($1, $2, $3, $4)',
+          [sessionId, conversationProject, 'user', lastUserMsgForSave]
+        );
+        await pool.query(
+          'INSERT INTO studio_conversations (session_id, project, role, content) VALUES ($1, $2, $3, $4)',
+          [sessionId, conversationProject, 'assistant', claudeMsg.content[0].text]
+        );
+      } catch (e) {
+        console.error('STUDIO_CONV_SAVE_ERROR:', e.message);
+      }
+    }
+
     res.json({ reply: claudeMsg.content[0].text });
   } catch (err) {
     console.error('STUDIO_ERROR:', err);
