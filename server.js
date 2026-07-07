@@ -913,16 +913,35 @@ app.post("/v1/organizations/create", async (req, res) => {
       ok: false,
       error: err.message
     });
+}
 
+});
+
+app.get("/v1/studio/conversations/last", studioAuth, async (req, res) => {
+  const project = req.query.project || "GENERAL";
+  try {
+    const sessionResult = await pool.query(
+      "SELECT session_id FROM studio_conversations WHERE project = $1 ORDER BY created_at DESC LIMIT 1",
+      [project]
+    );
+    if (sessionResult.rows.length === 0) {
+      return res.json({ ok: true, messages: [], session_id: null });
+    }
+    const session_id = sessionResult.rows[0].session_id;
+    const messagesResult = await pool.query(
+      "SELECT * FROM studio_conversations WHERE session_id = $1 ORDER BY created_at ASC",
+      [session_id]
+    );
+    return res.json({ ok: true, messages: messagesResult.rows, session_id });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message });
   }
-
 });
 
 
 app.get("/v1/municipalities/:id/operational-report", async (req, res) => {
 
   try {
-
     const { id } = req.params;
 
     const result = await pool.query(`
