@@ -7777,7 +7777,8 @@ app.post('/v1/studio/analyze-file', studioAuth, async (req, res) => {
       apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY
     });
 
-    let contentBlocks = [];
+   let contentBlocks = [];
+    const analysisPrompt = 'Por favor, describe y analiza el contenido de este archivo en español. Si hay conexión relevante con el contexto de memoria proporcionado más abajo, menciónala de forma natural dentro de tu análisis, sin usar un formato de sección separada.';
 
     if (mimeType && mimeType.startsWith('image/')) {
       contentBlocks = [
@@ -7787,7 +7788,7 @@ app.post('/v1/studio/analyze-file', studioAuth, async (req, res) => {
         },
         {
           type: 'text',
-          text: 'Por favor, describe y analiza el contenido de esta imagen en español.'
+          text: analysisPrompt
         }
       ];
     } else if (mimeType === 'application/pdf') {
@@ -7798,12 +7799,27 @@ app.post('/v1/studio/analyze-file', studioAuth, async (req, res) => {
         },
         {
           type: 'text',
-          text: 'Por favor, describe y analiza el contenido de este documento en español.'
+          text: analysisPrompt
         }
       ];
     } else {
       return res.status(400).json({ ok: false, error: 'mimeType no soportado. Usa image/* o application/pdf' });
     }
+
+    const quickMsg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: contentBlocks }]
+    });
+    const quickDescription = quickMsg.content[0].text;
+
+    const { searchRelevantMemory } = require('./routes/controllers/jarvis.controller');
+    const relatedMemory = await searchRelevantMemory(pool, quickDescription, 5);
+
+    contentBlocks.push({
+      type: 'text',
+      text: relatedMemory ? `Contexto de memoria relevante:\n${relatedMemory}` : ''
+    });
 
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
