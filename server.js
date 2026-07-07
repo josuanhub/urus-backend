@@ -10206,6 +10206,26 @@ app.get('/v1/studio/memory/search', studioAuth, async (req, res) => {
   }
 });
 
+app.get('/v1/studio/conversations/last', studioAuth, async (req, res) => {
+  try {
+    const project = req.query.project || 'GENERAL';
+    const sessionResult = await pool.query(
+      'SELECT session_id FROM studio_conversations WHERE project = $1 ORDER BY created_at DESC LIMIT 1',
+      [project]
+    );
+    if (sessionResult.rows.length === 0) {
+      return res.json({ ok: true, messages: [], session_id: null });
+    }
+    const session_id = sessionResult.rows[0].session_id;
+    const messagesResult = await pool.query(
+      'SELECT * FROM studio_conversations WHERE session_id = $1 ORDER BY created_at ASC',
+      [session_id]
+    );
+    return res.json({ ok: true, messages: messagesResult.rows, session_id });
+  } catch (error) {
+    return res.json({ ok: false, error: error.message });
+  }
+});
 
 app.post('/v1/factory/project/:id/test-builder', factoryAuth, async (req, res) => {
   const project_id = req.params.id;
