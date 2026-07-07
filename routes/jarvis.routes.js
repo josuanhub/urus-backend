@@ -7,6 +7,6 @@ router.post("/execute", controller.execute);
 router.post("/memory", controller.saveMemory);
 router.get("/memory", controller.getMemory);
 router.get("/health", controller.health);
-router.post("/embed-existing", controller.embedExistingMemory);
+router.get("/embed-existing", controller.embedExistingMemory);
 
 module.exports = router;
