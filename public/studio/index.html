@@ -889,7 +889,7 @@ const STUDIO_CONTEXT = "You are URUS Studio Intelligence — the autonomous brai
     'URUS_CORE': 'Proyecto URUS Core / Console. Factoría de software autónoma multitenant. Generación dinámica de estructuras de base de datos y endpoints universales en Node.js/Express/PostgreSQL.'
   };
   // ── LOGIN ──
-  async function loadStudioMemory() {
+async function loadStudioMemory() {
     try {
       const res = await fetch('/v1/studio/memory/load', {
         headers: { 'x-studio-password': password }
@@ -911,8 +911,23 @@ const STUDIO_CONTEXT = "You are URUS Studio Intelligence — the autonomous brai
     } catch(e) {
       console.log('Memory load failed:', e.message);
     }
-  }
 
+    try {
+      const convRes = await fetch('/v1/studio/conversations/last?project=' + encodeURIComponent(currentProject), {
+        headers: { 'x-studio-password': password }
+      });
+      const convData = await convRes.json();
+      if (convData.messages && convData.messages.length > 0) {
+        for (const msg of convData.messages) {
+          history.push({ role: msg.role, content: msg.content });
+          addMessage(msg.role, msg.content);
+        }
+        showNotif('💬 ' + convData.messages.length + ' mensajes cargados de la conversación anterior');
+      }
+    } catch(e) {
+      console.log('Conversation load failed:', e.message);
+    }
+  }
   async function saveToMemory(type, content, metadata) {
     try {
       await fetch('/v1/studio/memory/save', {
