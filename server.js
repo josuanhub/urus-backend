@@ -7762,7 +7762,11 @@ try {
       system: systemPrompt,
       messages: messages
     });
-    res.json({ reply: claudeMsg.content[0].text });
+   const { saveMemoryWithEmbedding } = require('./routes/controllers/jarvis.controller');
+const lastUserMsg = messages[messages.length - 1]?.content || '';
+const convContent = [CONVERSACION] Usuario: ${lastUserMsg.slice(0, 500)}\nURUS: ${claudeMsg.content[0].text.slice(0, 500)};
+saveMemoryWithEmbedding(pool, convContent).catch(console.error);
+
   } catch (err) {
     console.error('STUDIO_ERROR:', err);
     res.status(500).json({ error: 'Fallo en Studio' });
@@ -10601,6 +10605,30 @@ app.post('/v1/os/write', osAuth, async (req, res) => {
     return res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+
+
+// Auto-embedding pipeline — cada 5 minutos
+const { generateEmbedding } = require('./routes/controllers/jarvis.controller');
+setInterval(async () => {
+  try {
+    const rows = await pool.query('SELECT id, content FROM jarvis_memory WHERE embedding IS NULL LIMIT 50');
+    for (const row of rows.rows) {
+      const embedding = await generateEmbedding(row.content);
+      if (embedding) {
+        const vec = '[' + embedding.join(',') + ']';
+        await pool.query('UPDATE jarvis_memory SET embedding = $1::vector WHERE id = $2', [vec, row.id]);
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    if (rows.rows.length > 0) console.log([AutoEmbed] ✅ ${rows.rows.length} embeddings generados);
+  } catch(e) {
+    console.error('[AutoEmbed] Error:', e.message);
+  }
+
+
+
+
 
 
 
