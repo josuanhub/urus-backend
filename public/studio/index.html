@@ -931,9 +931,10 @@ const STUDIO_CONTEXT = "You are URUS Studio Intelligence — the autonomous brai
     } catch(e) {}
   }
 
-  function login() {
+function login() {
     const pwd = document.getElementById('pwd-input').value;
     if (pwd === 'urus2026') {
+      if (!window.studioSessionId) { window.studioSessionId = crypto.randomUUID(); }
       password = pwd;
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
@@ -946,7 +947,6 @@ const STUDIO_CONTEXT = "You are URUS Studio Intelligence — the autonomous brai
       setTimeout(() => inp.classList.remove('error'), 400);
     }
   }
-
   // ── PROJECT ──
   function setProject(id, name) {
     currentProject = id;
