@@ -9871,10 +9871,11 @@ const extractMsg = await client.messages.create({
     }
   }
   
-  const startIdx = Math.max(0, extracted.line_number - 1);
-let endIdx = Math.min(lines.length - 1, startIdx + 600);
+const startIdx = Math.max(0, extracted.line_number - 1);
+  const MAX_FN_LINES = 300;
+  let endIdx = Math.min(lines.length - 1, startIdx + MAX_FN_LINES);
   let braceCount = 0, started = false;
-  for (let i = startIdx; i < lines.length && i < startIdx + 500; i++) {
+  for (let i = startIdx; i < lines.length && i < startIdx + MAX_FN_LINES; i++) {
     const line = lines[i] || '';
     for (const ch of line) {
       if (ch === '{') { braceCount++; started = true; }
