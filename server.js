@@ -10166,7 +10166,7 @@ app.get('/v1/studio/memory/load', studioAuth, async (req, res) => {
     const edits = await pool.query('SELECT content, metadata, created_at FROM jarvis_memory WHERE type = $1 AND source = \'studio\' ORDER BY created_at DESC LIMIT 5', ['edit']);
     const errors = await pool.query('SELECT content, metadata, created_at FROM jarvis_memory WHERE type = $1 AND source = \'studio\' ORDER BY created_at DESC LIMIT 3', ['error']);
     const lessons = await pool.query('SELECT content, created_at FROM jarvis_memory WHERE type = $1 AND source = \'studio\' ORDER BY created_at ASC LIMIT 30', ['lesson']);
-    const conversations = await pool.query(`SELECT content, metadata->>"project" AS project, created_at FROM jarvis_memory WHERE type = $1 AND source = 'studio' ORDER BY created_at DESC LIMIT 10`, ['conversation']);
+    const conversations = await pool.query(`SELECT content, metadata->>'project' AS project, created_at FROM jarvis_memory WHERE type = $1 AND source = 'studio' ORDER BY created_at DESC LIMIT 10`, ['conversation']);
     return res.json({ ok: true, recent_edits: edits.rows, recent_errors: errors.rows, recent_lessons: lessons.rows, recent_conversations: conversations.rows });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
