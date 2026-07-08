@@ -3238,6 +3238,7 @@ await pool.query(`ALTER TABLE dealer_inventory ADD COLUMN IF NOT EXISTS estado_v
 console.log("✅ Dealer OS tables ready");
 
   // ===== TABLA DEALERS (faltaba) — registra a Iván =====
+  await pool.query(`DROP TABLE IF EXISTS dealers CASCADE;`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS dealers (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
