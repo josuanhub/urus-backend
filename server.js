@@ -7451,63 +7451,121 @@ app.post('/webhook/facebook', async (req, res) => {
 
 const botState = {};
 
-async function handleBotMessage(dealer, senderId, text) {
-  if (!botState[senderId]) botState[senderId] = { step: 0, data: {} };
-  const state = botState[senderId];
+// ============================================================
+// 🧠 SALES BRAIN — cerebro conversacional (reemplaza el bot rígido)
+// ============================================================
+const { Groq: GroqSB } = require("groq-sdk");
+const salesBrainGroq = new GroqSB({ apiKey: process.env.STUDIO_GROQ_KEY });
 
-  const steps = [
-    { field: null,               msg: `Hola, gracias por contactar a ${dealer.nombre}.\n\n¿Qué vehículo te interesa?\nEjemplo: Toyota Corolla, Ram 1500, SUV` },
-    { field: 'vehiculo_interes', msg: '💰 ¿Cuál es tu presupuesto?\nEjemplo: $15,000 / $25,000 / $40,000' },
-    { field: 'presupuesto',      msg: '🏦 ¿Cuánto tienes para el pronto?\nEjemplo: $1,000 / $3,000 / $5,000' },
-    { field: 'pronto',           msg: '📋 ¿Cómo está tu crédito?\nExcelente / Bueno / Regular / Sin crédito' },
-    { field: 'credito',          msg: '🔄 ¿Tienes vehículo para trade-in?\nSí o No' },
-    { field: 'trade_in',         msg: '👤 ¿Cuál es tu nombre completo?' },
-    { field: 'nombre',           msg: '📱 ¿Cuál es tu número de teléfono?' },
-    { field: 'telefono',         msg: null }
+function sbExtractJson(txt) {
+  try { const m = String(txt).match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; } catch { return null; }
+}
+function sbNum(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(String(v).replace(/[^0-9.]/g, "")); return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+async function salesBrainProcess({ dealer, canal, senderId, phone, texto, nombreContacto }) {
+  const cfg = dealer.config || {};
+  let prospect;
+  const buscar = phone
+    ? await pool.query(`SELECT * FROM dealer_prospects WHERE dealer_id=$1 AND telefono=$2 ORDER BY created_at DESC LIMIT 1`, [dealer.dealer_id, phone])
+    : await pool.query(`SELECT * FROM dealer_prospects WHERE dealer_id=$1 AND fb_sender_id=$2 ORDER BY created_at DESC LIMIT 1`, [dealer.dealer_id, senderId]);
+  const esNuevo = buscar.rows.length === 0;
+  if (esNuevo) {
+    const ins = await pool.query(`
+      INSERT INTO dealer_prospects (dealer_id, nombre, telefono, fb_sender_id, canal, fuente, estado, temperatura, historial, ultimo_mensaje_at)
+      VALUES ($1,$2,$3,$4,$5,$6,'Nuevo','Frío','[]'::jsonb, now()) RETURNING *`,
+      [dealer.dealer_id, nombreContacto || null, phone || null, senderId || null, canal, canal === 'facebook' ? 'Facebook DM' : 'WhatsApp']);
+    prospect = ins.rows[0];
+  } else { prospect = buscar.rows[0]; }
+
+  if (prospect.bot_pausado) return { pausado: true };
+
+  const esDueno = phone && dealer.celular_dueno && phone.replace(/\D/g,'').endsWith(dealer.celular_dueno.replace(/\D/g,'').slice(-10));
+
+  const invRes = await pool.query(
+    `SELECT marca, modelo, año, precio FROM dealer_inventory WHERE dealer_id=$1 AND (estado_venta='Disponible' OR estado='Disponible') LIMIT 40`,
+    [dealer.dealer_id]);
+  const invTexto = invRes.rows.map(v => `- ${v.marca||''} ${v.modelo||''} ${v.año||''} — $${v.precio||'?'}`).join('\n');
+
+  const historial = Array.isArray(prospect.historial) ? prospect.historial.slice(-10) : [];
+
+  let systemPrompt;
+  if (esDueno) {
+    systemPrompt = `Eres el asistente operativo de ${dealer.nombre}. Le hablas a IVÁN, el DUEÑO.
+INVENTARIO:\n${invTexto || '(sin inventario)'}
+Dale reportes claros sobre sus leads e inventario. Directo, corto, español de PR. Máximo 4 líneas.`;
+  } else {
+    systemPrompt = `Eres el vendedor virtual de ${dealer.nombre}. Hablas con un CLIENTE por chat.
+${cfg.conocimiento || ''}
+TONO: ${cfg.tono || 'Natural, directo, español de PR.'}
+INVENTARIO ACTUAL (no inventes):\n${invTexto || '(inventario cambia a diario; si no ves el vehículo, di que Iván confirma)'}
+OBJETIVO: conversar natural, entender qué busca, llevarlo a agendar visita o a que Iván lo contacte. Saca sus datos conversando sin interrogar y sin pedir formularios.
+Devuelve SOLO este JSON válido, sin texto fuera:
+{"respuesta":"lo que le dices (corto, 2-4 líneas)","datos":{"nombre":null,"vehiculo_interes":null,"presupuesto":null,"pronto":null,"credito":null,"trade_in":null,"vehiculo_trade_in":null},"estado":"Nuevo|Contactado|Interesado|Precalificando|Cita coordinada|Negociando|Perdido","temperatura":"Frío|Tibio|Caliente","quiere_cita":false,"necesita_humano":false}
+En "datos" pon SOLO lo que el cliente reveló; lo demás null. "necesita_humano": true si pide una persona o preguntan algo que no puedes responder (ej: financiamiento de botes).`;
+  }
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...historial.map(h => ({ role: h.role, content: h.content })),
+    { role: 'user', content: texto },
   ];
 
-  if (state.step > 0 && steps[state.step - 1].field) {
-    state.data[steps[state.step - 1].field] = text;
+  let aiRaw;
+  try {
+    const c = await salesBrainGroq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile', max_tokens: 700, temperature: 0.6, messages });
+    aiRaw = c.choices[0].message.content.trim();
+  } catch (e) { console.error('SALESBRAIN_GROQ_ERR', e.message); return { respuesta: 'Dame un momento, en breve te contesto.' }; }
+
+  const guardarTurno = async (resp) => {
+    await pool.query(
+      `UPDATE dealer_prospects SET historial = (COALESCE(historial,'[]'::jsonb) || $2::jsonb), nota=$3, ultimo_mensaje_at=now(), updated_at=now() WHERE id=$1`,
+      [prospect.id, JSON.stringify([{role:'user',content:texto},{role:'assistant',content:resp}]), String(texto).slice(0,200)]);
+  };
+
+  if (esDueno) { await guardarTurno(aiRaw); return { respuesta: aiRaw, esDueno: true }; }
+
+  const parsed = sbExtractJson(aiRaw) || {};
+  const respuesta = parsed.respuesta || aiRaw;
+  const d = parsed.datos || {};
+
+  await pool.query(`
+    UPDATE dealer_prospects SET
+      nombre=COALESCE($2,nombre), vehiculo_interes=COALESCE($3,vehiculo_interes),
+      presupuesto=COALESCE($4,presupuesto), pronto=COALESCE($5,pronto),
+      credito=COALESCE($6,credito), trade_in=COALESCE($7,trade_in),
+      vehiculo_trade_in=COALESCE($8,vehiculo_trade_in), estado=COALESCE($9,estado),
+      temperatura=COALESCE($10,temperatura), ultimo_mensaje_at=now(), updated_at=now()
+    WHERE id=$1`,
+    [prospect.id, d.nombre||null, d.vehiculo_interes||null, sbNum(d.presupuesto), sbNum(d.pronto),
+     d.credito||null, (d.trade_in===true||d.trade_in==='true')?true:null, d.vehiculo_trade_in||null,
+     parsed.estado||null, parsed.temperatura||null]);
+
+  await guardarTurno(respuesta);
+
+  if (cfg.notificar_todo || esNuevo || parsed.temperatura === 'Caliente' || parsed.necesita_humano || parsed.quiere_cita) {
+    let etiqueta = '🆕 Lead nuevo';
+    if (parsed.temperatura === 'Caliente') etiqueta = '🔥 LEAD CALIENTE';
+    if (parsed.necesita_humano) etiqueta = '🙋 Piden hablar contigo';
+    if (parsed.quiere_cita) etiqueta = '📅 Quiere cita';
+    const nom = d.nombre || prospect.nombre || 'Sin nombre';
+    const veh = d.vehiculo_interes || prospect.vehiculo_interes || '—';
+    const pres = d.presupuesto || prospect.presupuesto || '—';
+    const msg = `${etiqueta} — ${dealer.nombre}\n\nCliente: ${nom}\nBusca: ${veh}\nPresupuesto: ${pres}\nCanal: ${canal}\nÚltimo: "${String(texto).slice(0,80)}"\n\nCRM: https://www.urusverify.com/dealer-crm.html`;
+    try { await sendWhatsAppTextTwilio({ to: dealer.celular_dueno, text: msg }); } catch(e){ console.error('NOTIF_IVAN_ERR', e.message); }
   }
 
-  if (state.step === steps.length - 1) {
-    state.data['telefono'] = text;
-    try {
-      await pool.query(
-        `INSERT INTO dealer_prospects 
-         (dealer_key, nombre, telefono, vehiculo_interes, presupuesto, pronto, credito, trade_in, fuente, temperatura, estado)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-        [
-          dealer.dealer_key,
-          state.data.nombre        || 'No especificado',
-          state.data.telefono      || 'No especificado',
-          state.data.vehiculo_interes || 'No especificado',
-          state.data.presupuesto   || 'No especificado',
-          state.data.pronto        || 'No especificado',
-          state.data.credito       || 'No especificado',
-          state.data.trade_in      || 'No',
-          'Facebook DM', 'Tibio', 'Nuevo'
-        ]
-      );
-
-      const msg = `🚗 NUEVO LEAD — ${dealer.nombre}\n\nNombre: ${state.data.nombre}\nTeléfono: ${state.data.telefono}\nVehículo: ${state.data.vehiculo_interes}\nPresupuesto: ${state.data.presupuesto}\nPronto: ${state.data.pronto}\nCrédito: ${state.data.credito}\nTrade-in: ${state.data.trade_in}\n\nVer panel: https://www.urusverify.com/dealer-crm.html`;
-
-      await sendWhatsAppTextTwilio({ to: `+1${dealer.whatsapp}`, text: msg });
-
-    } catch (err) {
-      console.error('PROSPECT_SAVE_ERR', err.message);
-    }
-
-    await sendFBMessage(dealer.fb_page_access_token, senderId,
-      `Perfecto ${state.data.nombre || ''}, recibimos tu información. Un representante de ${dealer.nombre} te contactará pronto.`
-    );
-    delete botState[senderId];
-    return;
-  }
-
-  await sendFBMessage(dealer.fb_page_access_token, senderId, steps[state.step].msg);
-  state.step++;
+  return { respuesta, parsed };
 }
+
+async function handleBotMessage(dealer, senderId, text) {
+  const result = await salesBrainProcess({ dealer, canal: 'facebook', senderId, phone: null, texto: text, nombreContacto: null });
+  if (result?.respuesta) { await sendFBMessage(dealer.fb_page_access_token, senderId, result.respuesta); }
+}
+
 
 async function sendFBMessage(pageAccessToken, recipientId, text) {
   try {
