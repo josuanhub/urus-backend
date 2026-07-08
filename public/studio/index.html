@@ -1533,7 +1533,7 @@ async function speakText(text) {
   
   // Preload voices
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-  function handleFileDrop(event) {
+ 
 function handleFileDrop(event) {
   event.preventDefault();
   event.currentTarget.style.borderColor = 'var(--border2)';
@@ -1554,6 +1554,7 @@ const reader = new FileReader();
     renderPendingFiles();
   };
   reader.readAsDataURL(file);
+  }
 
 function renderPendingFiles() {
   let zone = document.getElementById('pending-files-zone');
