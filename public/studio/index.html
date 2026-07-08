@@ -1505,10 +1505,11 @@ async function speakText(text) {
   // Preload voices
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
   function handleFileDrop(event) {
+function handleFileDrop(event) {
   event.preventDefault();
   event.currentTarget.style.borderColor = 'var(--border2)';
-  const file = event.dataTransfer.files[0];
-  if (file) processFile(file);
+  const files = Array.from(event.dataTransfer.files || []);
+  files.forEach(processFile);
 }
 
 function handleFileSelect(event) {
