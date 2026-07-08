@@ -3236,6 +3236,48 @@ await pool.query(`ALTER TABLE dealer_inventory ADD COLUMN IF NOT EXISTS estado_v
   await pool.query(`ALTER TABLE dealer_prospects ADD COLUMN IF NOT EXISTS dias_sin_contacto INT DEFAULT 0;`);
   
 console.log("✅ Dealer OS tables ready");
+
+  // ===== TABLA DEALERS (faltaba) — registra a Iván =====
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS dealers (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      dealer_id TEXT UNIQUE NOT NULL,
+      nombre TEXT,
+      fb_page_id TEXT UNIQUE,
+      fb_page_access_token TEXT,
+      whatsapp_from TEXT,
+      celular_dueno TEXT,
+      config JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    INSERT INTO dealers (dealer_id, nombre, fb_page_id, fb_page_access_token, whatsapp_from, celular_dueno, config)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
+    ON CONFLICT (dealer_id) DO UPDATE SET
+      nombre = EXCLUDED.nombre, fb_page_id = EXCLUDED.fb_page_id,
+      whatsapp_from = EXCLUDED.whatsapp_from, celular_dueno = EXCLUDED.celular_dueno,
+      config = EXCLUDED.config, updated_at = now()
+  `, [
+    'ivan_auto_imports', 'Ivan Auto Imports', '179445479537142',
+    process.env.FB_PAGE_TOKEN_IVAN || '',
+    'whatsapp:+17876639702', '+17873905016',
+    JSON.stringify({
+      conocimiento: `NEGOCIO: Ivan Auto Imports en Quebradillas, PR. Vende de todo con enfoque en pickups: autos, pickups, SUVs, botes, jet skis. FINANCIAMIENTO: Autos/pickups/SUVs SÍ. Botes y jet skis NO (cash). Si no está claro, di "déjame confirmar con Iván". TRADE-IN: se acepta en autos. Responde la pregunta primero, luego indaga. Nunca mandes formularios ni links. No inventes precios.`,
+      tono: `Español de PR, natural pero pulido. Directo, mensajes cortos (2-4 líneas), máximo 1 emoji. Trata de "tú".`,
+      notificar_todo: true,
+    }),
+  ]);
+  await pool.query(`ALTER TABLE dealer_prospects ADD COLUMN IF NOT EXISTS canal TEXT DEFAULT 'facebook';`);
+  await pool.query(`ALTER TABLE dealer_prospects ADD COLUMN IF NOT EXISTS fb_sender_id TEXT;`);
+  await pool.query(`ALTER TABLE dealer_prospects ADD COLUMN IF NOT EXISTS historial JSONB DEFAULT '[]'::jsonb;`);
+  await pool.query(`ALTER TABLE dealer_prospects ADD COLUMN IF NOT EXISTS bot_pausado BOOLEAN DEFAULT false;`);
+  await pool.query(`ALTER TABLE dealer_prospects ADD COLUMN IF NOT EXISTS ultimo_mensaje_at TIMESTAMPTZ DEFAULT now();`);
+  console.log("✅ Tabla dealers lista (Iván registrado)");
+
+
   
   
   await pool.query(`CREATE TABLE IF NOT EXISTS studio_memory (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), type TEXT NOT NULL, content TEXT NOT NULL, metadata JSONB NOT NULL DEFAULT '{}'::jsonb, project TEXT NOT NULL DEFAULT 'GENERAL', created_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
