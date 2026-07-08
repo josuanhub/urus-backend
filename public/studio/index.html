@@ -828,8 +828,8 @@
   <div style="border: 1px dashed var(--border2); border-radius: 8px; padding: 10px; text-align: center; font-size: 0.7rem; color: var(--text3); cursor: pointer;" onclick="document.getElementById('hidden-file-input').click()">
     📎 Arrastra una imagen o PDF aquí, o haz clic para seleccionar
   </div>
-  <input type="file" id="hidden-file-input" accept="image/*,.pdf" style="display:none" onchange="handleFileSelect(event)">
-</div>
+<input type="file" multiple id="hidden-file-input" accept="image/*,.pdf" style="display:none" onchange="handleFileSelect(event)">
+      </div>
       <div id="input-wrapper">
         <textarea id="input" placeholder="Escribe tu instrucción..." onkeydown="handleKey(event)" oninput="updateCount()"></textarea>
         <div id="input-toolbar">
