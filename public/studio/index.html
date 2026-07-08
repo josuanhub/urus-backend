@@ -1112,6 +1112,36 @@ const input = document.getElementById('input');
 
     addMessage('user', text);
 
+    // ── ARCHIVOS PENDIENTES ───────────────────────────────
+    let userMessageContent = null;
+    if (window.pendingFiles && window.pendingFiles.length > 0) {
+      const contentBlocks = [{ type: 'text', text: text }];
+      for (const file of window.pendingFiles) {
+        if (file.mimeType && file.mimeType.startsWith('image/')) {
+          contentBlocks.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: file.mimeType,
+              data: file.base64
+            }
+          });
+        } else if (file.mimeType === 'application/pdf') {
+          contentBlocks.push({
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: file.mimeType,
+              data: file.base64
+            }
+          });
+        }
+      }
+      userMessageContent = contentBlocks;
+      window.pendingFiles = [];
+      renderPendingFiles();
+    }
+
     // ── COMANDO ESPECIAL: /memory ──────────────────────────
     if (text.startsWith('/memory ')) {
       const query = text.slice(8).trim();
@@ -1232,7 +1262,7 @@ if (text.startsWith('/reindex')) {
     const projectCtx = projectContexts[currentProject] || '';
     history.push({
       role:    'user',
-      content: `[PROYECTO: ${currentProject}]\n${projectCtx}\n\n${text}`
+      content: userMessageContent || `[PROYECTO: ${currentProject}]\n${projectCtx}\n\n${text}`
     });
 
     document.getElementById('typing-indicator').style.display = 'flex';
@@ -1268,7 +1298,6 @@ if (text.startsWith('/reindex')) {
     btn.disabled = false;
     input.focus();
   }
-
 async function handleSelfEdit(instruction, previewOnly) {
     console.log('[handleSelfEdit] instruction:', instruction, '| previewOnly:', previewOnly);
     const endpoint = previewOnly
