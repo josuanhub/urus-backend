@@ -1525,6 +1525,38 @@ const reader = new FileReader();
     renderPendingFiles();
   };
   reader.readAsDataURL(file);
+
+function renderPendingFiles() {
+  let zone = document.getElementById('pending-files-zone');
+  if (!zone) {
+    zone = document.createElement('div');
+    zone.id = 'pending-files-zone';
+    zone.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;padding:4px 0;';
+    const dropZone = document.getElementById('file-drop-zone');
+    if (dropZone && dropZone.parentNode) {
+      dropZone.parentNode.insertBefore(zone, dropZone);
+    }
+  }
+  zone.innerHTML = '';
+  if (!window.pendingFiles || window.pendingFiles.length === 0) return;
+  window.pendingFiles.forEach(function(file, index) {
+    const chip = document.createElement('div');
+    chip.style.cssText = 'display:inline-flex;align-items:center;background:#e0e0e0;border-radius:12px;padding:2px 8px;font-size:12px;gap:4px;max-width:200px;';
+    const label = document.createElement('span');
+    label.textContent = file.name.length > 20 ? file.name.substring(0, 20) + '…' : file.name;
+    label.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    const removeBtn = document.createElement('span');
+    removeBtn.textContent = '×';
+    removeBtn.style.cssText = 'cursor:pointer;font-size:14px;line-height:1;color:#666;flex-shrink:0;';
+    removeBtn.addEventListener('click', function() {
+      window.pendingFiles.splice(index, 1);
+      renderPendingFiles();
+    });
+    chip.appendChild(label);
+    chip.appendChild(removeBtn);
+    zone.appendChild(chip);
+  });
+}
 }
 </script>
 </body>
