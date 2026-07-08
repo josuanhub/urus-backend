@@ -1517,28 +1517,12 @@ function handleFileSelect(event) {
   files.forEach(processFile);
 }
 function processFile(file) {
-  const reader = new FileReader();
-  reader.onload = async function(e) {
+const reader = new FileReader();
+  reader.onload = function(e) {
     const base64Data = e.target.result.split(',')[1];
-    addMessage('user', '📎 Analizando: ' + file.name);
-    document.getElementById('typing-indicator').style.display = 'flex';
-    try {
-      const res = await fetch('/v1/studio/analyze-file', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
-        body: JSON.stringify({ filename: file.name, mimeType: file.type, base64Data })
-      });
-      const data = await res.json();
-      document.getElementById('typing-indicator').style.display = 'none';
-      if (data.ok) {
-        addMessage('assistant', data.analysis);
-      } else {
-        addMessage('assistant', '❌ Error: ' + data.error);
-      }
-    } catch (err) {
-      document.getElementById('typing-indicator').style.display = 'none';
-      addMessage('assistant', '❌ Error de conexión: ' + err.message);
-    }
+    if (!window.pendingFiles) window.pendingFiles = [];
+    window.pendingFiles.push({ name: file.name, mimeType: file.type, base64Data: base64Data });
+    renderPendingFiles();
   };
   reader.readAsDataURL(file);
 }
