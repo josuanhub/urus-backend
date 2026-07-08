@@ -1513,10 +1513,9 @@ function handleFileDrop(event) {
 }
 
 function handleFileSelect(event) {
-  const file = event.target.files[0];
-  if (file) processFile(file);
+  const files = Array.from(event.target.files || []);
+  files.forEach(processFile);
 }
-
 function processFile(file) {
   const reader = new FileReader();
   reader.onload = async function(e) {
