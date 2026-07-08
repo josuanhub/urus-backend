@@ -7561,7 +7561,7 @@ En "datos" pon SOLO lo que el cliente reveló; lo demás null. "necesita_humano"
   return { respuesta, parsed };
 }
 
-async function handleBotMessage(dealer, senderId, text) {
+async function handleBotMessageVIEJO(dealer, senderId, text) {
   const result = await salesBrainProcess({ dealer, canal: 'facebook', senderId, phone: null, texto: text, nombreContacto: null });
   if (result?.respuesta) { await sendFBMessage(dealer.fb_page_access_token, senderId, result.respuesta); }
 }
@@ -7578,6 +7578,36 @@ async function sendFBMessage(pageAccessToken, recipientId, text) {
     console.error('FB_SEND_ERR', err.message);
   }
 }
+
+// ===== WEBHOOK WHATSAPP DE IVÁN =====
+app.post("/webhook/whatsapp-dealer", async (req, res) => {
+  try {
+    const fromRaw = String(req.body?.From || "");
+    const toRaw = String(req.body?.To || "");
+    const texto = String(req.body?.Body || "").trim();
+    const nombreContacto = String(req.body?.ProfileName || "").trim() || null;
+    if (!fromRaw || !texto) return res.status(200).type("text/xml").send("<Response></Response>");
+    const phone = fromRaw.replace("whatsapp:", "").trim();
+    const toClean = toRaw.replace("whatsapp:", "").trim();
+    const dr = await pool.query(`SELECT * FROM dealers WHERE whatsapp_from=$1 LIMIT 1`, [`whatsapp:${toClean}`]);
+    const dealer = dr.rows[0];
+    if (!dealer) return res.status(200).type("text/xml").send("<Response></Response>");
+    const result = await salesBrainProcess({ dealer, canal: "whatsapp", senderId: null, phone, texto, nombreContacto });
+    if (result?.pausado || !result?.respuesta) return res.status(200).type("text/xml").send("<Response></Response>");
+    const twiml = new MessagingResponse();
+    twiml.message(result.respuesta);
+    return res.type("text/xml").send(twiml.toString());
+  } catch (e) { console.error("WHATSAPP_DEALER_ERR", e); return res.status(200).type("text/xml").send("<Response></Response>"); }
+});
+
+app.post("/v1/dealer/prospects/:id/toggle-bot", async (req, res) => {
+  try {
+    const r = await pool.query(`UPDATE dealer_prospects SET bot_pausado=$2, updated_at=now() WHERE id=$1 RETURNING id, bot_pausado`, [req.params.id, req.body?.pausado === true]);
+    if (!r.rows.length) return res.status(404).json({ ok: false });
+    return res.json({ ok: true, prospect: r.rows[0] });
+  } catch (e) { return res.status(500).json({ ok: false, error: e.message }); }
+});
+
 
 // =============================
 // 🧠 URUS STUDIO
