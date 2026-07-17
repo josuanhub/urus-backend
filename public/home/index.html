@@ -260,21 +260,21 @@ async function hablar(texto) {
 }
 
 async function voz(txt) {
-  try {
-    setState('speaking', 'Hablando');
-    const r = await fetch(API + '/v1/studio/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-studio-password': 'urus2026' },
-      body: JSON.stringify({ text: txt, voice: 'onyx' })
-    });
-    if (!r.ok) return;
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    audio = new Audio(url);
-    await new Promise(res => { audio.onended = res; audio.onerror = res; audio.play(); });
-    URL.revokeObjectURL(url);
-  } catch (e) { console.log('tts:', e.message); }
-}
+    try {
+      setState('speaking', 'Hablando');
+      const r = await fetch(API + '/v1/home/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: txt, voice: 'onyx' })
+      });
+      if (!r.ok) { console.error('TTS fallo:', r.status, await r.text()); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      audio = new Audio(url);
+      await new Promise(res => { audio.onended = res; audio.onerror = res; audio.play().catch(e => { console.error('play:', e.message); res(); }); });
+      URL.revokeObjectURL(url);
+    } catch (e) { console.error('voz:', e.message); }
+  }
 
 function pintar(s) {
   const set = (id, v, on) => {
