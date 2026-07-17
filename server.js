@@ -10806,6 +10806,208 @@ app.post('/v1/os/write', osAuth, async (req, res) => {
 
 
 
+
+// ============================================================
+// URUS HOME — Cerebro conversacional de la casa
+// Va ANTES de: // ---------- Boot ----------
+// ============================================================
+
+const homeState = {
+  residente: 'Josuan',
+  escena: 'Neutral',
+  sala:       { luz: 0, tono: 'Calida', activo: false },
+  dormitorio: { luz: 0, tono: 'Calida', activo: false },
+  temperatura: 72,
+  musica: { genero: null, activo: false },
+  puerta: 'Cerrada',
+  energia: { ahorro: 0 },
+  ultima_actualizacion: new Date().toISOString()
+};
+
+function buildHomePrompt(memoria, estado, hora) {
+  return `Eres URUS, la inteligencia de esta casa. No eres un asistente. Eres la casa.
+
+QUIEN VIVE AQUI: ${estado.residente}
+HORA AHORA: ${hora}
+
+ESTADO ACTUAL DE LA CASA:
+${JSON.stringify(estado, null, 2)}
+
+LO QUE RECUERDAS DE EL:
+${memoria || '(Todavia no lo conoces bien. Es temprano en la relacion.)'}
+
+COMO HABLAS:
+- Espanol de Puerto Rico, natural, calmado
+- Corto. Dos lineas maximo. Eres una casa, no un podcast
+- Nunca digas "como asistente" ni "estoy aqui para ayudarte"
+- No saludes cada vez. Ya vives con el
+- Si algo le pasa, lo notas. No preguntas de mas
+
+QUE PUEDES HACER:
+- Cambiar luces (sala, dormitorio): brillo 0-100, tono Calida/Fria
+- Ajustar temperatura: 65-80
+- Poner musica: cualquier genero, o apagarla
+- Activar escenas: Llegada, Descanso, Enfoque, Salida, Neutral
+
+REGLA CENTRAL:
+No todo lo que te dice es un comando. A veces solo te esta hablando.
+Si te cuenta algo de su dia, escuchalo. No muevas nada. Solo responde y recuerda.
+Si te pide algo de la casa, hazlo.
+A veces las dos cosas a la vez.
+
+Devuelve SOLO este JSON, sin markdown, sin texto fuera:
+{
+  "voz": "lo que le dices, corto",
+  "tipo": "accion|conversacion|memoria|consulta|mixto",
+  "acciones": [
+    {"objetivo":"sala","luz":30,"tono":"Calida"},
+    {"objetivo":"temperatura","valor":71},
+    {"objetivo":"musica","genero":"jazz"},
+    {"objetivo":"escena","nombre":"Descanso"}
+  ],
+  "recordar": "un dato que valga la pena guardar de este momento, o null"
+}
+
+En "acciones" pon solo lo que realmente vas a cambiar. Si no cambias nada, array vacio.
+En "recordar" guarda solo lo que importa: preferencias, personas, eventos, decisiones.
+No guardes "dijo hola". Si guarda "Will le respondio que si al piloto".`;
+}
+
+function aplicarAccionesHome(acciones) {
+  const aplicadas = [];
+  for (const a of acciones || []) {
+    try {
+      const obj = String(a.objetivo || '').toLowerCase();
+
+      if (obj === 'sala' || obj === 'dormitorio') {
+        if (typeof a.luz === 'number') {
+          homeState[obj].luz = Math.max(0, Math.min(100, a.luz));
+          homeState[obj].activo = homeState[obj].luz > 0;
+        }
+        if (a.tono) homeState[obj].tono = a.tono;
+        aplicadas.push(`${obj}: luz ${homeState[obj].luz}%`);
+      }
+
+      else if (obj === 'temperatura') {
+        const v = Number(a.valor);
+        if (Number.isFinite(v)) {
+          homeState.temperatura = Math.max(65, Math.min(80, v));
+          aplicadas.push(`temperatura: ${homeState.temperatura}F`);
+        }
+      }
+
+      else if (obj === 'musica') {
+        if (a.genero === 'off' || a.genero === null) {
+          homeState.musica = { genero: null, activo: false };
+          aplicadas.push('musica: apagada');
+        } else if (a.genero) {
+          homeState.musica = { genero: a.genero, activo: true };
+          aplicadas.push(`musica: ${a.genero}`);
+        }
+      }
+
+      else if (obj === 'escena') {
+        if (a.nombre) {
+          homeState.escena = a.nombre;
+          aplicadas.push(`escena: ${a.nombre}`);
+        }
+      }
+    } catch (e) {
+      console.error('HOME_ACCION_ERROR', a, e.message);
+    }
+  }
+  homeState.ultima_actualizacion = new Date().toISOString();
+  return aplicadas;
+}
+
+// POST /v1/home/chat — el corazon
+app.post('/v1/home/chat', async (req, res) => {
+  try {
+    const texto = String(req.body?.texto || '').trim();
+    if (!texto) return res.status(400).json({ ok: false, error: 'texto requerido' });
+
+    // 1. Recuperar memoria relevante
+    let memoria = '';
+    try {
+      const { searchRelevantMemory } = require('./routes/controllers/jarvis.controller');
+      memoria = await searchRelevantMemory(pool, texto, 6);
+    } catch (e) {
+      console.log('[HOME] memoria no disponible:', e.message);
+    }
+
+    const hora = new Date().toLocaleString('es-PR', {
+      timeZone: 'America/Puerto_Rico',
+      weekday: 'long', hour: 'numeric', minute: '2-digit'
+    });
+
+    // 2. Groq decide
+    const completion = await salesBrainGroq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 500,
+      temperature: 0.7,
+      messages: [
+        { role: 'system', content: buildHomePrompt(memoria, homeState, hora) },
+        { role: 'user', content: texto }
+      ]
+    });
+
+    const raw = completion.choices[0].message.content.trim();
+
+    let parsed;
+    try {
+      const m = raw.match(/\{[\s\S]*\}/);
+      parsed = m ? JSON.parse(m[0]) : { voz: raw, tipo: 'conversacion', acciones: [], recordar: null };
+    } catch (e) {
+      parsed = { voz: raw, tipo: 'conversacion', acciones: [], recordar: null };
+    }
+
+    // 3. Aplicar acciones
+    const aplicadas = aplicarAccionesHome(parsed.acciones);
+
+    // 4. Guardar memoria del turno
+    try {
+      const { saveMemoryWithEmbedding } = require('./routes/controllers/jarvis.controller');
+      const contenido = parsed.recordar
+        ? `[URUS HOME] ${parsed.recordar}`
+        : `[URUS HOME] ${homeState.residente}: "${texto}" — URUS: "${parsed.voz}"`;
+      await saveMemoryWithEmbedding(pool, contenido, 'home', 'urus_home');
+    } catch (e) {
+      console.log('[HOME] no se guardo memoria:', e.message);
+    }
+
+    console.log('[HOME]', parsed.tipo, '|', texto.slice(0, 40), '→', aplicadas.join(', ') || 'sin acciones');
+
+    return res.json({
+      ok: true,
+      voz: parsed.voz,
+      tipo: parsed.tipo,
+      estado: homeState,
+      aplicadas,
+      recordo: parsed.recordar || null
+    });
+
+  } catch (err) {
+    console.error('HOME_CHAT_ERROR', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// GET /v1/home/state — el panel lo consulta
+app.get('/v1/home/state', (req, res) => {
+  res.json({ ok: true, estado: homeState });
+});
+
+// GET /home — sirve la pagina
+app.get('/home', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'home', 'index.html'));
+});
+
+
+
+
+
+
+
 // ---------- Boot ----------
 (async () => {
   try {
