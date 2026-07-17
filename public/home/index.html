@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URUS ONE</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080808;
+    --panel: #101010;
+    --border: #1e1e1e;
+    --gold: #c9a84c;
+    --text: #e8e8e8;
+    --text2: #8a8a8a;
+    --text3: #4a4a4a;
+    --green: #4ade80;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  #glow {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 900px; height: 900px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,168,76,0.10) 0%, transparent 65%);
+    pointer-events: none;
+    transition: opacity 2s, transform 2s;
+    opacity: 0.3;
+  }
+  #glow.on { opacity: 1; }
+
+  #brand {
+    position: fixed; top: 40px;
+    font-size: 0.7rem; letter-spacing: 8px;
+    color: var(--text3); font-weight: 300;
+  }
+
+  #orb {
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    border: 1px solid rgba(201,168,76,0.25);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.5s;
+    position: relative;
+  }
+  #orb::before {
+    content:''; position:absolute; inset:-25px;
+    border-radius:50%; border:1px solid rgba(201,168,76,0.07);
+    transition: all 0.5s;
+  }
+  #orb.listening {
+    border-color: var(--gold);
+    box-shadow: 0 0 70px rgba(201,168,76,0.35);
+  }
+  #orb.listening::before { animation: pulse 2s infinite; }
+  #orb.thinking { border-color: rgba(201,168,76,0.6); }
+  #orb.thinking::before { animation: spin 1.5s linear infinite; border-top-color: var(--gold); }
+  #orb.speaking { border-color: var(--gold); box-shadow: 0 0 100px rgba(201,168,76,0.5); }
+
+  @keyframes pulse {
+    0%,100% { transform: scale(1); opacity:0.4; }
+    50% { transform: scale(1.15); opacity:0.1; }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #orb-inner {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gold);
+    transition: all 0.4s;
+  }
+  #orb.listening #orb-inner { width:14px; height:14px; }
+  #orb.speaking #orb-inner { width:20px; height:20px; box-shadow:0 0 30px var(--gold); }
+
+  #status {
+    margin-top: 36px; font-size: 0.68rem;
+    letter-spacing: 3px; color: var(--text3);
+    text-transform: uppercase; height: 16px;
+    transition: color 0.3s;
+  }
+  #status.active { color: var(--gold); }
+
+  #dialog {
+    margin-top: 44px; max-width: 620px;
+    text-align: center; min-height: 90px;
+    padding: 0 24px;
+  }
+  #heard {
+    font-size: 0.85rem; color: var(--text3);
+    font-weight: 300; margin-bottom: 14px;
+    min-height: 20px;
+  }
+  #said {
+    font-size: 1.5rem; color: var(--text);
+    font-weight: 200; line-height: 1.5;
+    opacity: 0; transition: opacity 0.6s;
+  }
+  #said.show { opacity: 1; }
+
+  #casa {
+    position: fixed; bottom: 40px;
+    display: flex; gap: 44px;
+    font-size: 0.68rem; color: var(--text3);
+    letter-spacing: 1px;
+  }
+  .stat { text-align: center; }
+  .stat-v {
+    display:block; font-size: 0.95rem;
+    color: var(--text2); margin-bottom: 5px;
+    transition: color 0.5s; font-weight: 300;
+  }
+  .stat-v.on { color: var(--gold); }
+
+  #memoria {
+    position: fixed; bottom: 40px; right: 40px;
+    font-size: 0.62rem; color: var(--text3);
+    max-width: 240px; text-align: right;
+    opacity: 0; transition: opacity 0.5s;
+    line-height: 1.5;
+  }
+  #memoria.show { opacity: 1; }
+
+  #hint {
+    position: fixed; bottom: 40px; left: 40px;
+    font-size: 0.62rem; color: var(--text3);
+  }
+</style>
+</head>
+<body>
+
+<div id="glow"></div>
+<div id="brand">URUS ONE</div>
+
+<div id="orb" onclick="toggle()">
+  <div id="orb-inner"></div>
+</div>
+
+<div id="status">Toca para despertar</div>
+
+<div id="dialog">
+  <div id="heard"></div>
+  <div id="said"></div>
+</div>
+
+<div id="casa">
+  <div class="stat"><span class="stat-v" id="s-sala">—</span>SALA</div>
+  <div class="stat"><span class="stat-v" id="s-cuarto">—</span>CUARTO</div>
+  <div class="stat"><span class="stat-v" id="s-temp">72°</span>CLIMA</div>
+  <div class="stat"><span class="stat-v" id="s-mus">—</span>MÚSICA</div>
+  <div class="stat"><span class="stat-v" id="s-esc">Neutral</span>ESCENA</div>
+</div>
+
+<div id="memoria"></div>
+<div id="hint">Di "URUS" para hablar</div>
+
+<script>
+const API = window.location.origin;
+let rec = null, activo = false, ocupado = false, audio = null;
+
+const orb = document.getElementById('orb');
+const status = document.getElementById('status');
+const heard = document.getElementById('heard');
+const said = document.getElementById('said');
+const glow = document.getElementById('glow');
+const memoria = document.getElementById('memoria');
+
+function setState(s, txt) {
+  orb.className = s;
+  status.textContent = txt;
+  status.classList.toggle('active', s !== '');
+}
+
+function toggle() {
+  if (activo) { stop(); } else { start(); }
+}
+
+function start() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { status.textContent = 'Navegador no soportado — usa Chrome'; return; }
+
+  rec = new SR();
+  rec.lang = 'es-PR';
+  rec.continuous = true;
+  rec.interimResults = true;
+
+  rec.onstart = () => { activo = true; setState('listening', 'Escuchando'); };
+
+  rec.onresult = (e) => {
+    if (ocupado) return;
+    const r = e.results[e.results.length - 1];
+    const t = r[0].transcript.trim();
+    heard.textContent = t;
+    if (r.isFinal && t.length > 2) hablar(t);
+  };
+
+  rec.onend = () => { if (activo) { try { rec.start(); } catch(e){} } };
+  rec.onerror = (e) => { if (e.error === 'not-allowed') { activo=false; setState('','Permite el micrófono'); } };
+
+  try { rec.start(); } catch(e) {}
+}
+
+function stop() {
+  activo = false;
+  if (rec) { try { rec.stop(); } catch(e){} }
+  setState('', 'Toca para despertar');
+}
+
+async function hablar(texto) {
+  ocupado = true;
+  setState('thinking', 'Pensando');
+  said.classList.remove('show');
+  memoria.classList.remove('show');
+
+  try {
+    const r = await fetch(API + '/v1/home/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto })
+    });
+    const d = await r.json();
+
+    if (!d.ok) throw new Error(d.error || 'error');
+
+    said.textContent = d.voz;
+    said.classList.add('show');
+    pintar(d.estado);
+
+    if (d.recordo) {
+      memoria.textContent = '⌾ ' + d.recordo;
+      memoria.classList.add('show');
+      setTimeout(() => memoria.classList.remove('show'), 8000);
+    }
+
+    await voz(d.voz);
+
+  } catch (e) {
+    said.textContent = 'No pude procesar eso.';
+    said.classList.add('show');
+    console.error(e);
+  }
+
+  ocupado = false;
+  heard.textContent = '';
+  if (activo) setState('listening', 'Escuchando');
+  else setState('', 'Toca para despertar');
+}
+
+async function voz(txt) {
+  try {
+    setState('speaking', 'Hablando');
+    const r = await fetch(API + '/v1/studio/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-studio-password': 'urus2026' },
+      body: JSON.stringify({ text: txt, voice: 'onyx' })
+    });
+    if (!r.ok) return;
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    audio = new Audio(url);
+    await new Promise(res => { audio.onended = res; audio.onerror = res; audio.play(); });
+    URL.revokeObjectURL(url);
+  } catch (e) { console.log('tts:', e.message); }
+}
+
+function pintar(s) {
+  const set = (id, v, on) => {
+    const el = document.getElementById(id);
+    el.textContent = v;
+    el.classList.toggle('on', on);
+  };
+  set('s-sala', s.sala.activo ? s.sala.luz + '%' : '—', s.sala.activo);
+  set('s-cuarto', s.dormitorio.activo ? s.dormitorio.luz + '%' : '—', s.dormitorio.activo);
+  set('s-temp', s.temperatura + '°', true);
+  set('s-mus', s.musica.activo ? s.musica.genero : '—', s.musica.activo);
+  set('s-esc', s.escena, s.escena !== 'Neutral');
+
+  const luz = (s.sala.luz + s.dormitorio.luz) / 200;
+  glow.style.opacity = 0.3 + luz * 0.7;
+  glow.classList.toggle('on', luz > 0.1);
+}
+
+fetch(API + '/v1/home/state').then(r => r.json()).then(d => { if (d.ok) pintar(d.estado); });
+</script>
+</body>
+</html>
