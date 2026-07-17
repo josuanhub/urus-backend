@@ -11003,7 +11003,27 @@ app.get('/home', (req, res) => {
 });
 
 
+// TTS para URUS Home — sin auth
+app.post('/v1/home/tts', async (req, res) => {
+  try {
+    const text = String(req.body?.text || '').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: 'text requerido' });
 
+    const mp3 = await openai.audio.speech.create({
+      model: 'tts-1',
+      voice: req.body?.voice || 'onyx',
+      input: text,
+      speed: 1.0
+    });
+
+    const buffer = Buffer.from(await mp3.arrayBuffer());
+    res.set({ 'Content-Type': 'audio/mpeg', 'Content-Length': buffer.length });
+    res.send(buffer);
+  } catch (err) {
+    console.error('HOME_TTS_ERROR:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 
 
