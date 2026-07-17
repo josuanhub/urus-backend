@@ -267,23 +267,20 @@ async function hablar(texto) {
   }
 
 async function voz(txt) {
-    return new Promise((resolve) => {
-      try {
-        setState('speaking', 'Hablando');
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(txt);
-        const voces = window.speechSynthesis.getVoices();
-        const es = voces.find(v => v.lang.startsWith('es') && /Jorge|Juan|Diego|Carlos/i.test(v.name))
-                || voces.find(v => v.lang.startsWith('es'));
-        if (es) u.voice = es;
-        u.lang = 'es-MX';
-        u.rate = 0.95;
-        u.pitch = 0.85;
-        u.onend = resolve;
-        u.onerror = resolve;
-        window.speechSynthesis.speak(u);
-      } catch (e) { console.error('voz:', e.message); resolve(); }
-    });
+    try {
+      setState('speaking', 'Hablando');
+      const r = await fetch(API + '/v1/home/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: txt, voice: 'onyx' })
+      });
+      if (!r.ok) { console.error('TTS fallo:', r.status, await r.text()); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      audio = new Audio(url);
+      await new Promise(res => { audio.onended = res; audio.onerror = res; audio.play().catch(e => { console.error('play:', e.message); res(); }); });
+      URL.revokeObjectURL(url);
+    } catch (e) { console.error('voz:', e.message); }
   }
 
 function pintar(s) {
