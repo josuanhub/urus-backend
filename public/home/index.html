@@ -207,7 +207,7 @@ function start() {
     if (r.isFinal && t.length > 2) hablar(t);
   };
 
-  rec.onend = () => { if (activo) { try { rec.start(); } catch(e){} } };
+  rec.onend = () => { if (activo && !ocupado) { try { rec.start(); } catch(e){} } };
   rec.onerror = (e) => { if (e.error === 'not-allowed') { activo=false; setState('','Permite el micrófono'); } };
 
   try { rec.start(); } catch(e) {}
@@ -220,44 +220,51 @@ function stop() {
 }
 
 async function hablar(texto) {
-  ocupado = true;
-  setState('thinking', 'Pensando');
-  said.classList.remove('show');
-  memoria.classList.remove('show');
+    ocupado = true;
+    if (rec) { try { rec.stop(); } catch(e){} }
+    setState('thinking', 'Pensando');
+    said.classList.remove('show');
+    memoria.classList.remove('show');
 
-  try {
-    const r = await fetch(API + '/v1/home/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texto })
-    });
-    const d = await r.json();
+    try {
+      const r = await fetch(API + '/v1/home/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto })
+      });
+      const d = await r.json();
 
-    if (!d.ok) throw new Error(d.error || 'error');
+      if (!d.ok) throw new Error(d.error || 'error');
 
-    said.textContent = d.voz;
-    said.classList.add('show');
-    pintar(d.estado);
+      said.textContent = d.voz;
+      said.classList.add('show');
+      pintar(d.estado);
 
-    if (d.recordo) {
-      memoria.textContent = '⌾ ' + d.recordo;
-      memoria.classList.add('show');
-      setTimeout(() => memoria.classList.remove('show'), 8000);
+      if (d.recordo) {
+        memoria.textContent = '⌾ ' + d.recordo;
+        memoria.classList.add('show');
+        setTimeout(() => memoria.classList.remove('show'), 8000);
+      }
+
+      await voz(d.voz);
+
+    } catch (e) {
+      said.textContent = 'No pude procesar eso.';
+      said.classList.add('show');
+      console.error(e);
     }
 
-    await voz(d.voz);
+    heard.textContent = '';
+    await new Promise(r => setTimeout(r, 700));
+    ocupado = false;
 
-  } catch (e) {
-    said.textContent = 'No pude procesar eso.';
-    said.classList.add('show');
-    console.error(e);
+    if (activo) {
+      setState('listening', 'Escuchando');
+      try { rec.start(); } catch(e){}
+    } else {
+      setState('', 'Toca para despertar');
+    }
   }
-
-  ocupado = false;
-  heard.textContent = '';
-  if (activo) setState('listening', 'Escuchando');
-  else setState('', 'Toca para despertar');
-}
 
 async function voz(txt) {
     return new Promise((resolve) => {
