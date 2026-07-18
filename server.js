@@ -10990,8 +10990,8 @@ app.post('/v1/home/chat', async (req, res) => {
     });
 
     // 2. Groq decide
-    const completion = await salesBrainGroq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
       max_tokens: 500,
       temperature: 0.7,
       messages: [
