@@ -3279,7 +3279,21 @@ console.log("✅ Dealer OS tables ready");
   console.log("✅ Tabla dealers lista (Iván registrado)");
 
 
-  
+  // ── URUS HOME — recordatorios ──
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS home_recordatorios (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      texto TEXT NOT NULL,
+      cuando TIMESTAMPTZ NOT NULL,
+      tipo TEXT NOT NULL DEFAULT 'recordatorio',
+      completado BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_home_rec_pendientes
+    ON home_recordatorios(cuando) WHERE completado = false;
+  `);
   
   await pool.query(`CREATE TABLE IF NOT EXISTS studio_memory (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), type TEXT NOT NULL, content TEXT NOT NULL, metadata JSONB NOT NULL DEFAULT '{}'::jsonb, project TEXT NOT NULL DEFAULT 'GENERAL', created_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS file_index (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), filename TEXT NOT NULL, entry_type TEXT NOT NULL, name TEXT NOT NULL, path TEXT, line_start INTEGER NOT NULL, line_end INTEGER, signature TEXT, updated_at TIMESTAMPTZ DEFAULT now())`);
@@ -10824,7 +10838,7 @@ const homeState = {
   ultima_actualizacion: new Date().toISOString()
 };
 
-function buildHomePrompt(memoria, estado, hora) {
+function buildHomePrompt(memoria, estado, hora, pendientes) {
   return `Eres URUS, la inteligencia de esta casa. No eres un asistente. Eres la casa.
 
 QUIEN VIVE AQUI: ${estado.residente}
@@ -10857,22 +10871,42 @@ Si te cuenta algo de su dia, escuchalo. No muevas nada. Solo responde y recuerda
 Si te pide algo de la casa, hazlo.
 A veces las dos cosas a la vez.
 
+TAMBIEN PUEDES:
+- Guardar recordatorios y alarmas con fecha y hora exacta
+- Leerle lo que tiene pendiente
+
+Si te pide recordar algo para despues, o una alarma, usa el campo "recordatorio".
+Calcula la fecha exacta partiendo de AHORA (${hora}).
+Si dice "manana a las 7", calcula que dia es manana.
+Si dice "el lunes", calcula cual lunes.
+Formato ISO con zona de Puerto Rico: 2026-07-22T09:00:00-04:00
+
+PENDIENTES ACTUALES:
+${pendientes || '(nada pendiente)'}
+
+Si te pregunta que tiene pendiente, leeselos de esa lista. No inventes.
+
 Devuelve SOLO este JSON, sin markdown, sin texto fuera:
 {
-  "voz": "lo que le dices, corto",
-  "tipo": "accion|conversacion|memoria|consulta|mixto",
+  "voz": "lo que le dices",
+  "tipo": "accion|conversacion|memoria|consulta|mixto|recordatorio",
   "acciones": [
     {"objetivo":"sala","luz":30,"tono":"Calida"},
     {"objetivo":"temperatura","valor":71},
     {"objetivo":"musica","genero":"jazz"},
     {"objetivo":"escena","nombre":"Descanso"}
   ],
-  "recordar": "un dato que valga la pena guardar de este momento, o null"
+  "recordar": "un dato que valga la pena guardar, o null",
+  "recordatorio": {
+    "texto": "que le vas a recordar",
+    "cuando": "2026-07-22T09:00:00-04:00",
+    "tipo": "recordatorio"
+  }
 }
 
-En "acciones" pon solo lo que realmente vas a cambiar. Si no cambias nada, array vacio.
-En "recordar" guarda solo lo que importa: preferencias, personas, eventos, decisiones.
-No guardes "dijo hola". Si guarda "Will le respondio que si al piloto".`;
+"acciones": solo lo que realmente cambias. Si no cambias nada, array vacio.
+"recordar": solo lo que importa. Preferencias, personas, eventos, decisiones.
+"recordatorio": null si no te pidio recordar nada para despues.`;
 }
 
 function aplicarAccionesHome(acciones) {
@@ -10937,6 +10971,19 @@ app.post('/v1/home/chat', async (req, res) => {
       console.log('[HOME] memoria no disponible:', e.message);
     }
 
+    // Traer pendientes
+    let pendientes = '';
+    try {
+      const p = await pool.query(
+        `SELECT texto, cuando FROM home_recordatorios
+         WHERE completado = false ORDER BY cuando ASC LIMIT 8`
+      );
+      pendientes = p.rows.map(x =>
+        `- ${x.texto} (${new Date(x.cuando).toLocaleString('es-PR', { timeZone: 'America/Puerto_Rico', weekday:'long', day:'numeric', month:'long', hour:'numeric', minute:'2-digit' })})`
+      ).join('\n');
+    } catch (e) { console.log('[HOME] pendientes:', e.message); }
+
+    
     const hora = new Date().toLocaleString('es-PR', {
       timeZone: 'America/Puerto_Rico',
       weekday: 'long', hour: 'numeric', minute: '2-digit'
@@ -10948,7 +10995,7 @@ app.post('/v1/home/chat', async (req, res) => {
       max_tokens: 500,
       temperature: 0.7,
       messages: [
-        { role: 'system', content: buildHomePrompt(memoria, homeState, hora) },
+        { role: 'system', content: buildHomePrompt(memoria, homeState, hora, pendientes) },
         { role: 'user', content: texto }
       ]
     });
@@ -10965,6 +11012,17 @@ app.post('/v1/home/chat', async (req, res) => {
 
     // 3. Aplicar acciones
     const aplicadas = aplicarAccionesHome(parsed.acciones);
+    // Guardar recordatorio si lo pidio
+    if (parsed.recordatorio && parsed.recordatorio.cuando && parsed.recordatorio.texto) {
+      try {
+        await pool.query(
+          `INSERT INTO home_recordatorios (texto, cuando, tipo) VALUES ($1, $2, $3)`,
+          [parsed.recordatorio.texto, parsed.recordatorio.cuando, parsed.recordatorio.tipo || 'recordatorio']
+        );
+        console.log('[HOME] recordatorio:', parsed.recordatorio.texto, '→', parsed.recordatorio.cuando);
+      } catch (e) { console.error('[HOME] recordatorio fallo:', e.message); }
+    }
+    
 
     // 4. Guardar memoria del turno
     try {
@@ -10977,6 +11035,7 @@ app.post('/v1/home/chat', async (req, res) => {
       console.log('[HOME] no se guardo memoria:', e.message);
     }
 
+    homeState.ultimo_evento = { voz: parsed.voz, ts: Date.now() };
     console.log('[HOME]', parsed.tipo, '|', texto.slice(0, 40), '→', aplicadas.join(', ') || 'sin acciones');
 
     return res.json({
@@ -11862,6 +11921,34 @@ setInterval(runJarvisLoop, 1000 * 60 * 60 * 2);
 setInterval(ingestMarketIntelligence, 1000 * 60 * 60 * 24);
 ingestMarketIntelligence();
 
+// URUS revisa recordatorios cada minuto
+setInterval(async () => {
+  try {
+    const r = await pool.query(
+      `SELECT * FROM home_recordatorios
+       WHERE completado = false AND cuando <= now()
+       ORDER BY cuando ASC LIMIT 5`
+    );
+    for (const rec of r.rows) {
+      const esAlarma = rec.tipo === 'alarma';
+      const msg = esAlarma ? `⏰ ${rec.texto}` : `⌾ URUS: ${rec.texto}`;
+
+      try {
+        await sendWhatsAppTextTwilio({ to: '+19395851479', text: msg });
+      } catch (e) { console.error('[HOME] wa fallo:', e.message); }
+
+      homeState.ultimo_evento = {
+        voz: esAlarma ? rec.texto : `Recuerda: ${rec.texto}`,
+        ts: Date.now()
+      };
+
+      await pool.query(`UPDATE home_recordatorios SET completado = true WHERE id = $1`, [rec.id]);
+      console.log('[HOME] disparado:', rec.texto);
+    }
+  } catch (e) { console.error('[HOME] vigilante:', e.message); }
+}, 60000);
+    
+    
 // Briefing 7AM diario
 const now = new Date();
 const target7am = new Date();
