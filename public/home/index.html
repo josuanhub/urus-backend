@@ -300,7 +300,37 @@ function pintar(s) {
   glow.classList.toggle('on', luz > 0.1);
 }
 
-fetch(API + '/v1/home/state').then(r => r.json()).then(d => { if (d.ok) pintar(d.estado); });
+let ultimoEventoTs = 0;
+
+async function revisarEventos() {
+  if (ocupado) return;
+  try {
+    const r = await fetch(API + '/v1/home/state');
+    const d = await r.json();
+    if (!d.ok) return;
+    pintar(d.estado);
+
+    const ev = d.estado.ultimo_evento;
+    if (!ev) return;
+
+    if (ultimoEventoTs === 0) { ultimoEventoTs = ev.ts; return; }
+
+    if (ev.ts > ultimoEventoTs) {
+      ultimoEventoTs = ev.ts;
+      ocupado = true;
+      if (rec) { try { rec.stop(); } catch(e){} }
+      said.textContent = ev.voz;
+      said.classList.add('show');
+      await voz(ev.voz);
+      await new Promise(r => setTimeout(r, 700));
+      ocupado = false;
+      if (activo) { setState('listening', 'Escuchando'); try { rec.start(); } catch(e){} }
+    }
+  } catch(e) {}
+}
+
+revisarEventos();
+setInterval(revisarEventos, 4000);
 </script>
 </body>
 </html>
