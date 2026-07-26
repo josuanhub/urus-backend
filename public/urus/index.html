@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>URUS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#08090b; --carbon:#111318; --slate:#191c22; --edge:#252932;
+    --ink:#e9eaee; --dim:#7f8592; --faint:#484d58;
+    --amber:#f2ad33; --amber-soft:#3a2f14; --amber-dim:#8a6520;
+    --signal:#4ecfa8; --live:#e35d4f; --violet:#8a7fef;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --sans:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--void);color:var(--ink);font-family:var(--sans);
+    display:grid;grid-template-columns:264px 1fr;overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--amber);color:var(--void)}
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--edge);border:3px solid transparent;background-clip:padding-box;border-radius:6px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--faint);background-clip:padding-box}
+
+  /* SIDEBAR */
+  aside{background:linear-gradient(180deg,var(--carbon),#0d0f13);border-right:1px solid var(--edge);display:flex;flex-direction:column;min-height:0}
+  .brand{padding:22px 20px 18px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:11px}
+  .glyph{width:26px;height:26px;border:1.5px solid var(--amber);border-radius:7px;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0}
+  .glyph::after{content:'';width:8px;height:8px;background:var(--amber);border-radius:2px;box-shadow:0 0 12px var(--amber)}
+  .brand-txt h1{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.34em;color:var(--amber);line-height:1}
+  .brand-txt .sub{font-family:var(--mono);font-size:9px;color:var(--faint);letter-spacing:.16em;margin-top:5px;text-transform:uppercase}
+  .new-thread{margin:16px 16px 6px;padding:11px 13px;background:var(--amber-soft);border:1px solid var(--amber-dim);color:var(--amber);border-radius:7px;cursor:pointer;font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.06em;text-align:left;transition:.15s;display:flex;align-items:center;gap:9px}
+  .new-thread:hover{background:var(--amber);color:var(--void);border-color:var(--amber)}
+  .rail-label{font-family:var(--mono);font-size:9px;color:var(--faint);letter-spacing:.22em;text-transform:uppercase;padding:16px 20px 8px}
+  #threads{flex:1;overflow-y:auto;min-height:0;padding:0 8px 8px}
+  .thread{padding:9px 12px;margin:1px 0;cursor:pointer;font-size:13px;color:var(--dim);border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.12s;display:flex;align-items:center;gap:8px;position:relative}
+  .thread:hover{color:var(--ink);background:var(--slate)}
+  .thread.on{color:var(--amber);background:var(--slate)}
+  .thread.on::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:2px;background:var(--amber);border-radius:2px}
+  .thread .x{margin-left:auto;opacity:0;color:var(--faint);font-size:15px;transition:.12s;padding:0 2px}
+  .thread:hover .x{opacity:1}
+  .thread .x:hover{color:var(--live)}
+  .rail-foot{border-top:1px solid var(--edge);padding:14px 20px}
+  .stat{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.05em;padding:3px 0}
+  .stat b{color:var(--signal);font-weight:500}
+  .stat b.off{color:var(--live)}
+  .toggle{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.05em;padding:9px 0 5px;cursor:pointer;user-select:none}
+  .toggle:hover{color:var(--dim)}
+  .sw{width:32px;height:17px;background:var(--edge);border-radius:9px;position:relative;transition:.18s;flex-shrink:0}
+  .sw::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--faint);transition:.18s}
+  .toggle.on .sw{background:var(--amber-dim)}
+  .toggle.on .sw::after{left:17px;background:var(--amber)}
+  .teach{width:100%;margin-top:12px;padding:10px;background:transparent;color:var(--amber);border:1px solid var(--amber-dim);border-radius:7px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;cursor:pointer;text-transform:uppercase;transition:.15s}
+  .teach:hover{background:var(--amber);color:var(--void)}
+
+  /* MAIN */
+  main{display:flex;flex-direction:column;min-height:0;min-width:0;position:relative}
+  #stream{flex:1;overflow-y:auto;padding:36px 0 24px;min-height:0;scroll-behavior:smooth}
+  .col{max-width:740px;margin:0 auto;padding:0 36px}
+  .turn{margin-bottom:32px;animation:rise .3s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .who{font-family:var(--mono);font-size:9px;letter-spacing:.24em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+  .turn.op .who{color:var(--faint)}
+  .turn.sys .who{color:var(--amber)}
+  .who .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+  .speak{background:none;border:none;color:var(--faint);cursor:pointer;font-size:12px;padding:2px;line-height:1;transition:color .15s;margin-left:2px}
+  .speak:hover{color:var(--amber)}
+  .speak.playing{color:var(--amber)}
+  .body{font-size:15px;line-height:1.74;color:var(--ink)}
+  .turn.op .body{color:var(--dim)}
+  .body p{margin-bottom:12px}.body p:last-child{margin-bottom:0}
+  .body strong{color:#fff;font-weight:600}
+  .body code{font-family:var(--mono);font-size:.86em;background:var(--slate);padding:2px 6px;border-radius:4px;color:var(--signal)}
+  .body pre{background:var(--carbon);border:1px solid var(--edge);padding:14px 16px;border-radius:8px;overflow-x:auto;margin:12px 0}
+  .body pre code{background:none;padding:0;color:var(--ink);font-size:12.5px;line-height:1.65}
+  .body ul,.body ol{margin:10px 0 12px 20px}.body li{margin-bottom:6px}
+
+  .recall{margin-top:15px}
+  .recall-head{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--amber-dim);text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:7px;user-select:none;padding:5px 10px;border:1px solid var(--amber-soft);border-radius:20px;transition:.15s}
+  .recall-head:hover{color:var(--amber);border-color:var(--amber-dim)}
+  .caret{transition:transform .18s;display:inline-block;font-size:8px}
+  .recall.open .caret{transform:rotate(90deg)}
+  .recall-list{display:none;margin-top:11px;border-left:2px solid var(--amber-soft);padding-left:14px}
+  .recall.open .recall-list{display:block}
+  .recall-item{font-size:12.5px;color:var(--dim);line-height:1.6;padding:7px 0;border-bottom:1px solid var(--slate)}
+  .recall-item:last-child{border-bottom:none}
+  .recall-item b{color:var(--amber-dim);font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-right:7px}
+
+  .blank{max-width:740px;margin:0 auto;padding:76px 36px}
+  .blank .lead{font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--faint);text-transform:uppercase;margin-bottom:18px}
+  .blank h2{font-size:30px;font-weight:700;line-height:1.28;margin-bottom:14px;letter-spacing:-.02em}
+  .blank h2 em{font-style:normal;color:var(--amber)}
+  .blank p{color:var(--dim);font-size:15px;line-height:1.7;max-width:490px}
+  .seeds{display:flex;flex-wrap:wrap;gap:9px;margin-top:30px}
+  .seed{font-family:var(--mono);font-size:11.5px;color:var(--dim);border:1px solid var(--edge);padding:9px 14px;border-radius:8px;cursor:pointer;transition:.15s;background:none}
+  .seed:hover{border-color:var(--amber-dim);color:var(--amber);background:var(--amber-soft)}
+
+  .pulse{display:inline-flex;gap:5px;align-items:center;height:20px}
+  .pulse i{width:5px;height:5px;background:var(--amber);border-radius:50%;animation:blip 1.3s infinite}
+  .pulse i:nth-child(2){animation-delay:.18s}.pulse i:nth-child(3){animation-delay:.36s}
+  @keyframes blip{0%,60%,100%{opacity:.22;transform:scale(.8)}30%{opacity:1;transform:scale(1)}}
+
+  /* COMPOSER */
+  #dock{border-top:1px solid var(--edge);background:linear-gradient(0deg,var(--carbon),#0d0f13);padding:18px 0 20px}
+  .dock-col{max-width:740px;margin:0 auto;padding:0 36px}
+  .field{display:flex;gap:11px;align-items:flex-end;background:var(--void);border:1px solid var(--edge);border-radius:12px;padding:11px 12px;transition:border-color .15s,box-shadow .15s}
+  .field:focus-within{border-color:var(--amber-dim);box-shadow:0 0 0 3px var(--amber-soft)}
+  .field.hot{border-color:var(--live);box-shadow:0 0 0 3px rgba(227,93,79,.12)}
+  #entry{flex:1;background:none;border:none;color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.6;resize:none;outline:none;max-height:180px;min-height:24px;padding:2px 0}
+  #entry::placeholder{color:var(--faint)}
+  .mic{background:none;border:1px solid var(--edge);border-radius:8px;color:var(--dim);cursor:pointer;padding:8px;transition:.15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .mic:hover{border-color:var(--amber-dim);color:var(--amber)}
+  .mic.live{border-color:var(--live);color:var(--live);background:rgba(227,93,79,.08);animation:breathe 1.6s infinite}
+  @keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(227,93,79,.4)}50%{box-shadow:0 0 0 5px rgba(227,93,79,0)}}
+  .mic svg{width:16px;height:16px;display:block}
+  #fire{background:var(--amber);color:var(--void);border:none;border-radius:8px;padding:9px 17px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:.15s;flex-shrink:0}
+  #fire:hover{background:#ffbf47}
+  #fire:disabled{opacity:.3;cursor:default}
+  .underdock{display:flex;justify-content:space-between;align-items:center;margin-top:9px;gap:12px}
+  .hint{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.08em}
+  .vu{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--live);text-transform:uppercase;opacity:0;transition:opacity .2s;flex-shrink:0}
+  .vu.on{opacity:1}
+  .bars{display:flex;gap:2px;align-items:flex-end;height:14px}
+  .bars i{width:2px;background:var(--live);height:3px;border-radius:1px;transition:height .06s linear}
+  .interim{color:var(--faint);font-style:italic}
+
+  /* MODAL */
+  #veil{position:fixed;inset:0;background:rgba(4,5,7,.88);display:none;align-items:center;justify-content:center;padding:24px;z-index:50;backdrop-filter:blur(4px)}
+  #veil.on{display:flex}
+  .sheet{background:var(--carbon);border:1px solid var(--edge);width:100%;max-width:640px;border-radius:12px;animation:pop .2s ease}
+  @keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+  .sheet-top{padding:22px 26px 16px;border-bottom:1px solid var(--edge)}
+  .sheet-top h3{font-family:var(--mono);font-size:12px;letter-spacing:.2em;color:var(--amber);text-transform:uppercase;margin-bottom:8px}
+  .sheet-top p{color:var(--dim);font-size:13.5px;line-height:1.6}
+  .sheet-body{padding:20px 26px}
+  .kinds{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+  .kind{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;padding:6px 12px;border:1px solid var(--edge);border-radius:6px;color:var(--dim);cursor:pointer;background:none;transition:.15s}
+  .kind.on{border-color:var(--amber);color:var(--amber);background:var(--amber-soft)}
+  #lesson{width:100%;min-height:210px;background:var(--void);border:1px solid var(--edge);border-radius:8px;padding:14px;color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.65;resize:vertical;outline:none}
+  #lesson:focus{border-color:var(--amber-dim)}
+  .dictate{margin-top:11px;display:flex;align-items:center;gap:9px}
+  .dictate button{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;padding:7px 13px;border:1px solid var(--edge);border-radius:6px;color:var(--dim);cursor:pointer;background:none;transition:.15s;text-transform:uppercase}
+  .dictate button:hover{border-color:var(--amber-dim);color:var(--amber)}
+  .dictate button.live{border-color:var(--live);color:var(--live)}
+  .sheet-foot{padding:16px 26px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  #note{font-family:var(--mono);font-size:11px;color:var(--signal);letter-spacing:.05em}
+  .btns{display:flex;gap:9px}
+  .btn{padding:10px 18px;border-radius:7px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border:none}
+  .btn.ghost{background:none;border:1px solid var(--edge);color:var(--dim)}
+  .btn.ghost:hover{color:var(--ink)}
+  .btn.solid{background:var(--amber);color:var(--void)}
+  .btn.solid:hover{background:#ffbf47}
+
+  @media (max-width:860px){
+    body{grid-template-columns:1fr}
+    aside{display:none}
+    .col,.dock-col,.blank{padding-left:20px;padding-right:20px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<aside>
+  <div class="brand">
+    <div class="glyph"></div>
+    <div class="brand-txt"><h1>URUS</h1><div class="sub">Memoria operativa</div></div>
+  </div>
+  <button class="new-thread" id="newThread"><span>＋</span> Conversación nueva</button>
+  <div class="rail-label">Conversaciones</div>
+  <div id="threads"></div>
+  <div class="rail-foot">
+    <div class="stat"><span>Recuerdos</span><b id="mCount">—</b></div>
+    <div class="stat"><span>Modelo</span><b id="mModel">—</b></div>
+    <div class="toggle" id="voiceToggle"><span>Leer en voz alta</span><span class="sw"></span></div>
+    <button class="teach" id="openTeach">Enseñar</button>
+  </div>
+</aside>
+
+<main>
+  <div id="stream">
+    <div class="blank" id="blank">
+      <div class="lead">Sin conversación activa</div>
+      <h2>Háblale. <em>Lo recuerda.</em></h2>
+      <p>URUS LuxX-777 — Tus emociones son comandos, alineacion, coherencia- recuerda TE-BILLIONARE A33. Todo lo que le enseñes queda guardado y vuelve solo cuando hace falta.</p>
+      <div class="seeds">
+        <button class="seed" data-seed="¿Qué sabes de mí hasta ahora?">¿Qué sabes de mí?</button>
+        <button class="seed" data-seed="Escanéame y dime dónde estoy parado.">Escanéame</button>
+        <button class="seed" data-seed="¿Qué asuntos tengo abiertos sin cerrar?">Asuntos abiertos</button>
+      </div>
+    </div>
+    <div class="col" id="col"></div>
+  </div>
+
+  <div id="dock">
+    <div class="dock-col">
+      <div class="field" id="field">
+        <textarea id="entry" rows="1" placeholder="Escribe o pulsa el micrófono…"></textarea>
+        <button class="mic" id="mic" title="Dictar (Ctrl+M)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>
+          </svg>
+        </button>
+        <button id="fire">Enviar</button>
+      </div>
+      <div class="underdock">
+        <div class="hint" id="hint">Enter envía · Shift+Enter salta línea · Ctrl+M micrófono</div>
+        <div class="vu" id="vu"><span>Escuchando</span><span class="bars" id="bars"></span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="veil">
+  <div class="sheet">
+    <div class="sheet-top">
+      <h3>Enseñar</h3>
+      <p>Pega o dicta lo que quieras que sepa. Se guarda por fragmentos y vuelve cuando sea relevante.</p>
+    </div>
+    <div class="sheet-body">
+      <div class="kinds" id="kinds">
+        <button class="kind on" data-k="identity">Quién soy</button>
+        <button class="kind" data-k="project">Proyecto</button>
+        <button class="kind" data-k="decision">Decisión</button>
+        <button class="kind" data-k="person">Persona</button>
+        <button class="kind" data-k="note">Nota</button>
+      </div>
+      <textarea id="lesson" placeholder="Me llamo… Trabajo en… Prefiero que me hables así…"></textarea>
+      <div class="dictate"><button id="dictBtn">🎙 Dictar</button></div>
+    </div>
+    <div class="sheet-foot">
+      <span id="note"></span>
+      <div class="btns">
+        <button class="btn ghost" id="closeTeach">Cancelar</button>
+        <button class="btn solid" id="saveTeach">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PASS='urus2026', BASE=location.origin;
+const H={'Content-Type':'application/json','x-studio-password':PASS};
+
+const col=document.getElementById('col'), stream=document.getElementById('stream');
+const blank=document.getElementById('blank'), entry=document.getElementById('entry'), fire=document.getElementById('fire');
+const threadsEl=document.getElementById('threads'), field=document.getElementById('field');
+const micBtn=document.getElementById('mic'), vu=document.getElementById('vu'), bars=document.getElementById('bars');
+const hint=document.getElementById('hint'), dictBtn=document.getElementById('dictBtn');
+const HINT_DEFAULT='Enter envía · Shift+Enter salta línea · Ctrl+M micrófono';
+
+let threads=[], active=null, kind='identity', speakOn=false;
+
+/* ═══ PERSISTENCIA (en memoria de la pestaña) ═══ */
+/* Nota: se mantiene mientras la pestaña esté abierta. La memoria real
+   (lo que URUS aprende de ti) vive en el servidor, no aquí. */
+function newThread(){active={id:Date.now(),title:'Sin título',turns:[]};threads.unshift(active);paint();render();entry.focus()}
+function delThread(id,ev){
+  ev.stopPropagation();
+  threads=threads.filter(function(t){return t.id!==id});
+  if(active&&active.id===id)active=threads[0]||null;
+  if(!active)newThread(); else {paint();render()}
+}
+function paint(){
+  threadsEl.innerHTML='';
+  threads.forEach(function(t){
+    const d=document.createElement('div');
+    d.className='thread'+(active&&t.id===active.id?' on':'');
+    const label=document.createElement('span');
+    label.style.cssText='overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1';
+    label.textContent=t.title;
+    d.appendChild(label);
+    const x=document.createElement('span');
+    x.className='x'; x.textContent='×'; x.title='Eliminar';
+    x.onclick=function(e){delThread(t.id,e)};
+    d.appendChild(x);
+    d.onclick=function(){active=t;paint();render()};
+    threadsEl.appendChild(d);
+  });
+}
+function render(){
+  col.innerHTML='';
+  if(!active||!active.turns.length){blank.style.display='block';return}
+  blank.style.display='none';
+  active.turns.forEach(function(t){draw(t.role,t.text,t.recall)});
+  stream.scrollTop=stream.scrollHeight;
+}
+
+/* ═══ MARKDOWN ═══ */
+function md(s){
+  const esc=function(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')};
+  const blocks=[];
+  s=s.replace(/```(\w*)\n?([\s\S]*?)```/g,function(m,l,c){blocks.push(esc(c.trim()));return'\u00A7B'+(blocks.length-1)+'\u00A7'});
+  s=esc(s).replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  return s.split(/\n{2,}/).map(function(p){
+    if(/^\u00A7B\d+\u00A7$/.test(p.trim()))return p;
+    const L=p.split('\n');
+    if(L.every(function(l){return /^\s*[-*]\s+/.test(l)}))return '<ul>'+L.map(function(l){return '<li>'+l.replace(/^\s*[-*]\s+/,'')+'</li>'}).join('')+'</ul>';
+    if(L.every(function(l){return /^\s*\d+[.)]\s+/.test(l)}))return '<ol>'+L.map(function(l){return '<li>'+l.replace(/^\s*\d+[.)]\s+/,'')+'</li>'}).join('')+'</ol>';
+    return '<p>'+L.join('<br>')+'</p>';
+  }).join('').replace(/\u00A7B(\d+)\u00A7/g,function(m,i){return '<pre><code>'+blocks[i]+'</code></pre>'});
+}
+function plain(s){return s.replace(/```[\s\S]*?```/g,' bloque de código ').replace(/[*_`#>]/g,'').replace(/\n+/g,'. ').trim()}
+
+/* ═══ VOZ: HABLAR ═══ */
+let audioNow=null, btnNow=null;
+function stopAudio(){
+  if(audioNow){audioNow.pause();audioNow=null}
+  if(window.speechSynthesis)speechSynthesis.cancel();
+  if(btnNow){btnNow.classList.remove('playing');btnNow.textContent='🔊';btnNow=null}
+}
+async function speak(text,btn){
+  if(btnNow===btn&&btn){stopAudio();return}
+  stopAudio();
+  btnNow=btn; if(btn){btn.classList.add('playing');btn.textContent='⏹'}
+  const clean=plain(text).slice(0,4000);
+  try{
+    const r=await fetch(BASE+'/v1/urus/voice',{method:'POST',headers:H,body:JSON.stringify({text:clean,voice:'nova'})});
+    if(!r.ok)throw new Error('voice');
+    const blob=await r.blob();
+    audioNow=new Audio(URL.createObjectURL(blob));
+    audioNow.onended=stopAudio;
+    audioNow.onerror=function(){stopAudio();fallbackSpeak(clean)};
+    await audioNow.play();
+  }catch(e){fallbackSpeak(clean)}
+}
+function fallbackSpeak(t){
+  if(!window.speechSynthesis){stopAudio();return}
+  const u=new SpeechSynthesisUtterance(t);
+  u.lang='es-ES'; u.rate=1.02;
+  const v=speechSynthesis.getVoices().find(function(x){return x.lang.indexOf('es')===0});
+  if(v)u.voice=v;
+  u.onend=stopAudio;
+  speechSynthesis.speak(u);
+}
+
+/* ═══ VOZ: ESCUCHAR (dictado continuo) ═══ */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null, listening=false, target=null, baseText='', finalBuf='';
+let audioCtx=null, analyser=null, micStream=null, rafId=null;
+
+for(let i=0;i<5;i++)bars.appendChild(document.createElement('i'));
+if(!SR)micBtn.style.display='none';
+
+async function startVU(){
+  try{
+    micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=audioCtx.createMediaStreamSource(micStream);
+    analyser=audioCtx.createAnalyser(); analyser.fftSize=256;
+    src.connect(analyser);
+    const data=new Uint8Array(analyser.frequencyBinCount);
+    (function tick(){
+      if(!analyser)return;
+      analyser.getByteFrequencyData(data);
+      const els=bars.children;
+      for(let i=0;i<els.length;i++){
+        const v=data[3+i*5]||0;
+        els[i].style.height=Math.max(3,Math.round(v/255*14))+'px';
+      }
+      rafId=requestAnimationFrame(tick);
+    })();
+  }catch(e){}
+}
+function stopVU(){
+  if(rafId)cancelAnimationFrame(rafId); rafId=null;
+  if(micStream){micStream.getTracks().forEach(function(t){t.stop()});micStream=null}
+  if(audioCtx){audioCtx.close();audioCtx=null}
+  analyser=null;
+}
+
+function startListening(el,btn){
+  if(!SR)return;
+  if(listening){stopListening();return}
+  stopAudio();
+  target=el; baseText=el.value.trim(); finalBuf='';
+  rec=new SR();
+  rec.lang='es-ES'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
+  rec.onresult=function(e){
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const txt=e.results[i][0].transcript;
+      if(e.results[i].isFinal)finalBuf+=txt+' '; else interim+=txt;
+    }
+    target.value=(baseText?baseText+' ':'')+finalBuf+interim;
+    target.style.height='24px';
+    target.style.height=Math.min(target.scrollHeight,180)+'px';
+    hint.innerHTML=interim?'<span class="interim">'+interim.slice(0,58)+'…</span>':HINT_DEFAULT;
+  };
+  rec.onend=function(){ if(listening){baseText=target.value.trim();finalBuf='';try{rec.start()}catch(e){}} };
+  rec.onerror=function(ev){
+    if(ev.error==='not-allowed'||ev.error==='service-not-allowed'){
+      hint.textContent='Micrófono bloqueado. Permite el acceso en el navegador.';
+      stopListening();
+    }
+  };
+  listening=true; btn.classList.add('live');
+  if(el===entry){field.classList.add('hot');vu.classList.add('on');startVU()}
+  try{rec.start()}catch(e){}
+}
+function stopListening(){
+  listening=false;
+  if(rec){rec.onend=null;try{rec.stop()}catch(e){} rec=null}
+  micBtn.classList.remove('live');
+  dictBtn.classList.remove('live'); dictBtn.textContent='🎙 Dictar';
+  field.classList.remove('hot'); vu.classList.remove('on');
+  hint.textContent=HINT_DEFAULT; stopVU();
+}
+micBtn.onclick=function(){startListening(entry,micBtn)};
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='m'){e.preventDefault();micBtn.click()}
+  if(e.key==='Escape'){if(listening)stopListening();stopAudio()}
+});
+
+/* ═══ RENDER ═══ */
+function draw(role,text,recall){
+  const t=document.createElement('div');
+  t.className='turn '+(role==='op'?'op':'sys');
+  const w=document.createElement('div'); w.className='who';
+  const dot=document.createElement('span'); dot.className='dot'; w.appendChild(dot);
+  const label=document.createElement('span'); label.textContent=role==='op'?'Tú':'URUS'; w.appendChild(label);
+  const b=document.createElement('div'); b.className='body';
+  if(text==='…')b.innerHTML='<span class="pulse"><i></i><i></i><i></i></span>';
+  else b.innerHTML=role==='op'?'<p>'+text.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</p>':md(text);
+  if(role!=='op'&&text!=='…'){
+    const sp=document.createElement('button'); sp.className='speak'; sp.textContent='🔊'; sp.title='Escuchar';
+    sp.onclick=function(){speak(text,sp)}; w.appendChild(sp);
+  }
+  t.appendChild(w); t.appendChild(b);
+  if(recall&&recall.length)t.appendChild(recallBox(recall));
+  col.appendChild(t);
+  return b;
+}
+function recallBox(list){
+  const r=document.createElement('div'); r.className='recall';
+  const h=document.createElement('div'); h.className='recall-head';
+  h.innerHTML='<span class="caret">▸</span> '+list.length+' recuerdos consultados';
+  const l=document.createElement('div'); l.className='recall-list';
+  list.forEach(function(x){
+    const i=document.createElement('div'); i.className='recall-item';
+    if(x&&typeof x==='object'){i.innerHTML='<b>'+(x.type||'nota')+'</b>'+String(x.content||'')}
+    else i.textContent=x;
+    l.appendChild(i);
+  });
+  h.onclick=function(){r.classList.toggle('open')};
+  r.appendChild(h); r.appendChild(l);
+  return r;
+}
+
+/* ═══ ENVIAR ═══ */
+async function send(){
+  if(listening)stopListening();
+  const msg=entry.value.trim(); if(!msg)return;
+  if(!active)newThread();
+  if(active.turns.length===0){active.title=msg.slice(0,36)+(msg.length>36?'…':'');paint()}
+  blank.style.display='none';
+  active.turns.push({role:'op',text:msg});
+  draw('op',msg);
+  entry.value=''; entry.style.height='24px'; fire.disabled=true;
+  const slot=draw('sys','…');
+  stream.scrollTop=stream.scrollHeight;
+  try{
+    const hist=active.turns.slice(-11,-1).map(function(t){return{role:t.role==='op'?'user':'assistant',content:t.text}});
+    const r=await fetch(BASE+'/v1/urus/chat',{method:'POST',headers:H,body:JSON.stringify({message:msg,history:hist})});
+    const d=await r.json();
+    if(d.ok){
+      slot.innerHTML=md(d.answer);
+      const recall=Array.isArray(d.memories)?d.memories:[];
+      active.turns.push({role:'sys',text:d.answer,recall});
+      const turnEl=slot.parentElement;
+      const sp=document.createElement('button'); sp.className='speak'; sp.textContent='🔊'; sp.title='Escuchar';
+      sp.onclick=function(){speak(d.answer,sp)};
+      turnEl.querySelector('.who').appendChild(sp);
+      if(recall.length)turnEl.appendChild(recallBox(recall));
+      if(speakOn)speak(d.answer,sp);
+      loadStats();
+    }else{
+      slot.innerHTML='<p style="color:var(--live)">No se pudo responder: '+(d.error||'error desconocido')+'</p>';
+    }
+  }catch(e){
+    slot.innerHTML='<p style="color:var(--live)">Sin conexión con el servidor. '+e.message+'</p>';
+  }
+  fire.disabled=false; stream.scrollTop=stream.scrollHeight; entry.focus();
+}
+fire.onclick=send;
+entry.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
+entry.addEventListener('input',function(){entry.style.height='24px';entry.style.height=Math.min(entry.scrollHeight,180)+'px'});
+document.getElementById('newThread').onclick=newThread;
+document.querySelectorAll('.seed').forEach(function(b){b.onclick=function(){entry.value=b.dataset.seed;send()}});
+
+/* ═══ LEER EN VOZ ALTA ═══ */
+document.getElementById('voiceToggle').onclick=function(){
+  speakOn=!speakOn; this.classList.toggle('on',speakOn);
+  if(!speakOn)stopAudio();
+};
+
+/* ═══ ENSEÑAR ═══ */
+const veil=document.getElementById('veil'), lesson=document.getElementById('lesson'), note=document.getElementById('note');
+document.getElementById('openTeach').onclick=function(){veil.classList.add('on');note.textContent='';lesson.focus()};
+document.getElementById('closeTeach').onclick=function(){if(listening)stopListening();veil.classList.remove('on')};
+veil.onclick=function(e){if(e.target===veil){if(listening)stopListening();veil.classList.remove('on')}};
+document.querySelectorAll('.kind').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('.kind').forEach(function(x){x.classList.remove('on')});
+  b.classList.add('on'); kind=b.dataset.k;
+}});
+dictBtn.onclick=function(){
+  if(listening&&target===lesson){stopListening()}
+  else{dictBtn.textContent='⏹ Detener';startListening(lesson,dictBtn)}
+};
+document.getElementById('saveTeach').onclick=async function(){
+  if(listening)stopListening();
+  const content=lesson.value.trim(); if(!content)return;
+  note.textContent='Guardando…';
+  try{
+    const r=await fetch(BASE+'/v1/urus/learn',{method:'POST',headers:H,body:JSON.stringify({content:content,type:kind})});
+    const d=await r.json();
+    if(d.ok){
+      note.textContent='Aprendido · '+d.fragmentos_guardados+' fragmentos';
+      lesson.value=''; loadStats();
+      setTimeout(function(){veil.classList.remove('on')},1000);
+    }else note.textContent='No se guardó: '+(d.error||'error');
+  }catch(e){note.textContent='Sin conexión: '+e.message}
+};
+
+/* ═══ STATS ═══ */
+async function loadStats(){
+  const cEl=document.getElementById('mCount'), mEl=document.getElementById('mModel');
+  try{
+    const r=await fetch(BASE+'/v1/urus/status',{headers:H});
+    const d=await r.json();
+    if(d.ok){
+      cEl.textContent=(d.memoria&&d.memoria.total)||'0'; cEl.className='';
+      mEl.textContent=d.chat_model||'—'; mEl.className='';
+    }
+  }catch(e){ mEl.textContent='offline'; mEl.className='off' }
+}
+if(window.speechSynthesis)speechSynthesis.getVoices();
+loadStats(); newThread();
+</script>
+</body>
+</html>
