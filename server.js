@@ -1539,14 +1539,18 @@ const updated = await pool.query(
 const lastOutbound = lastOutResult.rows?.[0]?.body || "";
 
 
-const decisionResponse = await fetch("https://TU-URL/v1/decision/run", {
+const DECISION_URL = process.env.DECISION_SERVICE_URL
+  || process.env.APP_BASE_URL
+  || `http://localhost:${PORT}`;
+
+const decisionResponse = await fetch(`${DECISION_URL}/v1/decision/run`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    message: body
+    message: text
   })
 });
-
+    
 const data = await decisionResponse.json();
 
 if (data.action === "ignore") {
@@ -11166,6 +11170,174 @@ app.post('/v1/home/tts', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
+
+// ============================================================
+// URUS RADAR — Motor de detección de oportunidades (Fase 1)
+// Listener + Dispatcher WhatsApp. Fuente real se enchufa después.
+// ============================================================
+
+const RADAR_ALERT_TO = process.env.RADAR_ALERT_TO || "+19395851479";
+
+// Genera hash SHA-256 único para idempotencia
+function generarHashRadar(tipo, ubicacion, fechaOriginal) {
+  const base = `${tipo}-${ubicacion}-${fechaOriginal}`;
+  return crypto.createHash("sha256").update(base).digest("hex");
+}
+
+// Formatea la alerta que se manda por WhatsApp
+function formatearAlertaRadar(evento, id) {
+  const valor = evento.valor_estimado
+    ? `$${Number(evento.valor_estimado).toLocaleString("en-US")}`
+    : "N/D";
+
+  const tags = evento.tags_probabilidad || {};
+  const tagsTexto = Object.keys(tags).length
+    ? Object.entries(tags).map(([k, v]) => `  • ${k}: ${v}`).join("\n")
+    : "  • sin scoring";
+
+  const datos = evento.datos_evento || {};
+  const detalles = datos.detalles || datos.descripcion || "";
+
+  return (
+    `🚨 URUS RADAR — NUEVA OPORTUNIDAD\n\n` +
+    `📍 Ubicación: ${evento.ubicacion || "N/D"}\n` +
+    `🏗️ Tipo: ${evento.tipo_evento || "N/D"}\n` +
+    `💵 Valor estimado: ${valor}\n` +
+    (detalles ? `📄 ${detalles}\n` : "") +
+    `\n🎯 Scoring:\n${tagsTexto}\n\n` +
+    `🆔 ID: ${id}`
+  );
+}
+
+// Núcleo: guarda el evento (dedup por hash) y dispara alerta si es nuevo
+async function procesarEventoRadar(evento) {
+  const tipo = String(evento.tipo || evento.tipo_evento || "").trim();
+  const ubicacion = String(evento.ubicacion || "").trim();
+  const fechaOriginal = String(
+    evento.fechaOriginal || new Date().toISOString().split("T")[0]
+  ).trim();
+
+  if (!tipo) {
+    return { ok: false, error: "tipo_requerido" };
+  }
+
+  const hash = generarHashRadar(tipo, ubicacion, fechaOriginal);
+
+  const insertResult = await pool.query(
+    `
+    INSERT INTO radar_eventos (
+      hash_evento,
+      tipo_evento,
+      ubicacion,
+      valor_estimado,
+      datos_evento,
+      tags_probabilidad
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (hash_evento) DO NOTHING
+    RETURNING id, tipo_evento, ubicacion, valor_estimado, datos_evento, tags_probabilidad
+    `,
+    [
+      hash,
+      tipo,
+      ubicacion || null,
+      evento.valorEstimado || evento.valor_estimado || 0,
+      JSON.stringify(evento.datosCompletos || evento.datos_evento || {}),
+      JSON.stringify(evento.tags || evento.tags_probabilidad || {}),
+    ]
+  );
+
+  // Si no insertó nada, el evento ya existía → no alertamos (idempotencia)
+  if (insertResult.rowCount === 0) {
+    console.log(`[RADAR] Evento duplicado, omitido. Hash: ${hash.slice(0, 10)}...`);
+    return { ok: true, duplicado: true, hash };
+  }
+
+  const nuevo = insertResult.rows[0];
+  console.log(`[RADAR] Nuevo evento registrado. ID: ${nuevo.id}`);
+
+  // Dispatcher WhatsApp — usa la infraestructura Twilio ya montada
+  let alertaEnviada = false;
+  try {
+    const mensaje = formatearAlertaRadar(nuevo, nuevo.id);
+    const sent = await sendWhatsAppTextTwilio({ to: RADAR_ALERT_TO, text: mensaje });
+    alertaEnviada = !!sent.ok;
+    if (!alertaEnviada) {
+      console.error("[RADAR] Alerta WhatsApp falló:", sent);
+    } else {
+      console.log(`[RADAR] Alerta enviada a ${RADAR_ALERT_TO} para evento ${nuevo.id}`);
+    }
+  } catch (e) {
+    console.error("[RADAR] Error enviando alerta:", e.message);
+  }
+
+  return {
+    ok: true,
+    duplicado: false,
+    evento_id: nuevo.id,
+    hash,
+    alerta_enviada: alertaEnviada,
+  };
+}
+
+// Endpoint de prueba — recibe un evento por HTTP y lo procesa
+// POST /v1/radar/ingest  { tipo, ubicacion, valorEstimado, fechaOriginal, datosCompletos, tags }
+app.post("/v1/radar/ingest", async (req, res) => {
+  try {
+    const resultado = await procesarEventoRadar(req.body || {});
+    if (!resultado.ok) {
+      return res.status(400).json(resultado);
+    }
+    return res.json(resultado);
+  } catch (err) {
+    console.error("RADAR_INGEST_ERROR", err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Endpoint para disparar una simulación rápida (validación end-to-end)
+// GET /v1/radar/test
+app.get("/v1/radar/test", async (req, res) => {
+  try {
+    const muestra = {
+      tipo: "PERMISO_SOLAR_DOMOTICA",
+      ubicacion: "San Juan, PR",
+      valorEstimado: 25000.0,
+      fechaOriginal: new Date().toISOString().split("T")[0],
+      datosCompletos: {
+        solicitante: "Residencia VIP Palmas",
+        detalles: "18 paneles solares + automatización de cargas",
+        fase: "Aprobado",
+      },
+      tags: { prioridad: "ALTA", sector: "Energía/SmartHome", intencion_compra: "92%" },
+    };
+    const resultado = await procesarEventoRadar(muestra);
+    return res.json({ ok: true, simulacion: resultado });
+  } catch (err) {
+    console.error("RADAR_TEST_ERROR", err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// GET /v1/radar/eventos — ver los últimos eventos capturados
+app.get("/v1/radar/eventos", async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT id, tipo_evento, ubicacion, valor_estimado, estado, fecha_registro
+      FROM radar_eventos
+      ORDER BY fecha_registro DESC
+      LIMIT 50
+    `);
+    return res.json({ ok: true, total: r.rows.length, eventos: r.rows });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
 
 
 
