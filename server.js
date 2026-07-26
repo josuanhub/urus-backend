@@ -370,6 +370,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use("/v1/moltbook", moltbookRoutes);
 app.use("/v1/decision", decisionRoutes);
 app.use("/v1/jarvis", require("./routes/jarvis.routes"));
+app.use("/v1/urus", require("./urus-chat")(pool));
 app.use("/v1/tenant", require("./routes/tenant.routes"));
 const trustRoutes = require("./routes/trust.routes");
 app.use("/v1/agent", trustRoutes);
