@@ -11475,10 +11475,18 @@ app.get("/v1/radar/mdc-descubrir", async (req, res) => {
       url: `${s.url || ""}`,
     }));
 
-    // Filtramos los que suenan a permisos
-    const permisos = servicios.filter(s =>
-      /permit|building|construc/i.test(s.nombre || "")
-    );
+   // Filtro afinado: permisos de construcción reales (no zonas, footprints, parking)
+    const permisos = servicios
+      .filter(s => {
+        const n = (s.nombre || "").toLowerCase();
+        const esPermiso = n.includes("permit") || n.includes("building_permit") || n.includes("construction_permit");
+        const excluir = n.includes("zone") || n.includes("footprint") || n.includes("boundar") ||
+                        n.includes("parking") || n.includes("film") || n.includes("moped") ||
+                        n.includes("conflict") || n.includes("row_") || n.includes("_row");
+        return esPermiso && !excluir;
+      })
+      .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
+    
 
     return res.json({
       ok: true,
