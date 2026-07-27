@@ -11876,7 +11876,7 @@ app.post('/api/radar/send-email', async (req, res) => {
           'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || 'URUS Intelligence <reportes@urusverify.com>'
+          from: process.env.EMAIL_FROM || 'URUS Intelligence <reportes@urusverify.com>',
           to: [destinatario],
           subject: asunto,
           html: html
