@@ -11878,7 +11878,7 @@ app.post('/api/radar/send-email', async (req, res) => {
         body: JSON.stringify({
           from: process.env.EMAIL_FROM || 'URUS Intelligence <reportes@urusverify.com>',
           to: [destinatario],
-          subject: asunto,
+          subject: 'Reporte VIP',
           html: html
         })
       });
