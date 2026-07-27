@@ -11551,6 +11551,104 @@ app.get("/v1/radar/mia-fields", async (req, res) => {
 
 
 
+// ============================================================
+// URUS RADAR — Listener Austin (permisos FRESCOS, últimos 30 días)
+// ============================================================
+const AUSTIN_PERMITS_URL =
+  "https://services.arcgis.com/0L95CJ0VTaxqcmED/ArcGIS/rest/services/PLANNINGCADASTRE_issued_building_permits/FeatureServer/0/query";
+
+function clasificarPermisoAustin(a) {
+  const elec = Number(a.ELECTRICAL_VALUATION || 0);
+  const mech = Number(a.MECHANICAL_VALUATION || 0);
+  const bldg = Number(a.BUILDING_VALUATION || 0);
+  const desc = `${a.WORK_TYPE || ""} ${a.WORK_DESCRIPTION || ""} ${a.SUB_TYPE || ""}`.toLowerCase();
+  const esNuevo = desc.includes("new") || desc.includes("addition") || (bldg > 100000);
+  return {
+    solar: (elec > 20000 || esNuevo) ? "ALTA" : "MEDIA",
+    smart_home: esNuevo ? "ALTA" : "MEDIA",
+    hvac: (mech > 15000 || esNuevo) ? "ALTA" : "MEDIA",
+    valor_electrico: elec,
+    valor_mecanico: mech,
+  };
+}
+
+async function correrListenerAustin({ umbral = null, soloRecientes = true, limit = 200 } = {}) {
+  const UMBRAL = umbral !== null ? umbral : Number(process.env.RADAR_UMBRAL_USD || 500000);
+  let where = `TOTAL_JOB_VALUATION >= ${UMBRAL}`;
+  if (soloRecientes) where += ` AND ISSUED_IN_LAST_30_DAYS = 'Yes'`;
+
+  const url = `${AUSTIN_PERMITS_URL}?where=${encodeURIComponent(where)}` +
+    `&outFields=*&resultRecordCount=${limit}` +
+    `&orderByFields=${encodeURIComponent("ISSUE_DATE DESC")}&f=json`;
+
+  const r = await fetch(url);
+  const data = await r.json();
+
+  if (!data.features) {
+    console.error("[AUSTIN] Sin features:", JSON.stringify(data).slice(0, 300));
+    return { ok: false, error: "sin_features", cruda: data };
+  }
+
+  console.log(`[AUSTIN] Recibidos ${data.features.length} permisos (umbral $${UMBRAL})`);
+  let nuevos = 0, saltados = 0;
+
+  for (const feat of data.features) {
+    const a = feat.attributes || {};
+    const valor = Number(a.TOTAL_JOB_VALUATION || 0);
+    if (valor < UMBRAL) { saltados++; continue; }
+
+    const direccion = a.PERMIT_LOCATION || "";
+    const ciudad = a.CITY || "Austin";
+    const zip = a.ZIP_CODE || "";
+    const fecha = a.ISSUE_DATE ? new Date(a.ISSUE_DATE).toISOString() : new Date().toISOString();
+    const numeroPermiso = a.PERMIT_NUMBER || a.OBJECTID;
+
+    const evento = {
+      tipo: "PERMISO_CONSTRUCCION_AUSTIN",
+      ubicacion: [direccion, ciudad, zip].filter(Boolean).join(", "),
+      valorEstimado: valor,
+      fechaOriginal: `${numeroPermiso}-${fecha}`,
+      datosCompletos: {
+        permiso: numeroPermiso,
+        tipo_permiso: a.PERMIT_TYPE || null,
+        sub_tipo: a.SUB_TYPE || null,
+        trabajo: a.WORK_TYPE || null,
+        descripcion: a.WORK_DESCRIPTION || null,
+        direccion, ciudad, zip,
+        estado: a.STATE || "TX",
+        fecha_emision: fecha,
+        valor_total: valor,
+        valor_edificio: a.BUILDING_VALUATION || null,
+        coordenadas: { lat: a.LATITUDE || null, lon: a.LONGITUDE || null },
+        link_permiso: a.LINK || null,
+        status: a.STATUS || null,
+      },
+      tags: clasificarPermisoAustin(a),
+    };
+
+    const resu = await procesarEventoRadar(evento);
+    if (resu.duplicado) saltados++;
+    else if (resu.evento_id) nuevos++;
+  }
+
+  console.log(`[AUSTIN] nuevos: ${nuevos}, saltados: ${saltados}`);
+  return { ok: true, recibidos: data.features.length, umbral: UMBRAL, nuevos, saltados };
+}
+
+// GET /v1/radar/scan-austin?umbral=50000&recientes=1
+app.get("/v1/radar/scan-austin", async (req, res) => {
+  try {
+    const umbral = req.query.umbral ? Number(req.query.umbral) : null;
+    const soloRecientes = req.query.recientes !== "0";
+    const resultado = await correrListenerAustin({ umbral, soloRecientes });
+    return res.json({ ok: true, resultado });
+  } catch (err) {
+    console.error("RADAR_SCAN_AUSTIN_ERROR", err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
 
 
 
