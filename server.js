@@ -11854,40 +11854,66 @@ app.get('/api/radar/preview', async (req, res) => {
   res.send(html);
 });
 
-// Enviar reporte por email
+// ── PASO 2: ENVIAR REPORTE VIP POR EMAIL (API RESEND / SMTP) ────────
 app.post('/api/radar/send-email', async (req, res) => {
   const { destinatario, nombreCliente, region, permisos } = req.body;
 
   if (!destinatario || !permisos?.length) {
-    return res.status(400).json({ error: 'destinatario y permisos requeridos' });
+    return res.status(400).json({ ok: false, error: 'destinatario y permisos son requeridos' });
   }
 
-  const totalValor = permisos.reduce((acc, p) => acc + (p.valorEstimado || 0), 0);
+  const totalValor = permisos.reduce((acc, p) => acc + (Number(p.valorEstimado) || 0), 0);
   const html = generarHtmlReporteVip({ nombreCliente, region, totalValor, permisos });
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
-  });
+  const asunto = `🔵 Reporte VIP — ${permisos.length} oportunidades en ${region || 'tu zona'}`;
 
   try {
+    // Opción A: Envío rápido con Resend API (Recomendado para evitar SPAM)
+    if (process.env.RESEND_API_KEY) {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || 'URUS Intelligence <onboarding@resend.dev>',
+          to: [destinatario],
+          subject: asunto,
+          html: html
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Error con la API de Resend');
+      return res.json({ ok: true, provider: 'resend', id: data.id });
+    }
+
+    // Opción B: Fallback a Nodemailer (SMTP Gmail)
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    });
+
     const info = await transporter.sendMail({
       from: `"URUS Intelligence" <${process.env.SMTP_USER}>`,
       to: destinatario,
-      subject: `🔵 Reporte VIP — ${permisos.length} oportunidades en${region || 'tu zona'}`,
+      subject: asunto,
       html
     });
 
-    res.json({ ok: true, messageId: info.messageId });
+    res.json({ ok: true, provider: 'smtp', messageId: info.messageId });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error enviando email:', err);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
+
 
 // Enviar reporte por WhatsApp (link al HTML hosteado)
 app.post('/api/radar/send-whatsapp', async (req, res) => {
