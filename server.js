@@ -11745,6 +11745,78 @@ app.get("/v1/radar/fl-fresh", async (req, res) => {
 });
 
 
+// ============================================================
+// URUS RADAR — Receptor de datos externos (Apify / cualquier scraper)
+// ============================================================
+
+// Token simple para que solo tu scraper pueda mandar datos aquí
+const RADAR_INGEST_TOKEN = process.env.RADAR_INGEST_TOKEN || "urus-radar-2026";
+
+// POST /v1/radar/ingest-lote — recibe un lote de permisos raspados
+// Body esperado: { token: "...", fuente: "ogpe_pr", permisos: [ {...}, {...} ] }
+app.post("/v1/radar/ingest-lote", express.json({ limit: "5mb" }), async (req, res) => {
+  try {
+    const { token, fuente, permisos } = req.body || {};
+
+    if (token !== RADAR_INGEST_TOKEN) {
+      return res.status(401).json({ ok: false, error: "token_invalido" });
+    }
+    if (!Array.isArray(permisos)) {
+      return res.status(400).json({ ok: false, error: "permisos_debe_ser_array" });
+    }
+
+    let nuevos = 0, saltados = 0, errores = 0;
+
+    for (const p of permisos) {
+      try {
+        // Mapeo flexible: acepta distintos nombres de campo del scraper
+        const valor = Number(String(p.valor ?? p.costo ?? p.valorEstimado ?? "0").replace(/[^0-9.]/g, "")) || 0;
+        const ubicacion = p.ubicacion || p.municipio || p.direccion || "PR";
+        const solicitante = p.solicitante || p.dueno || p.proyecto || "N/D";
+        const caso = p.caso || p.numero || p.id || "";
+        const fecha = p.fecha || p.fechaOriginal || new Date().toISOString();
+
+        const evento = {
+          tipo: `PERMISO_${(fuente || "EXTERNO").toUpperCase()}`,
+          ubicacion,
+          valorEstimado: valor,
+          fechaOriginal: `${caso}-${solicitante}-${fecha}`,
+          datosCompletos: {
+            caso,
+            solicitante,
+            proyecto: p.proyecto || null,
+            municipio: p.municipio || null,
+            direccion: p.direccion || null,
+            tipo_tramite: p.tipo || p.tramite || null,
+            fecha,
+            fuente: fuente || "externo",
+            raw: p, // guardamos el original completo por si acaso
+          },
+          tags: {
+            solar: "MEDIA",
+            smart_home: "MEDIA",
+            hvac: "MEDIA",
+          },
+        };
+
+        const resu = await procesarEventoRadar(evento);
+        if (resu.duplicado) saltados++;
+        else if (resu.evento_id) nuevos++;
+      } catch (e) {
+        errores++;
+        console.error("[INGEST-LOTE] Error en permiso:", e.message);
+      }
+    }
+
+    console.log(`[INGEST-LOTE] fuente=${fuente} nuevos=${nuevos} saltados=${saltados} errores=${errores}`);
+    return res.json({ ok: true, recibidos: permisos.length, nuevos, saltados, errores });
+  } catch (err) {
+    console.error("INGEST_LOTE_ERROR", err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
 
 
 // ---------- Boot ----------
