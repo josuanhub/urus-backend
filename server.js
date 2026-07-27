@@ -11651,6 +11651,53 @@ app.get("/v1/radar/scan-austin", async (req, res) => {
 
 
 
+// GET /v1/radar/fl-descubrir — descubre servicios de permisos en orgs de Florida
+app.get("/v1/radar/fl-descubrir", async (req, res) => {
+  try {
+    // Orgs ArcGIS candidatos de Florida (probamos varios)
+    const orgs = {
+      miami_dade: "https://services1.arcgis.com/b6XLXLDBGajm7Pfr/ArcGIS/rest/services",
+      miami_dade2: "https://gis-mdc.opendata.arcgis.com/api/feed/all/json",
+    };
+
+    const orgElegido = req.query.org || "miami_dade";
+    const base = orgs[orgElegido] || orgs.miami_dade;
+
+    const r = await fetch(`${base}?f=json`);
+    const data = await r.json();
+
+    const servicios = (data.services || []).map(s => ({
+      nombre: s.name,
+      tipo: s.type,
+      url: s.url || `${base}/${s.name}/${s.type}`,
+    }));
+
+    const permisos = servicios.filter(s => {
+      const n = (s.nombre || "").toLowerCase();
+      return (n.includes("permit") || n.includes("building")) &&
+             !n.includes("zone") && !n.includes("boundar") && !n.includes("parking");
+    });
+
+    return res.json({
+      ok: true,
+      org: orgElegido,
+      base,
+      total: servicios.length,
+      posibles_permisos: permisos,
+      muestra_todos: servicios.slice(0, 40),
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message, nota: "Ese org no respondió, probamos otro" });
+  }
+});
+
+
+
+
+
+
+
+
 
 // ---------- Boot ----------
 (async () => {
