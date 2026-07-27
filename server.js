@@ -11818,6 +11818,138 @@ app.post("/v1/radar/ingest-lote", express.json({ limit: "5mb" }), async (req, re
 
 
 
+// ── URUS RADAR ───────────────────────────────────────────────────────
+const { generarHtmlReporteVip } = require('./urus-radar-template');
+const nodemailer = require('nodemailer');
+
+// Preview HTML del reporte (para desarrollo/testing)
+app.get('/api/radar/preview', async (req, res) => {
+  const html = generarHtmlReporteVip({
+    nombreCliente: 'Demo Cliente',
+    region: 'San Juan, PR',
+    totalValor: 4750000,
+    permisos: [
+      {
+        tipo_tramite: 'Construcción Nueva',
+        solicitante: 'Constructora ABC',
+        ubicacion: 'Calle Luna 45, San Juan',
+        valorEstimado: 2500000,
+        caso: 'SJ-2026-0891',
+        score: 95,
+        tags: { alto_valor: true, residencial: true }
+      },
+      {
+        tipo_tramite: 'Remodelación Comercial',
+        solicitante: 'Plaza Centro LLC',
+        ubicacion: 'Ave. Ponce de León 201',
+        valorEstimado: 2250000,
+        caso: 'SJ-2026-0934',
+        score: 88,
+        tags: { comercial: true, urgente: true }
+      }
+    ]
+  });
+
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+});
+
+// Enviar reporte por email
+app.post('/api/radar/send-email', async (req, res) => {
+  const { destinatario, nombreCliente, region, permisos } = req.body;
+
+  if (!destinatario || !permisos?.length) {
+    return res.status(400).json({ error: 'destinatario y permisos requeridos' });
+  }
+
+  const totalValor = permisos.reduce((acc, p) => acc + (p.valorEstimado || 0), 0);
+  const html = generarHtmlReporteVip({ nombreCliente, region, totalValor, permisos });
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  });
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"URUS Intelligence" <${process.env.SMTP_USER}>`,
+      to: destinatario,
+      subject: `🔵 Reporte VIP — ${permisos.length} oportunidades en${region || 'tu zona'}`,
+      html
+    });
+
+    res.json({ ok: true, messageId: info.messageId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Enviar reporte por WhatsApp (link al HTML hosteado)
+app.post('/api/radar/send-whatsapp', async (req, res) => {
+  const { telefono, nombreCliente, region, permisos } = req.body;
+
+  if (!telefono || !permisos?.length) {
+    return res.status(400).json({ error: 'telefono y permisos requeridos' });
+  }
+
+  // Guardar reporte temporal en DB y generar token
+  const token = require('crypto').randomUUID();
+  const totalValor = permisos.reduce((acc, p) => acc + (p.valorEstimado || 0), 0);
+
+  await pool.query(
+    `INSERT INTO radar_reportes (token, payload, created_at) VALUES ($1, $2, NOW())`,
+    [token, JSON.stringify({ nombreCliente, region, totalValor, permisos })]
+  );
+
+  const reporteUrl = `https://urusverify.com/api/radar/view/${token}`;
+  const mensaje = `🔵 *URUS Radar — Reporte VIP*\n\nHola ${nombreCliente \vert{}\vert{} 'equipo'},\n\nSe detectaron *${permisos.length} oportunidades* de construcción en ${region \vert{}\vert{} 'tu zona'} con un volumen total de$${totalValor.toLocaleString()}.\n\n👉 Ver reporte completo:\n${reporteUrl}\n\n_URUS Intelligence Platform_`;
+
+  try {
+    const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    const numeroFormateado = telefono.startsWith('whatsapp:') ? telefono : `whatsapp:${telefono}`;
+
+    const msg = await twilioClient.messages.create({
+      from: process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+12603006906',
+      to: numeroFormateado,
+      body: mensaje
+    });
+
+    res.json({ ok: true, sid: msg.sid, reporteUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Servir reporte HTML por token
+app.get('/api/radar/view/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { rows } = await pool.query(
+      `SELECT payload FROM radar_reportes WHERE token = $1 AND created_at > NOW() - INTERVAL '7 days'`,
+      [token]
+    );
+
+    if (!rows.length) {
+      return res.status(404).send('<h2>Reporte expirado o no encontrado.</h2>');
+    }
+
+    const data = rows[0].payload;
+    const html = generarHtmlReporteVip(data);
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (err) {
+    res.status(500).send('Error recuperando el reporte.');
+  }
+});
+
+
+
 
 // ---------- Boot ----------
 (async () => {
