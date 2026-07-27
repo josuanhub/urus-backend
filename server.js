@@ -11907,8 +11907,7 @@ app.post('/api/radar/send-whatsapp', async (req, res) => {
   );
 
   const reporteUrl = `https://urusverify.com/api/radar/view/${token}`;
-  const mensaje = `🔵 *URUS Radar — Reporte VIP*\n\nHola ${nombreCliente \vert{}\vert{} 'equipo'},\n\nSe detectaron *${permisos.length} oportunidades* de construcción en ${region \vert{}\vert{} 'tu zona'} con un volumen total de$${totalValor.toLocaleString()}.\n\n👉 Ver reporte completo:\n${reporteUrl}\n\n_URUS Intelligence Platform_`;
-
+const mensaje = `🔵 *URUS Radar — Reporte VIP*\n\nHola ${nombreCliente || 'equipo'},\n\nSe detectaron *${permisos.length} oportunidades* de construcción en ${region || 'tu zona'} con un volumen total de $${totalValor.toLocaleString()}.\n\n👉 Ver reporte completo:\n${reporteUrl}\n\n_URUS Intelligence Platform_`;
   try {
     const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     const numeroFormateado = telefono.startsWith('whatsapp:') ? telefono : `whatsapp:${telefono}`;
