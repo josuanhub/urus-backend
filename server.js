@@ -11525,7 +11525,29 @@ app.get("/v1/radar/permit-fields", async (req, res) => {
 });
 
 
+// GET /v1/radar/mia-fields — campos reales del servicio de permisos de Miami-Dade
+app.get("/v1/radar/mia-fields", async (req, res) => {
+  try {
+    const base = "https://services6.arcgis.com/ONZht79c8QWuX759/arcgis/rest/services/Building_Permits/FeatureServer/0/query";
+    const url = `${base}?where=1%3D1&outFields=*&resultRecordCount=1&f=json`;
+    const r = await fetch(url);
+    const data = await r.json();
 
+    if (!data.features || !data.features.length) {
+      return res.json({ ok: false, nota: "sin registros o URL distinta", cruda: data });
+    }
+
+    const ejemplo = data.features[0].attributes;
+    return res.json({
+      ok: true,
+      total_campos: Object.keys(ejemplo).length,
+      nombres_de_campos: Object.keys(ejemplo),
+      ejemplo_completo: ejemplo,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 
 
