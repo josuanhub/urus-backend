@@ -11500,6 +11500,35 @@ app.get("/v1/radar/mdc-descubrir", async (req, res) => {
 });
 
 
+// GET /v1/radar/permit-fields — muestra los campos reales del servicio de permisos
+app.get("/v1/radar/permit-fields", async (req, res) => {
+  try {
+    const base = "https://services.arcgis.com/0L95CJ0VTaxqcmED/ArcGIS/rest/services/PLANNINGCADASTRE_issued_building_permits/FeatureServer/0/query";
+    const url = `${base}?where=1%3D1&outFields=*&resultRecordCount=1&f=json`;
+    const r = await fetch(url);
+    const data = await r.json();
+
+    if (!data.features || !data.features.length) {
+      return res.json({ ok: false, nota: "sin registros", cruda: data });
+    }
+
+    const ejemplo = data.features[0].attributes;
+    return res.json({
+      ok: true,
+      total_campos: Object.keys(ejemplo).length,
+      nombres_de_campos: Object.keys(ejemplo),
+      ejemplo_completo: ejemplo,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+
+
+
+
 
 
 
