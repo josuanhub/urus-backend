@@ -11462,7 +11462,34 @@ app.get("/v1/radar/scan-mdc", async (req, res) => {
 });
 
 
+// GET /v1/radar/mdc-descubrir — lista los servicios ArcGIS de Miami-Dade
+app.get("/v1/radar/mdc-descubrir", async (req, res) => {
+  try {
+    const url = "https://services.arcgis.com/0L95CJ0VTaxqcmED/ArcGIS/rest/services?f=json";
+    const r = await fetch(url);
+    const data = await r.json();
 
+    const servicios = (data.services || []).map(s => ({
+      nombre: s.name,
+      tipo: s.type,
+      url: `${s.url || ""}`,
+    }));
+
+    // Filtramos los que suenan a permisos
+    const permisos = servicios.filter(s =>
+      /permit|building|construc/i.test(s.nombre || "")
+    );
+
+    return res.json({
+      ok: true,
+      total_servicios: servicios.length,
+      posibles_permisos: permisos,
+      todos: servicios,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 
 
