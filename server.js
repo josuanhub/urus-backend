@@ -11693,6 +11693,30 @@ app.get("/v1/radar/fl-descubrir", async (req, res) => {
 
 
 
+// GET /v1/radar/fl-fields — campos reales de permisos de Palm Bay, FL
+app.get("/v1/radar/fl-fields", async (req, res) => {
+  try {
+    const base = "https://gis.palmbayflorida.org/arcgis/rest/services/GrowthManagement/BuildingPermits/FeatureServer/0/query";
+    const url = `${base}?where=1%3D1&outFields=*&resultRecordCount=1&f=json`;
+    const r = await fetch(url);
+    const data = await r.json();
+
+    if (!data.features || !data.features.length) {
+      return res.json({ ok: false, nota: "sin registros o URL distinta", cruda: data });
+    }
+
+    const ejemplo = data.features[0].attributes;
+    return res.json({
+      ok: true,
+      total_campos: Object.keys(ejemplo).length,
+      nombres_de_campos: Object.keys(ejemplo),
+      ejemplo_completo: ejemplo,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 
 
 
