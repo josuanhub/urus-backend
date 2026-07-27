@@ -11718,7 +11718,31 @@ app.get("/v1/radar/fl-fields", async (req, res) => {
 });
 
 
+// GET /v1/radar/fl-fresh — verifica si Palm Bay tiene permisos recientes
+app.get("/v1/radar/fl-fresh", async (req, res) => {
+  try {
+    const base = "https://gis.palmbayflorida.org/arcgis/rest/services/GrowthManagement/BuildingPermits/FeatureServer/0/query";
+    // Traemos los 5 más recientes por fecha de emisión
+    const url = `${base}?where=1%3D1&outFields=ApplicationNumber,ADDRESS,ApplicationType,EstimateValuation,issueDate,PermitDate&resultRecordCount=5&orderByFields=${encodeURIComponent("issueDate DESC")}&f=json`;
+    const r = await fetch(url);
+    const data = await r.json();
 
+    const recientes = (data.features || []).map(f => {
+      const a = f.attributes;
+      return {
+        permiso: a.ApplicationNumber,
+        direccion: a.ADDRESS,
+        tipo: a.ApplicationType,
+        valor: a.EstimateValuation,
+        fecha_emision: a.issueDate ? new Date(a.issueDate).toISOString() : null,
+      };
+    });
+
+    return res.json({ ok: true, mas_recientes: recientes });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 
 
