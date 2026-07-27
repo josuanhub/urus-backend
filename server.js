@@ -11341,6 +11341,132 @@ app.get("/v1/radar/eventos", async (req, res) => {
 
 
 
+// ============================================================
+// URUS RADAR — Listener Miami-Dade (ArcGIS Open Data, FRESCO)
+// Fuente: permisos de construcción, 2 años atrás hasta HOY.
+// ============================================================
+
+// FeatureServer del dataset "Building Permits 2 Previous Years to Present"
+const MDC_ITEM_ID = "6db5f56e886446df88313ca279e59120";
+const MDC_QUERY_URL =
+  `https://services.arcgis.com/8Pc9XBTAsYuxx9Ny/arcgis/rest/services/Building_Permits_2_Previous_Years_to_Present/FeatureServer/0/query`;
+const RADAR_UMBRAL_USD = Number(process.env.RADAR_UMBRAL_USD || 500000);
+
+// 1) DIAGNÓSTICO — jala 1 permiso real y muestra TODOS los campos
+// GET /v1/radar/mdc-fields   → corre esto PRIMERO
+app.get("/v1/radar/mdc-fields", async (req, res) => {
+  try {
+    const url = `${MDC_QUERY_URL}?where=1%3D1&outFields=*&resultRecordCount=1&f=json`;
+    const r = await fetch(url);
+    const data = await r.json();
+
+    if (!data.features || !data.features.length) {
+      return res.json({
+        ok: false,
+        nota: "La API respondió pero sin registros. Puede que la URL del FeatureServer sea distinta.",
+        respuesta_cruda: data,
+      });
+    }
+
+    const ejemplo = data.features[0].attributes;
+    return res.json({
+      ok: true,
+      total_campos: Object.keys(ejemplo).length,
+      nombres_de_campos: Object.keys(ejemplo),
+      ejemplo_completo: ejemplo,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 2) LISTENER REAL — jala permisos, filtra $500k+, guarda en radar_eventos
+// GET /v1/radar/scan-mdc
+app.get("/v1/radar/scan-mdc", async (req, res) => {
+  try {
+    // === NOMBRES DE CAMPO (ajustar con lo que devuelva /mdc-fields) ===
+    const CAMPO_COSTO   = process.env.MDC_CAMPO_COSTO   || "EstimatedValue";
+    const CAMPO_DIR     = process.env.MDC_CAMPO_DIR     || "Address";
+    const CAMPO_DUENO   = process.env.MDC_CAMPO_DUENO   || "OwnerName";
+    const CAMPO_TIPO    = process.env.MDC_CAMPO_TIPO    || "PermitType";
+    const CAMPO_FECHA   = process.env.MDC_CAMPO_FECHA   || "IssuedDate";
+    const CAMPO_DESC    = process.env.MDC_CAMPO_DESC    || "Description";
+
+    const limit = Math.min(parseInt(req.query.limit || "100", 10), 500);
+
+    // Trae los más recientes primero
+    const url = `${MDC_QUERY_URL}?where=1%3D1&outFields=*&resultRecordCount=${limit}` +
+      `&orderByFields=${encodeURIComponent(CAMPO_FECHA + " DESC")}&f=json`;
+
+    const r = await fetch(url);
+    const data = await r.json();
+
+    if (!data.features) {
+      return res.status(500).json({ ok: false, error: "sin_features", respuesta: data });
+    }
+
+    let nuevos = 0, saltados = 0;
+
+    for (const feat of data.features) {
+      const a = feat.attributes || {};
+      const costo = Number(String(a[CAMPO_COSTO] ?? "0").replace(/[^0-9.]/g, ""));
+
+      if (!Number.isFinite(costo) || costo < RADAR_UMBRAL_USD) { saltados++; continue; }
+
+      const direccion = a[CAMPO_DIR] || "";
+      const dueno = a[CAMPO_DUENO] || "N/D";
+      const tipo = a[CAMPO_TIPO] || "Permiso";
+      const desc = a[CAMPO_DESC] || "";
+      const fechaRaw = a[CAMPO_FECHA];
+      const fecha = fechaRaw ? new Date(fechaRaw).toISOString() : new Date().toISOString();
+
+      const textoClasif = `${tipo} ${desc}`.toLowerCase();
+      const esNueva = textoClasif.includes("new") || textoClasif.includes("construct") || textoClasif.includes("build");
+
+      const evento = {
+        tipo: "PERMISO_CONSTRUCCION_MDC",
+        ubicacion: [direccion, "Miami-Dade, FL"].filter(Boolean).join(", "),
+        valorEstimado: costo,
+        fechaOriginal: `${dueno}-${direccion}-${fecha}`,
+        datosCompletos: {
+          proyecto: desc || tipo,
+          solicitante: dueno,
+          direccion,
+          tipo_permiso: tipo,
+          fecha_emision: fecha,
+          descripcion: desc,
+        },
+        tags: {
+          solar: esNueva ? "ALTA" : "MEDIA",
+          smart_home: esNueva ? "ALTA" : "MEDIA",
+          hvac: esNueva ? "ALTA" : "MEDIA",
+        },
+      };
+
+      const resu = await procesarEventoRadar(evento);
+      if (resu.duplicado) saltados++;
+      else if (resu.evento_id) nuevos++;
+    }
+
+    return res.json({
+      ok: true,
+      recibidos: data.features.length,
+      umbral_usd: RADAR_UMBRAL_USD,
+      nuevos,
+      saltados,
+    });
+  } catch (err) {
+    console.error("RADAR_SCAN_MDC_ERROR", err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+
+
+
+
+
 
 // ---------- Boot ----------
 (async () => {
