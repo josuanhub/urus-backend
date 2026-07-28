@@ -50,6 +50,7 @@ const {
 } = require("./services/pdf/executiveReport.generator");
 const { generateMunicipalReport } = require("./services/intelligence/municipalReportBuilder");
 const app = express();
+app.use(express.static('public'));
 
 function generateOperationalDiagnosis(org) {
   const painPoints = org.pain_points || [];
