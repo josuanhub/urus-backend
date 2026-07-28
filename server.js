@@ -38,6 +38,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // OpenAI SDK (robusto)
 const OpenAI = require("openai").default;
 const twilio = require("twilio");
+const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const MessagingResponse = require("twilio").twiml.MessagingResponse;
 const moltbookRoutes = require("./routes/moltbook.routes");
 const decisionRoutes = require("./routes/decision.routes");
