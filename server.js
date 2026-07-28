@@ -11975,6 +11975,37 @@ app.get('/api/radar/view/:token', async (req, res) => {
 
 
 
+// Endpoint para activar alerta desde la página web
+app.post('/api/radar/activar-alerta', async (req, res) => {
+    try {
+        const { whatsapp } = req.body;
+
+        if (!whatsapp) {
+            return res.status(400).json({ error: 'Número de WhatsApp requerido' });
+        }
+
+        // 1. Guardar en base de datos (opcional pero recomendado)
+        // await db.query('INSERT INTO suscriptores (whatsapp) VALUES ($1)', [whatsapp]);
+
+        // 2. Enviar reporte gratis por WhatsApp
+        const reporte = `🔔 *URUS Intelligence*\n\n✅ Alerta activada con éxito.\n\nAquí tienes tu primer reporte gratis:\n\n🏆 *Proyecto Destacado*\n📍 Dorado, PR\n💰 $1,250,000\n👤 Dorado Beach Residences LLC\n\nRecibirás alertas diarias aquí mismo.`;
+
+        await client.messages.create({
+            body: reporte,
+            from: 'whatsapp:+14155238886', // tu número de Twilio
+            to: `whatsapp:${whatsapp}`
+        });
+
+        res.json({ success: true, message: 'Alerta activada. Revisa tu WhatsApp.' });
+
+    } catch (error) {
+        console.error('Error activando alerta:', error);
+        res.status(500).json({ error: 'Error interno' });
+    }
+});
+
+
+
 
 // ---------- Boot ----------
 (async () => {
