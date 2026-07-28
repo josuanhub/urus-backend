@@ -11992,7 +11992,7 @@ app.post('/api/radar/activar-alerta', async (req, res) => {
 
         await client.messages.create({
             body: reporte,
-            from: 'whatsapp:+14155238886', // tu número de Twilio
+            from: 'whatsapp:+2603006906', // tu número de Twilio
             to: `whatsapp:${whatsapp}`
         });
 
