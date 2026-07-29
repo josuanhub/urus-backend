@@ -93,8 +93,8 @@ function generarHtmlReporteVip(data) {
 
                   <!-- CTA -->
                   <p style="font-size:14px; color:#333333; margin:0 0 20px 0;">
-                    <strong>No pierdas más tiempo persiguiendo proyectos pequeños que no te dejan margen.</strong><br>
-                    URUS rastrea oportunidades de alto valor (seis cifras o más) en tiempo real y te las entrega antes que tu competencia.
+                    <strong>Cada día recibes las mejores oportunidades nuevas de construcción de tu mercado antes que tu competencia.><br>
+                    URUS rastrea oportunidades de alto valor en tiempo real y te las entrega antes que tu competencia.
                   </p>
                   <p style="font-size:14px; color:#666666; margin:0 0 30px 0;">
                     Pruébalo sin pagar un solo centavo:
