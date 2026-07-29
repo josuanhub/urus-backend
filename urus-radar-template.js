@@ -16,78 +16,122 @@ function generarHtmlReporteVip(data) {
       maximumFractionDigits: 0
     });
 
-    const score = p.score || 90;
-    let badgeColor = '#10B981'; // verde
-    if (score < 80) badgeColor = '#F59E0B'; // amarillo
-
     return `
-      <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-          <div>
-            <span style="font-size: 12px; font-weight: 700; color: #4B5563; text-transform: uppercase; tracking-spacing: 0.5px;">${p.tipo_tramite || 'Permiso de Construcción'}</span>
-            <h4 style="margin: 4px 0 0 0; color: #111827; font-size: 16px;">Caso: ${p.caso || 'N/A'}</h4>
-          </div>
-          <span style="background-color: ${badgeColor}; color: #ffffff; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">
-            Score: ${score}/100
-          </span>
-        </div>
-        
-        <p style="margin: 0 0 12px 0; color: #374151; font-size: 14px; line-height: 1.5;">
-          <strong>📍 Ubicación:</strong> ${p.ubicacion || 'Dirección no especificada'}<br/>
-          <strong>👤 Solicitante/Contratista:</strong> ${p.solicitante || 'En revisión'}
-        </p>
-
-        <div style="background-color: #f9fafb; padding: 10px 14px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 13px; color: #6b7280; font-weight: 500;">Valor Estimado:</span>
-          <span style="font-size: 16px; color: #0f172a; font-weight: 700;">${valorItem}</span>
-        </div>
-      </div>
+      <table width="100%" cellpadding="10" cellspacing="0" style="background-color:#f9f9f9; border-radius:6px; margin-bottom:20px;">
+        <tr>
+          <td style="font-size:14px; color:#333333; border-bottom:1px solid #e0e0e0; padding:10px;">
+            <strong>📍 Ubicación:</strong> ${p.ubicacion || 'N/D'}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:14px; color:#333333; border-bottom:1px solid #e0e0e0; padding:10px;">
+            <strong>🏗️ Tipo:</strong> ${p.tipo_tramite || 'N/D'}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:14px; color:#333333; border-bottom:1px solid #e0e0e0; padding:10px;">
+            <strong>💰 Presupuesto:</strong> ${valorItem}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:14px; color:#333333; padding:10px;">
+            <strong>👤 Entidad:</strong> ${p.solicitante || 'N/D'}
+          </td>
+        </tr>
+      </table>
     `;
   }).join('');
 
   return `
     <!DOCTYPE html>
-    <html lang="es">
+    <html>
     <head>
-      <meta charset="utf-8">
+      <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>URUS Intelligence — Reporte VIP</title>
     </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px;">
-      <div style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-        
-        <!-- ENCABEZADO CORPORATIVO -->
-        <div style="background-color: #0f172a; padding: 32px 24px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px; font-weight: 800;">URUS INTELLIGENCE</h1>
-          <p style="color: #94a3b8; margin: 6px 0 0 0; font-size: 14px;">Oportunidades de Construcción Exclusivas</p>
-        </div>
+    <body style="margin:0; padding:0; background-color:#f4f4f4; font-family: Arial, Helvetica, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4; padding:20px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden;">
+              
+              <!-- HEADER -->
+              <tr>
+                <td style="background-color:#0a0a0a; padding:30px 40px; text-align:center;">
+                  <h1 style="color:#ffffff; font-size:24px; margin:0;">🚨 ALERTA URUS</h1>
+                  <p style="color:#888888; font-size:14px; margin:5px 0 0 0;">Oportunidades detectadas en tiempo real</p>
+                </td>
+              </tr>
 
-        <!-- MÉTRICA DESTACADA -->
-        <div style="background-color: #eff6ff; border-bottom: 1px solid #dbeafe; padding: 24px; text-align: center;">
-          <p style="margin: 0; font-size: 13px; color: #1e40af; font-weight: 600; text-transform: uppercase;">Nuevos Proyectos Detectados en ${region || 'tu zona'}</p>
-          <h2 style="margin: 8px 0 0 0; color: #1e3a8a; font-size: 32px; font-weight: 800;">${totalFormateado} USD</h2>
-          <p style="margin: 4px 0 0 0; font-size: 13px; color: #3b82f6;">${permisos?.length || 0} oportunidades de alto valor identificadas hoy</p>
-        </div>
+              <!-- CUERPO -->
+              <tr>
+                <td style="padding:40px;">
+                  
+                  <p style="font-size:18px; color:#333333; margin:0 0 10px 0;">
+                    Hola <strong>${nombreCliente || 'cliente'}</strong>,
+                  </p>
+                  <p style="font-size:16px; color:#333333; margin:0 0 20px 0;">
+                    Se detectaron <strong>${permisos?.length || 0} oportunidades</strong> en <strong>${region || 'tu zona'}</strong> con un volumen total de <strong>${totalFormateado}</strong>.
+                  </p>
+                  <p style="font-size:14px; color:#666666; margin:0 0 30px 0;">
+                    Nadie en el mercado abierto lo sabe todavía. Pero la máquina de URUS ya lo detectó.
+                  </p>
 
-        <!-- LISTA DE TARJETAS DE PROYECTO -->
-        <div style="padding: 24px;">
-          <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #111827;">Oportunidades Destacadas</h3>
-          ${tarjetasProyectos}
+                  <!-- LISTA DE PERMISOS -->
+                  ${tarjetasProyectos}
 
-          <!-- BOTÓN DE LLAMADO A LA ACCIÓN (CTA) -->
-          <div style="margin-top: 32px; padding: 24px; background-color: #faf5ff; border: 1px solid #f3e8ff; border-radius: 8px; text-align: center;">
-            <h3 style="margin: 0 0 8px 0; color: #581c87; font-size: 18px;">¿Quieres recibir estos datos en tiempo real antes que tu competencia?</h3>
-            <p style="margin: 0 0 18px 0; color: #6b21a8; font-size: 14px; line-height: 1.4;">Accede al flujo diario de leads calificados directamente en tu WhatsApp o Correo.</p>
-            <a href="https://urusverify.com/subscribe" style="background-color: #7c3aed; color: #ffffff; text-decoration: none; padding: 14px 28px; font-weight: 700; border-radius: 6px; display: inline-block; font-size: 15px;">Activar Suscripción VIP Aquí</a>
-          </div>
-        </div>
+                  <!-- EXPLICACIÓN -->
+                  <p style="font-size:14px; color:#333333; margin:30px 0 20px 0;">
+                    <strong>Por qué estás recibiendo esto:</strong>
+                  </p>
+                  <p style="font-size:14px; color:#666666; margin:0 0 20px 0;">
+                    Esta información no está en el periódico ni en listas públicas habituales. Es una alerta privada exclusiva para la red VIP de URUS Intelligence.
+                  </p>
+                  <p style="font-size:14px; color:#666666; margin:0 0 30px 0;">
+                    El contratista que llega primero a la mesa no negocia en subasta: cierra el contrato. Mientras tu competencia espera a que el permiso salga en las noticias, tú puedes tener la propuesta en el escritorio del dueño hoy.
+                  </p>
 
-        <!-- PIE DE PÁGINA -->
-        <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">URUS Intelligence OS — Reportes Automatizados de Permisos</p>
-        </div>
+                  <!-- CTA -->
+                  <p style="font-size:14px; color:#333333; margin:0 0 20px 0;">
+                    <strong>No pierdas más tiempo persiguiendo proyectos pequeños que no te dejan margen.</strong><br>
+                    URUS rastrea oportunidades de alto valor (seis cifras o más) en tiempo real y te las entrega antes que tu competencia.
+                  </p>
+                  <p style="font-size:14px; color:#666666; margin:0 0 30px 0;">
+                    Pruébalo sin pagar un solo centavo:
+                  </p>
 
-      </div>
+                  <!-- BOTÓN -->
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center">
+                        <a href="mailto:urus.intelligence@gmail.com?subject=QUIERO&body=Quiero%20activar%20mi%20prueba%20gratis%20de%207%20días" style="display:inline-block; padding:14px 32px; background-color:#1a73e8; color:#ffffff; text-decoration:none; border-radius:6px; font-size:16px; font-weight:bold;">
+                          ▶️ ACTIVAR PRUEBA GRATIS
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <p style="font-size:12px; color:#999999; margin:30px 0 0 0; text-align:center;">
+                    Un solo contrato de estos paga 10 años de inteligencia de datos.
+                  </p>
+
+                </td>
+              </tr>
+
+              <!-- FOOTER -->
+              <tr>
+                <td style="background-color:#0a0a0a; padding:20px 40px; text-align:center;">
+                  <p style="color:#888888; font-size:12px; margin:0;">
+                    URUS Intelligence<br>
+                    Data & Automation for High-Ticket Construction
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
   `;
