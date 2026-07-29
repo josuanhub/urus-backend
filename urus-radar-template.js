@@ -104,9 +104,9 @@ function generarHtmlReporteVip(data) {
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td align="center">
-                        <a href="mailto:urus.intelligence@gmail.com?subject=QUIERO&body=Quiero%20activar%20mi%20prueba%20gratis%20de%207%20días" style="display:inline-block; padding:14px 32px; background-color:#1a73e8; color:#ffffff; text-decoration:none; border-radius:6px; font-size:16px; font-weight:bold;">
-                          ▶️ ACTIVAR PRUEBA GRATIS
-                        </a>
+                       <a href="https://urusverify.com/api/activar-prueba?email={{email}}" style="display:inline-block; padding:14px 32px; background-color:#1a73e8; color:#ffffff; text-decoration:none; border-radius:6px; font-size:16px; font-weight:bold;">
+  ▶️ ACTIVAR PRUEBA GRATIS
+</a>
                       </td>
                     </tr>
                   </table>
