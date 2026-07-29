@@ -12009,6 +12009,35 @@ app.post('/api/radar/activar-alerta', async (req, res) => {
 
 
 
+// Endpoint para activar prueba gratis desde el botón del email
+app.post('/api/activar-prueba', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email es requerido' });
+    }
+
+    console.log(`[ACTIVACIÓN] Nuevo registro: ${email}`);
+
+    // Aquí después conectas la base de datos
+    // Por ahora solo registramos y respondemos
+
+    res.json({
+      success: true,
+      message: `Prueba gratis activada para ${email}`,
+      email: email
+    });
+
+  } catch (error) {
+    console.error('[ACTIVACIÓN] Error:', error);
+    res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+
+
+
 // ---------- Boot ----------
 (async () => {
   try {
