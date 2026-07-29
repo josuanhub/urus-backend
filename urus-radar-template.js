@@ -138,3 +138,4 @@ function generarHtmlReporteVip(data) {
 }
 
 module.exports = { generarHtmlReporteVip };
+
