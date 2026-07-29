@@ -74,7 +74,7 @@ function generarHtmlReporteVip(data) {
                     Se detectaron <strong>${permisos?.length || 0} oportunidades</strong> en <strong>${region || 'tu zona'}</strong> con un volumen total de <strong>${totalFormateado}</strong>.
                   </p>
                   <p style="font-size:14px; color:#666666; margin:0 0 30px 0;">
-                    Nadie en el mercado abierto lo sabe todavía. Pero la máquina de URUS ya lo detectó.
+                    Nadie en el mercado abierto lo sabe todavía. Pero el sistema de URUS ya lo detectó.
                   </p>
 
                   <!-- LISTA DE PERMISOS -->
