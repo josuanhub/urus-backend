@@ -923,53 +923,18 @@ progressContainer.style.display = 'none';
 return;
 }
 
-// Mapeo automático de columnas
-const columnMap = {
-'nombre': ['nombre', 'name', 'Name', 'Nombre', 'names', 'Names', 'Nombre Completo', 'nombre completo', 'fullname', 'FullName', 'full_name'],
-'email': ['email', 'Email', 'EmailAddress', 'emailaddress', 'mail', 'Mail', 'correo', 'Correo', 'Correo Electrónico', 'correo electronico'],
-'telefono': ['telefono', 'Telefono', 'Teléfono', 'teléfono', 'phone', 'Phone', 'tel', 'Tel', 'Telephone', 'telephone', 'celular', 'Celular', 'movil', 'Móvil'],
-'empresa': ['empresa', 'Empresa', 'company', 'Company', 'Business', 'business', 'compañia', 'Compañia', 'Compañía'],
-'ciudad': ['ciudad', 'Ciudad', 'city', 'City', 'location', 'Location', 'municipio', 'Municipio', 'poblacion', 'Población'],
-'tipo': ['tipo', 'Tipo', 'type', 'Type', 'category', 'Category', 'categoria', 'Categoría', 'industria', 'Industria']
-};
-
-const headers = lines[0].split(',').map(h => h.trim());
-
-// Mapear headers del CSV a nombres estandarizados
-const mappedHeaders = headers.map(h => {
-for (const [key, aliases] of Object.entries(columnMap)) {
-if (aliases.includes(h)) return key;
-}
-return h;
-});
-
+const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
 progressFill.style.width = '30%';
 progressText.textContent = `Procesando ${lines.length - 1} contactos...`;
 
 const contactos = [];
-const errores = [];
-
 for (let i = 1; i < lines.length; i++) {
 const values = lines[i].split(',').map(v => v.trim());
 const contacto = {};
-
-mappedHeaders.forEach((header, index) => {
-if (['nombre', 'email', 'telefono', 'empresa', 'ciudad', 'tipo'].includes(header)) {
+headers.forEach((header, index) => {
 contacto[header] = values[index] || '';
-}
 });
-
-if (contacto.nombre || contacto.email) {
 contactos.push(contacto);
-} else {
-errores.push(i + 1);
-}
-}
-
-if (contactos.length === 0) {
-statusEl.innerHTML = `<div class="message message-error">❌ No se encontraron contactos válidos. Revisa que el CSV tenga columnas como: nombre, email, telefono, empresa, ciudad, tipo</div>`;
-progressContainer.style.display = 'none';
-return;
 }
 
 progressFill.style.width = '60%';
@@ -986,11 +951,7 @@ progressFill.style.width = '100%';
 progressText.textContent = '✅ Completo';
 
 if (data.ok) {
-let msg = `✅ ${data.insertados || contactos.length} contactos subidos exitosamente`;
-if (errores.length > 0) {
-msg += `<br><small style="color:#ffaa00;">⚠️ ${errores.length} filas saltadas (sin nombre ni email): filas ${errores.slice(0,5).join(', ')}${errores.length > 5 ? '...' : ''}</small>`;
-}
-statusEl.innerHTML = `<div class="message message-success">${msg}</div>`;
+statusEl.innerHTML = `<div class="message message-success">✅ ${data.insertados || contactos.length} contactos subidos exitosamente</div>`;
 setTimeout(() => { progressContainer.style.display = 'none'; progressFill.style.width = '0%'; }, 3000);
 } else {
 statusEl.innerHTML = `<div class="message message-error">❌ Error: ${data.error || 'No se pudieron subir los contactos'}</div>`;
