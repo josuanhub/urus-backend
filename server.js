@@ -12237,6 +12237,27 @@ app.get('/v1/radar/crear-tablas', async (req, res) => {
 });
 
 
+app.post('/v1/radar/contactos', async (req, res) => {
+  try {
+    const { contactos } = req.body;
+    
+    if (!contactos || !Array.isArray(contactos) || contactos.length === 0) {
+      return res.status(400).json({ ok: false, error: 'No se recibieron contactos' });
+    }
+
+    // Aquí va tu lógica para guardar en la base de datos
+    // Por ahora solo devuelve éxito
+    res.json({
+      ok: true,
+      insertados: contactos.length,
+      total: contactos.length
+    });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+
 
 
 
