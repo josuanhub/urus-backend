@@ -522,7 +522,8 @@ grid-template-columns: repeat(2, 1fr);
 </style>
 </head>
 
-  <div class="container">
+<body>
+<div class="container">
 <!-- Sidebar -->
 <nav class="sidebar">
 <div class="logo">
@@ -535,7 +536,6 @@ grid-template-columns: repeat(2, 1fr);
 <li data-tab="permisos">📄 Permisos</li>
 <li data-tab="subir">📤 Subir CSV</li>
 <li data-tab="enviar">✉️ Enviar Email</li>
-<li data-tab="historial">📬 Historial</li>
 <li data-tab="scraper">🚀 Scraper</li>
 </ul>
 <div class="status">
@@ -559,12 +559,12 @@ grid-template-columns: repeat(2, 1fr);
 <p id="total-permisos">-</p>
 </div>
 <div class="stat-card">
-<h3>Enviados Hoy</h3>
-<p id="enviados-hoy">-</p>
+<h3>Por Ciudad</h3>
+<p id="por-ciudad" style="font-size:14px;">-</p>
 </div>
 <div class="stat-card">
-<h3>Respuestas</h3>
-<p id="respuestas">-</p>
+<h3>Estado</h3>
+<p id="estado-api">✅</p>
 </div>
 </div>
 <div id="dashboard-message"></div>
@@ -574,16 +574,14 @@ grid-template-columns: repeat(2, 1fr);
 <section id="contactos" class="tab-content">
 <h2>📋 Contactos</h2>
 <div class="filters">
-<input type="text" id="filtro-nombre" placeholder="Buscar por nombre...">
-<input type="text" id="filtro-email" placeholder="Buscar por email...">
 <input type="text" id="filtro-ciudad" placeholder="Filtrar por ciudad...">
 <select id="filtro-tipo">
 <option value="">Todos los tipos</option>
-<option value="contratista">Contratista</option>
-<option value="inversionista">Inversionista</option>
-<option value="arquitecto">Arquitecto</option>
-<option value="ingeniero">Ingeniero</option>
-<option value="desarrollador">Desarrollador</option>
+<option value="Roofing">Roofing</option>
+<option value="HVAC">HVAC</option>
+<option value="Solar">Solar</option>
+<option value="General Contractor">General Contractor</option>
+<option value="Inversionista">Inversionista</option>
 </select>
 <button onclick="cargarContactos()">🔍 Buscar</button>
 <button onclick="seleccionarTodos()">☑️ Seleccionar Todos</button>
@@ -613,18 +611,7 @@ grid-template-columns: repeat(2, 1fr);
 <section id="permisos" class="tab-content">
 <h2>📄 Permisos de Construcción</h2>
 <div class="filters">
-<input type="text" id="filtro-ciudad-permiso" placeholder="Filtrar por ciudad...">
-<input type="number" id="filtro-monto-min" placeholder="Monto mínimo ($)">
-<input type="number" id="filtro-monto-max" placeholder="Monto máximo ($)">
-<select id="filtro-estado">
-<option value="">Todos los estados</option>
-<option value="Nuevo">Nuevo</option>
-<option value="En revisión">En revisión</option>
-<option value="Aprobado">Aprobado</option>
-<option value="En ejecución">En ejecución</option>
-<option value="Completado">Completado</option>
-</select>
-<button onclick="cargarPermisos()">🔍 Buscar</button>
+<button onclick="cargarPermisos()">🔄 Actualizar</button>
 </div>
 <div class="table-container">
 <table>
@@ -636,7 +623,6 @@ grid-template-columns: repeat(2, 1fr);
 <th>Valor Estimado</th>
 <th>Fecha</th>
 <th>Estado</th>
-<th>Score</th>
 </tr>
 </thead>
 <tbody id="permisos-body"></tbody>
@@ -664,13 +650,10 @@ grid-template-columns: repeat(2, 1fr);
 <div id="upload-status"></div>
 <div style="margin-top:20px;">
 <h3 style="color:#fff;margin-bottom:12px;">Formato del CSV</h3>
-<p style="color:#666;font-size:13px;">El archivo debe tener estas columnas en la primera fila:</p>
+<p style="color:#666;font-size:13px;">Columnas requeridas:</p>
 <code style="display:block;background:#12121a;padding:12px;border-radius:8px;margin-top:8px;font-size:12px;color:#00d4ff;">
 nombre,email,telefono,empresa,ciudad,tipo
 </code>
-<p style="color:#666;font-size:12px;margin-top:8px;">
-Ejemplo: <code>Juan Pérez,juan@email.com,5551234567,Constructora XYZ,Austin,contratista</code>
-</p>
 </div>
 </section>
 
@@ -679,21 +662,16 @@ Ejemplo: <code>Juan Pérez,juan@email.com,5551234567,Constructora XYZ,Austin,con
 <h2>✉️ Enviar Email Personalizado</h2>
 <div class="editor">
 <label>Asunto del email:</label>
-<input type="text" id="asunto-email" value="🚨 Nuevo proyecto de {{tipo}} en {{ciudad}} - ${{valor}}">
+<input type="text" id="asunto-email" value="🚨 Nuevo proyecto en {{ciudad}}">
 
-<label>Seleccionar permiso para incluir:</label>
-<select id="permiso-select">
-<option value="">Seleccionar permiso...</option>
-</select>
-
-<label>Plantilla del mensaje (usa {{nombre}}, {{empresa}}, {{ciudad}}, {{tipo}}, {{valor}}):</label>
+<label>Plantilla del mensaje:</label>
 <textarea id="plantilla-email">Hola {{nombre}},
 
 Soy Josuan de URUS Intelligence. Monitoreamos permisos de construcción en tiempo real.
 
-Acabo de detectar un permiso de {{tipo}} por ${{valor}} en {{ciudad}} que podría ser de tu interés.
+Acabo de detectar oportunidades en {{ciudad}} que podrían ser de tu interés.
 
-¿Quieres que te envíe un reporte de prueba gratuito con todos los detalles?
+¿Quieres que te envíe un reporte de prueba gratuito?
 
 Saludos,
 Josuan Rivera
@@ -707,54 +685,19 @@ Founder, URUS Intelligence</textarea>
 </div>
 </section>
 
-<!-- Historial -->
-<section id="historial" class="tab-content">
-<h2>📬 Historial de Envíos</h2>
-<div class="filters">
-<input type="text" id="filtro-historial" placeholder="Buscar por email o nombre...">
-<select id="filtro-estado-envio">
-<option value="">Todos los estados</option>
-<option value="enviado">Enviado</option>
-<option value="entregado">Entregado</option>
-<option value="abierto">Abierto</option>
-<option value="respondido">Respondido</option>
-<option value="fallido">Fallido</option>
-</select>
-<button onclick="cargarHistorial()">🔍 Buscar</button>
-</div>
-<div class="table-container">
-<table>
-<thead>
-<tr>
-<th>Fecha</th>
-<th>Contacto</th>
-<th>Email</th>
-<th>Asunto</th>
-<th>Estado</th>
-<th>Respuesta</th>
-</tr>
-</thead>
-<tbody id="historial-body"></tbody>
-</table>
-</div>
-</section>
-
 <!-- Scraper -->
 <section id="scraper" class="tab-content">
 <h2>🚀 Scraper de Permisos</h2>
 <div class="scraper-controls">
 <button onclick="scrapearAustin()">🔍 Escanear Austin</button>
-<button onclick="scrapearMiami()">🔍 Escanear Miami</button>
-<button onclick="scrapearDallas()">🔍 Escanear Dallas</button>
-<button onclick="scrapearHouston()">🔍 Escanear Houston</button>
 </div>
 <div id="scraper-result"></div>
 <div style="margin-top:20px;">
-<h3 style="color:#fff;margin-bottom:12px;">Configuración del Scraper</h3>
+<h3 style="color:#fff;margin-bottom:12px;">Configuración</h3>
 <div class="editor" style="padding:16px;">
-<label>Umbral mínimo de valor ($):</label>
+<label>Umbral mínimo ($):</label>
 <input type="number" id="umbral-scraper" value="50000" min="0">
-<label>Límite de resultados:</label>
+<label>Límite:</label>
 <input type="number" id="limite-scraper" value="100" min="1" max="500">
 </div>
 </div>
@@ -762,7 +705,7 @@ Founder, URUS Intelligence</textarea>
 </main>
 </div>
 
-<!-- Modal de confirmación -->
+<!-- Modal -->
 <div class="modal" id="confirm-modal">
 <div class="modal-content">
 <h3 id="modal-title">Confirmar</h3>
@@ -773,12 +716,8 @@ Founder, URUS Intelligence</textarea>
 </div>
 </div>
 </div>
-<body>
 
-  <script>
-// ============================================================
-// CONFIGURACIÓN - CAMBIO CLAVE: /v1/radar → /api/radar
-// ============================================================
+<script>
 const API_BASE = 'https://www.urusverify.com/v1';
 let accionPendiente = null;
 
@@ -816,8 +755,6 @@ switch(item.dataset.tab) {
 case 'dashboard': cargarDashboard(); break;
 case 'contactos': cargarContactos(); break;
 case 'permisos': cargarPermisos(); break;
-case 'enviar': cargarPermisosSelect(); break;
-case 'historial': cargarHistorial(); break;
 }
 });
 });
@@ -834,8 +771,14 @@ const data = await response.json();
 if (data.ok) {
 document.getElementById('total-contactos').textContent = data.stats.contactos || 0;
 document.getElementById('total-permisos').textContent = data.stats.permisos || 0;
-document.getElementById('enviados-hoy').textContent = data.stats.enviados_hoy || 0;
-document.getElementById('respuestas').textContent = data.stats.respuestas || 0;
+
+// Mostrar distribución por ciudad
+if (data.stats.porCiudad && data.stats.porCiudad.length > 0) {
+const ciudades = data.stats.porCiudad.slice(0, 5).map(c => `${c.ciudad}: ${c.total}`).join(' | ');
+document.getElementById('por-ciudad').textContent = ciudades;
+} else {
+document.getElementById('por-ciudad').textContent = 'Sin datos';
+}
 msgEl.innerHTML = '';
 } else {
 msgEl.innerHTML = `<div class="message message-error">Error: ${data.error || 'No se pudieron cargar las estadísticas'}</div>`;
@@ -849,14 +792,10 @@ msgEl.innerHTML = `<div class="message message-error">Error de conexión: ${erro
 // CONTACTOS
 // ============================================================
 async function cargarContactos() {
-const nombre = document.getElementById('filtro-nombre').value;
-const email = document.getElementById('filtro-email').value;
 const ciudad = document.getElementById('filtro-ciudad').value;
 const tipo = document.getElementById('filtro-tipo').value;
 
 let url = `${API_BASE}/radar/contactos?limite=500`;
-if (nombre) url += `&nombre=${encodeURIComponent(nombre)}`;
-if (email) url += `&email=${encodeURIComponent(email)}`;
 if (ciudad) url += `&ciudad=${encodeURIComponent(ciudad)}`;
 if (tipo) url += `&tipo=${encodeURIComponent(tipo)}`;
 
@@ -879,7 +818,7 @@ tr.innerHTML = `
 <td>${c.empresa || 'N/A'}</td>
 <td>${c.ciudad || 'N/A'}</td>
 <td><span class="badge badge-info">${c.tipo || 'N/A'}</span></td>
-<td>${c.fecha_registro ? new Date(c.fecha_registro).toLocaleDateString() : 'N/A'}</td>`;
+<td>${c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A'}</td>`;
 tbody.appendChild(tr);
 });
 document.getElementById('contactos-count').textContent = `${data.contactos.length} contactos encontrados`;
@@ -910,22 +849,11 @@ document.getElementById('select-all').checked = false;
 // PERMISOS
 // ============================================================
 async function cargarPermisos() {
-const ciudad = document.getElementById('filtro-ciudad-permiso').value;
-const montoMin = document.getElementById('filtro-monto-min').value;
-const montoMax = document.getElementById('filtro-monto-max').value;
-const estado = document.getElementById('filtro-estado').value;
-
-let url = `${API_BASE}/radar/eventos?limite=200`;
-if (ciudad) url += `&ciudad=${encodeURIComponent(ciudad)}`;
-if (montoMin) url += `&monto_min=${montoMin}`;
-if (montoMax) url += `&monto_max=${montoMax}`;
-if (estado) url += `&estado=${encodeURIComponent(estado)}`;
-
 const tbody = document.getElementById('permisos-body');
-tbody.innerHTML = '<tr><td colspan="7" class="loading">Cargando permisos...</td></tr>';
+tbody.innerHTML = '<tr><td colspan="6" class="loading">Cargando permisos...</td></tr>';
 
 try {
-const response = await fetch(url);
+const response = await fetch(`${API_BASE}/radar/eventos?limite=50`);
 const data = await response.json();
 tbody.innerHTML = '';
 
@@ -933,49 +861,22 @@ if (data.ok && data.eventos && data.eventos.length > 0) {
 data.eventos.forEach(p => {
 const tr = document.createElement('tr');
 const valor = p.valor_estimado ? `$${Number(p.valor_estimado).toLocaleString()}` : 'N/A';
-const estadoClass = p.estado === 'Nuevo' ? 'badge-success' : p.estado === 'En revisión' ? 'badge-warning' : 'badge-info';
 tr.innerHTML = `
 <td>#${p.id}</td>
 <td>${p.tipo_evento || 'N/A'}</td>
 <td>${p.ubicacion || 'N/A'}</td>
 <td style="color:#00ff88;font-weight:600;">${valor}</td>
 <td>${p.fecha_registro ? new Date(p.fecha_registro).toLocaleDateString() : 'N/A'}</td>
-<td><span class="badge ${estadoClass}">${p.estado || 'Nuevo'}</span></td>
-<td>${p.score || 'N/A'}</td>`;
+<td><span class="badge badge-success">${p.estado || 'Nuevo'}</span></td>`;
 tbody.appendChild(tr);
 });
 document.getElementById('permisos-count').textContent = `${data.eventos.length} permisos encontrados`;
 } else {
-tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:40px;">No se encontraron permisos</td></tr>';
+tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;padding:40px;">No se encontraron permisos</td></tr>';
 document.getElementById('permisos-count').textContent = '0 permisos';
 }
 } catch (error) {
-tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ff4444;padding:40px;">Error: ${error.message}</td></tr>`;
-}
-}
-
-// ============================================================
-// CARGAR PERMISOS EN SELECT
-// ============================================================
-async function cargarPermisosSelect() {
-const select = document.getElementById('permiso-select');
-select.innerHTML = '<option value="">Cargando permisos...</option>';
-try {
-const response = await fetch(`${API_BASE}/radar/eventos?limite=50`);
-const data = await response.json();
-select.innerHTML = '<option value="">Seleccionar permiso...</option>';
-if (data.ok && data.eventos) {
-data.eventos.forEach(p => {
-const option = document.createElement('option');
-const valor = p.valor_estimado ? `$${Number(p.valor_estimado).toLocaleString()}` : 'N/A';
-option.value = p.id;
-option.textContent = `${p.tipo_evento || 'N/A'} - ${p.ubicacion || 'N/A'} - ${valor}`;
-select.appendChild(option);
-});
-}
-} catch (error) {
-select.innerHTML = '<option value="">Error al cargar permisos</option>';
-console.error('Error:', error);
+tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#ff4444;padding:40px;">Error: ${error.message}</td></tr>`;
 }
 }
 
@@ -1017,78 +918,30 @@ try {
 const text = await file.text();
 const lines = text.split('\n').filter(line => line.trim());
 if (lines.length < 2) {
-statusEl.innerHTML = '<div class="message message-error">❌ El archivo está vacío o solo tiene encabezados</div>';
+statusEl.innerHTML = '<div class="message message-error">❌ El archivo está vacío</div>';
 progressContainer.style.display = 'none';
 return;
 }
 
-// Detectar si usa tabs o comas
-const firstLine = lines[0];
-let separator = ',';
-if (firstLine.includes('\t')) {
-separator = '\t';
-}
-
-const headers = lines[0].split(separator).map(h => h.trim().toLowerCase());
-console.log('Headers detectados:', headers);
-console.log('Separador usado:', separator === '\t' ? 'TAB' : 'COMA');
-
-// Mapear columnas de Apify a lo que espera el backend
-const columnMap = {
-'name': 'nombre',
-'nombre': 'nombre',
-'email': 'email',
-'phone': 'telefono',
-'telefono': 'telefono',
-'website': 'empresa',
-'empresa': 'empresa',
-'address': 'direccion',
-'direccion': 'direccion',
-'ciudad': 'ciudad',
-'city': 'ciudad',
-'searchterm': 'tipo',
-'tipo': 'tipo',
-'rating': 'rating',
-'reviews': 'reviews'
-};
-
+const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
 progressFill.style.width = '30%';
 progressText.textContent = `Procesando ${lines.length - 1} contactos...`;
 
 const contactos = [];
 for (let i = 1; i < lines.length; i++) {
-const values = lines[i].split(separator).map(v => v.trim());
-const contactoRaw = {};
-headers.forEach((header, index) => {
-contactoRaw[header] = values[index] || '';
-});
-
-// Mapear al formato que espera el backend
+const values = lines[i].split(',').map(v => v.trim());
 const contacto = {};
-for (const [key, value] of Object.entries(contactoRaw)) {
-const mappedKey = columnMap[key] || key;
-if (!contacto[mappedKey]) {
-contacto[mappedKey] = value;
-}
-}
-
-// Si no hay nombre, usar el website como nombre de empresa
-if (!contacto.nombre && contactoRaw.website) {
-contacto.nombre = contactoRaw.website.replace(/https?:\/\//, '').split('/')[0];
-}
-
-// Si no hay empresa, usar el nombre
-if (!contacto.empresa && contacto.nombre) {
-contacto.empresa = contacto.nombre;
-}
-
+headers.forEach((header, index) => {
+contacto[header] = values[index] || '';
+});
 contactos.push(contacto);
 }
 
 progressFill.style.width = '60%';
-progressText.textContent = `Subiendo ${contactos.length} contactos al servidor...`;
+progressText.textContent = `Subiendo ${contactos.length} contactos...`;
 
-const response = await fetch(`${API_BASE}/radar/ingest-lote`, {
+// Usar POST /v1/radar/contactos (el endpoint que SÍ existe)
+const response = await fetch(`${API_BASE}/radar/contactos`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ contactos })
@@ -1099,7 +952,7 @@ progressFill.style.width = '100%';
 progressText.textContent = '✅ Completo';
 
 if (data.ok) {
-statusEl.innerHTML = `<div class="message message-success">✅ ${data.importados || contactos.length} contactos subidos exitosamente</div>`;
+statusEl.innerHTML = `<div class="message message-success">✅ ${data.insertados || contactos.length} contactos subidos exitosamente</div>`;
 setTimeout(() => { progressContainer.style.display = 'none'; progressFill.style.width = '0%'; }, 3000);
 } else {
 statusEl.innerHTML = `<div class="message message-error">❌ Error: ${data.error || 'No se pudieron subir los contactos'}</div>`;
@@ -1109,7 +962,8 @@ statusEl.innerHTML = `<div class="message message-error">❌ Error: ${error.mess
 progressContainer.style.display = 'none';
 }
 }
-    // ============================================================
+
+// ============================================================
 // ENVIAR EMAIL
 // ============================================================
 async function enviarEmail() {
@@ -1120,7 +974,6 @@ return;
 }
 const asunto = document.getElementById('asunto-email').value;
 const plantilla = document.getElementById('plantilla-email').value;
-const permisoId = document.getElementById('permiso-select').value;
 if (!asunto || !plantilla) {
 document.getElementById('envio-status').textContent = '❌ Completa el asunto y la plantilla';
 return;
@@ -1144,8 +997,7 @@ headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({
 contactos,
 asunto,
-plantilla,
-permiso_id: permisoId || null
+plantilla
 })
 });
 
@@ -1166,7 +1018,6 @@ document.getElementById('btn-enviar').disabled = false;
 async function enviarATodos() {
 const asunto = document.getElementById('asunto-email').value;
 const plantilla = document.getElementById('plantilla-email').value;
-const permisoId = document.getElementById('permiso-select').value;
 
 if (!asunto || !plantilla) {
 document.getElementById('envio-status').textContent = '❌ Completa el asunto y la plantilla';
@@ -1174,7 +1025,7 @@ return;
 }
 
 document.getElementById('modal-title').textContent = '⚠️ Enviar a Todos';
-document.getElementById('modal-message').textContent = '¿Estás seguro de enviar este email a TODOS los contactos? Esta acción no se puede deshacer.';
+document.getElementById('modal-message').textContent = '¿Estás seguro de enviar este email a TODOS los contactos?';
 document.getElementById('confirm-modal').classList.add('active');
 accionPendiente = async () => {
 document.getElementById('btn-enviar').disabled = true;
@@ -1187,8 +1038,7 @@ headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({
 todos: true,
 asunto,
-plantilla,
-permiso_id: permisoId || null
+plantilla
 })
 });
 
@@ -1223,84 +1073,24 @@ cerrarModal();
 }
 
 // ============================================================
-// HISTORIAL
-// ============================================================
-async function cargarHistorial() {
-const filtro = document.getElementById('filtro-historial').value;
-const estado = document.getElementById('filtro-estado-envio').value;
-
-let url = `${API_BASE}/radar/historial?limite=100`;
-if (filtro) url += `&buscar=${encodeURIComponent(filtro)}`;
-if (estado) url += `&estado=${encodeURIComponent(estado)}`;
-
-const tbody = document.getElementById('historial-body');
-tbody.innerHTML = '<tr><td colspan="6" class="loading">Cargando historial...</td></tr>';
-
-try {
-const response = await fetch(url);
-const data = await response.json();
-tbody.innerHTML = '';
-
-if (data.ok && data.historial && data.historial.length > 0) {
-data.historial.forEach(h => {
-const tr = document.createElement('tr');
-const estadoClass = h.estado === 'enviado' ? 'badge-success' : h.estado === 'fallido' ? 'badge-error' : 'badge-warning';
-tr.innerHTML = `
-<td>${new Date(h.fecha_envio).toLocaleString()}</td>
-<td>${h.nombre_contacto || 'N/A'}</td>
-<td>${h.email_contacto || 'N/A'}</td>
-<td>${h.asunto || 'N/A'}</td>
-<td><span class="badge ${estadoClass}">${h.estado || 'N/A'}</span></td>
-<td>${h.respuesta || '—'}</td>`;
-tbody.appendChild(tr);
-});
-} else {
-tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;padding:40px;">No hay historial de envíos</td></tr>';
-}
-} catch (error) {
-tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#ff4444;padding:40px;">Error: ${error.message}</td></tr>`;
-}
-}
-
-// ============================================================
 // SCRAPER
 // ============================================================
 async function scrapearAustin() {
-await ejecutarScraper('Austin');
-}
-
-async function scrapearMiami() {
-await ejecutarScraper('Miami');
-}
-
-async function scrapearDallas() {
-await ejecutarScraper('Dallas');
-}
-
-async function scrapearHouston() {
-await ejecutarScraper('Houston');
-}
-
-async function ejecutarScraper(ciudad) {
 const resultEl = document.getElementById('scraper-result');
 const umbral = document.getElementById('umbral-scraper').value || 50000;
 const limite = document.getElementById('limite-scraper').value || 100;
 
-resultEl.innerHTML = `<div class="message message-info">🔄 Escaneando ${ciudad}...</div>`;
+resultEl.innerHTML = `<div class="message message-info">🔄 Escaneando Austin...</div>`;
 
 try {
-const response = await fetch(`${API_BASE}/radar/scan-${ciudad.toLowerCase()}`, {
-method: 'POST',
-headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({ umbral, limite })
-});
-
+const response = await fetch(`${API_BASE}/radar/scan-austin?umbral=${umbral}&limite=${limite}`);
 const data = await response.json();
 
 if (data.ok) {
-resultEl.innerHTML = `<div class="message message-success">✅ ${ciudad}: ${data.permisos || 0} permisos encontrados</div>`;
+const r = data.resultado;
+resultEl.innerHTML = `<div class="message message-success">✅ Austin: ${r.nuevos || 0} nuevos, ${r.saltados || 0} saltados (umbral $${Number(umbral).toLocaleString()})</div>`;
 } else {
-resultEl.innerHTML = `<div class="message message-error">❌ Error en ${ciudad}: ${data.error || 'No se pudo escanear'}</div>`;
+resultEl.innerHTML = `<div class="message message-error">❌ Error: ${data.error || 'No se pudo escanear'}</div>`;
 }
 } catch (error) {
 resultEl.innerHTML = `<div class="message message-error">❌ Error de conexión: ${error.message}</div>`;
