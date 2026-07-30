@@ -12205,6 +12205,41 @@ ensureContactosTable();
 
 
 
+// Endpoint para crear tablas correctamente
+app.get('/v1/radar/crear-tablas', async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS contactos_radar (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT,
+        email TEXT UNIQUE,
+        telefono TEXT,
+        empresa TEXT,
+        ciudad TEXT DEFAULT 'Miami',
+        tipo TEXT DEFAULT 'Roofing',
+        website TEXT,
+        activo BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    
+    // Verificar que se creó
+    const r = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'contactos_radar'");
+    
+    res.json({ 
+      ok: true, 
+      mensaje: 'Tabla contactos_radar creada/verificada',
+      columnas: r.rows.map(c => c.column_name)
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+
+
+
 
 // ---------- Boot ----------
 (async () => {
