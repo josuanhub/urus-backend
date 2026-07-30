@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URUS Control Center</title>
+<style>
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+
+body {
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+background: #0a0a0f;
+color: #e0e0e0;
+height: 100vh;
+overflow: hidden;
+}
+
+.container {
+display: flex;
+height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+width: 240px;
+background: #12121a;
+border-right: 1px solid #1e1e2e;
+display: flex;
+flex-direction: column;
+padding: 20px;
+flex-shrink: 0;
+}
+
+.logo h1 {
+font-size: 24px;
+color: #00d4ff;
+margin-bottom: 4px;
+}
+
+.subtitle {
+font-size: 12px;
+color: #666;
+text-transform: uppercase;
+letter-spacing: 2px;
+}
+
+.nav-links {
+list-style: none;
+margin-top: 40px;
+flex: 1;
+}
+
+.nav-links li {
+padding: 12px 16px;
+margin: 4px 0;
+border-radius: 8px;
+cursor: pointer;
+transition: all 0.3s;
+font-size: 14px;
+}
+
+.nav-links li:hover {
+background: #1a1a2e;
+}
+
+.nav-links li.active {
+background: #00d4ff;
+color: #000;
+font-weight: 600;
+}
+
+.status {
+display: flex;
+align-items: center;
+gap: 8px;
+font-size: 12px;
+color: #666;
+margin-top: 20px;
+}
+
+.status-dot {
+width: 8px;
+height: 8px;
+background: #00ff88;
+border-radius: 50%;
+animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+0%, 100% { opacity: 1; }
+50% { opacity: 0.5; }
+}
+
+/* Main Content */
+.main-content {
+flex: 1;
+padding: 30px;
+overflow-y: auto;
+}
+
+.tab-content {
+display: none;
+}
+
+.tab-content.active {
+display: block;
+}
+
+h2 {
+font-size: 24px;
+margin-bottom: 24px;
+color: #fff;
+}
+
+/* Stats Grid */
+.stats-grid {
+display: grid;
+grid-template-columns: repeat(4, 1fr);
+gap: 20px;
+margin-bottom: 30px;
+}
+
+.stat-card {
+background: #12121a;
+border: 1px solid #1e1e2e;
+border-radius: 12px;
+padding: 20px;
+}
+
+.stat-card h3 {
+font-size: 14px;
+color: #666;
+margin-bottom: 8px;
+}
+
+.stat-card p {
+font-size: 32px;
+font-weight: 700;
+color: #00d4ff;
+}
+
+/* Filters */
+.filters {
+display: flex;
+gap: 12px;
+margin-bottom: 20px;
+flex-wrap: wrap;
+}
+
+.filters input, .filters select, .filters button {
+padding: 10px 16px;
+border: 1px solid #1e1e2e;
+border-radius: 8px;
+background: #12121a;
+color: #e0e0e0;
+font-size: 14px;
+}
+
+.filters button {
+background: #00d4ff;
+color: #000;
+font-weight: 600;
+cursor: pointer;
+border: none;
+}
+
+.filters button:hover {
+background: #00b8e6;
+}
+
+.filters button.danger {
+background: #ff4444;
+}
+
+.filters button.danger:hover {
+background: #cc0000;
+}
+
+/* Tables */
+.table-container {
+background: #12121a;
+border: 1px solid #1e1e2e;
+border-radius: 12px;
+overflow: auto;
+max-height: 500px;
+}
+
+table {
+width: 100%;
+border-collapse: collapse;
+}
+
+th, td {
+padding: 12px 16px;
+text-align: left;
+border-bottom: 1px solid #1e1e2e;
+}
+
+th {
+background: #0a0a0f;
+color: #666;
+font-size: 12px;
+text-transform: uppercase;
+letter-spacing: 1px;
+position: sticky;
+top: 0;
+}
+
+td {
+font-size: 14px;
+}
+
+tr:hover {
+background: #1a1a2e;
+}
+
+.badge {
+display: inline-block;
+padding: 2px 8px;
+border-radius: 4px;
+font-size: 11px;
+font-weight: 600;
+}
+
+.badge-success {
+background: #00ff8822;
+color: #00ff88;
+}
+
+.badge-warning {
+background: #ffaa0022;
+color: #ffaa00;
+}
+
+.badge-error {
+background: #ff444422;
+color: #ff4444;
+}
+
+.badge-info {
+background: #00d4ff22;
+color: #00d4ff;
+}
+
+/* Upload Area */
+.upload-area {
+border: 2px dashed #1e1e2e;
+border-radius: 12px;
+padding: 60px;
+text-align: center;
+cursor: pointer;
+transition: all 0.3s;
+}
+
+.upload-area:hover, .upload-area.dragover {
+border-color: #00d4ff;
+background: #12121a;
+}
+
+.upload-area p {
+font-size: 16px;
+color: #666;
+margin: 8px 0;
+}
+
+.upload-area input[type="file"] {
+display: none;
+}
+
+.btn {
+display: inline-block;
+padding: 12px 24px;
+background: #00d4ff;
+color: #000;
+border-radius: 8px;
+cursor: pointer;
+font-weight: 600;
+margin-top: 12px;
+border: none;
+font-size: 14px;
+}
+
+.btn:hover {
+background: #00b8e6;
+}
+
+.btn-secondary {
+background: #1e1e2e;
+color: #e0e0e0;
+}
+
+.btn-secondary:hover {
+background: #2a2a3e;
+}
+
+/* Progress Bar */
+.progress-container {
+margin: 20px 0;
+display: none;
+}
+
+.progress-bar {
+width: 100%;
+height: 8px;
+background: #1e1e2e;
+border-radius: 4px;
+overflow: hidden;
+}
+
+.progress-fill {
+height: 100%;
+background: #00d4ff;
+width: 0%;
+transition: width 0.3s;
+}
+
+.progress-text {
+text-align: center;
+margin-top: 8px;
+font-size: 13px;
+color: #666;
+}
+
+/* Editor */
+.editor {
+background: #12121a;
+border: 1px solid #1e1e2e;
+border-radius: 12px;
+padding: 24px;
+}
+
+.editor label {
+display: block;
+font-size: 14px;
+color: #666;
+margin: 16px 0 8px;
+}
+
+.editor input, .editor textarea, .editor select {
+width: 100%;
+padding: 12px;
+border: 1px solid #1e1e2e;
+border-radius: 8px;
+background: #0a0a0f;
+color: #e0e0e0;
+font-size: 14px;
+font-family: inherit;
+}
+
+.editor textarea {
+resize: vertical;
+min-height: 200px;
+}
+
+.actions {
+display: flex;
+align-items: center;
+gap: 16px;
+margin-top: 20px;
+flex-wrap: wrap;
+}
+
+.actions button {
+padding: 12px 32px;
+background: #00d4ff;
+color: #000;
+border: none;
+border-radius: 8px;
+font-size: 16px;
+font-weight: 600;
+cursor: pointer;
+}
+
+.actions button:hover {
+background: #00b8e6;
+}
+
+.actions button:disabled {
+opacity: 0.5;
+cursor: not-allowed;
+}
+
+/* Scraper Controls */
+.scraper-controls {
+display: flex;
+gap: 12px;
+margin-bottom: 20px;
+flex-wrap: wrap;
+}
+
+.scraper-controls button {
+padding: 12px 24px;
+background: #12121a;
+border: 1px solid #00d4ff;
+color: #00d4ff;
+border-radius: 8px;
+cursor: pointer;
+font-size: 14px;
+}
+
+.scraper-controls button:hover {
+background: #00d4ff;
+color: #000;
+}
+
+/* Messages */
+.message {
+padding: 12px 16px;
+border-radius: 8px;
+margin: 12px 0;
+font-size: 14px;
+}
+
+.message-success {
+background: #00ff8822;
+border: 1px solid #00ff88;
+color: #00ff88;
+}
+
+.message-error {
+background: #ff444422;
+border: 1px solid #ff4444;
+color: #ff4444;
+}
+
+.message-info {
+background: #00d4ff22;
+border: 1px solid #00d4ff;
+color: #00d4ff;
+}
+
+/* Modal */
+.modal {
+display: none;
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: rgba(0,0,0,0.8);
+z-index: 1000;
+justify-content: center;
+align-items: center;
+}
+
+.modal.active {
+display: flex;
+}
+
+.modal-content {
+background: #12121a;
+border: 1px solid #1e1e2e;
+border-radius: 12px;
+padding: 30px;
+max-width: 600px;
+width: 90%;
+max-height: 80vh;
+overflow-y: auto;
+}
+
+.modal-content h3 {
+margin-bottom: 20px;
+color: #fff;
+}
+
+.modal-actions {
+display: flex;
+gap: 12px;
+margin-top: 20px;
+justify-content: flex-end;
+}
+
+/* Loading */
+.loading {
+text-align: center;
+padding: 40px;
+color: #666;
+}
+
+.loading::after {
+content: '';
+display: inline-block;
+width: 20px;
+height: 20px;
+border: 2px solid #1e1e2e;
+border-top-color: #00d4ff;
+border-radius: 50%;
+animation: spin 0.8s linear infinite;
+margin-left: 8px;
+vertical-align: middle;
+}
+
+@keyframes spin {
+to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+.sidebar {
+width: 60px;
+padding: 10px;
+}
+.sidebar .logo h1, .sidebar .subtitle, .sidebar .status {
+display: none;
+}
+.nav-links li {
+font-size: 0;
+padding: 12px;
+text-align: center;
+}
+.nav-links li::before {
+font-size: 20px;
+}
+.stats-grid {
+grid-template-columns: repeat(2, 1fr);
+}
+}
+</style>
+</head>
+<body>
+
+  <div class="container">
+<!-- Sidebar -->
+<nav class="sidebar">
+<div class="logo">
+<h1>🛸 URUS</h1>
+<span class="subtitle">Control Center</span>
+</div>
+<ul class="nav-links">
+<li class="active" data-tab="dashboard">📊 Dashboard</li>
+<li data-tab="contactos">📋 Contactos</li>
+<li data-tab="permisos">📄 Permisos</li>
+<li data-tab="subir">📤 Subir CSV</li>
+<li data-tab="enviar">✉️ Enviar Email</li>
+<li data-tab="historial">📬 Historial</li>
+<li data-tab="scraper">🚀 Scraper</li>
+</ul>
+<div class="status">
+<span class="status-dot"></span>
+<span id="status-text">Conectando...</span>
+</div>
+</nav>
+
+<!-- Main Content -->
+<main class="main-content">
+<!-- Dashboard -->
+<section id="dashboard" class="tab-content active">
+<h2>📊 Panel Principal</h2>
+<div class="stats-grid">
+<div class="stat-card">
+<h3>Total Contactos</h3>
+<p id="total-contactos">-</p>
+</div>
+<div class="stat-card">
+<h3>Total Permisos</h3>
+<p id="total-permisos">-</p>
+</div>
+<div class="stat-card">
+<h3>Enviados Hoy</h3>
+<p id="enviados-hoy">-</p>
+</div>
+<div class="stat-card">
+<h3>Respuestas</h3>
+<p id="respuestas">-</p>
+</div>
+</div>
+<div id="dashboard-message"></div>
+</section>
+
+<!-- Contactos -->
+<section id="contactos" class="tab-content">
+<h2>📋 Contactos</h2>
+<div class="filters">
+<input type="text" id="filtro-nombre" placeholder="Buscar por nombre...">
+<input type="text" id="filtro-email" placeholder="Buscar por email...">
+<input type="text" id="filtro-ciudad" placeholder="Filtrar por ciudad...">
+<select id="filtro-tipo">
+<option value="">Todos los tipos</option>
+<option value="contratista">Contratista</option>
+<option value="inversionista">Inversionista</option>
+<option value="arquitecto">Arquitecto</option>
+<option value="ingeniero">Ingeniero</option>
+<option value="desarrollador">Desarrollador</option>
+</select>
+<button onclick="cargarContactos()">🔍 Buscar</button>
+<button onclick="seleccionarTodos()">☑️ Seleccionar Todos</button>
+<button onclick="deseleccionarTodos()">⬜ Deseleccionar</button>
+</div>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="width:40px"><input type="checkbox" id="select-all" onchange="toggleAllCheckboxes(this)"></th>
+<th>Nombre</th>
+<th>Email</th>
+<th>Teléfono</th>
+<th>Empresa</th>
+<th>Ciudad</th>
+<th>Tipo</th>
+<th>Fecha</th>
+</tr>
+</thead>
+<tbody id="contactos-body"></tbody>
+</table>
+</div>
+<div id="contactos-count" style="margin-top:12px;font-size:13px;color:#666;"></div>
+</section>
+
+<!-- Permisos -->
+<section id="permisos" class="tab-content">
+<h2>📄 Permisos de Construcción</h2>
+<div class="filters">
+<input type="text" id="filtro-ciudad-permiso" placeholder="Filtrar por ciudad...">
+<input type="number" id="filtro-monto-min" placeholder="Monto mínimo ($)">
+<input type="number" id="filtro-monto-max" placeholder="Monto máximo ($)">
+<select id="filtro-estado">
+<option value="">Todos los estados</option>
+<option value="Nuevo">Nuevo</option>
+<option value="En revisión">En revisión</option>
+<option value="Aprobado">Aprobado</option>
+<option value="En ejecución">En ejecución</option>
+<option value="Completado">Completado</option>
+</select>
+<button onclick="cargarPermisos()">🔍 Buscar</button>
+</div>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Tipo</th>
+<th>Ubicación</th>
+<th>Valor Estimado</th>
+<th>Fecha</th>
+<th>Estado</th>
+<th>Score</th>
+</tr>
+</thead>
+<tbody id="permisos-body"></tbody>
+</table>
+</div>
+<div id="permisos-count" style="margin-top:12px;font-size:13px;color:#666;"></div>
+</section>
+
+<!-- Subir CSV -->
+<section id="subir" class="tab-content">
+<h2>📤 Subir Contactos desde CSV</h2>
+<div class="upload-area" id="drop-zone">
+<p style="font-size:48px;margin-bottom:16px;">📁</p>
+<p style="font-size:18px;color:#e0e0e0;">Arrastra tu archivo CSV aquí</p>
+<p style="color:#666;">o</p>
+<input type="file" id="csv-file" accept=".csv" onchange="handleFileSelect(event)">
+<label for="csv-file" class="btn">Seleccionar Archivo</label>
+</div>
+<div class="progress-container" id="progress-container">
+<div class="progress-bar">
+<div class="progress-fill" id="progress-fill"></div>
+</div>
+<div class="progress-text" id="progress-text">Procesando...</div>
+</div>
+<div id="upload-status"></div>
+<div style="margin-top:20px;">
+<h3 style="color:#fff;margin-bottom:12px;">Formato del CSV</h3>
+<p style="color:#666;font-size:13px;">El archivo debe tener estas columnas en la primera fila:</p>
+<code style="display:block;background:#12121a;padding:12px;border-radius:8px;margin-top:8px;font-size:12px;color:#00d4ff;">
+nombre,email,telefono,empresa,ciudad,tipo
+</code>
+<p style="color:#666;font-size:12px;margin-top:8px;">
+Ejemplo: <code>Juan Pérez,juan@email.com,5551234567,Constructora XYZ,Austin,contratista</code>
+</p>
+</div>
+</section>
+
+<!-- Enviar Email -->
+<section id="enviar" class="tab-content">
+<h2>✉️ Enviar Email Personalizado</h2>
+<div class="editor">
+<label>Asunto del email:</label>
+<input type="text" id="asunto-email" value="🚨 Nuevo proyecto de {{tipo}} en {{ciudad}} - ${{valor}}">
+
+<label>Seleccionar permiso para incluir:</label>
+<select id="permiso-select">
+<option value="">Seleccionar permiso...</option>
+</select>
+
+<label>Plantilla del mensaje (usa {{nombre}}, {{empresa}}, {{ciudad}}, {{tipo}}, {{valor}}):</label>
+<textarea id="plantilla-email">Hola {{nombre}},
+
+Soy Josuan de URUS Intelligence. Monitoreamos permisos de construcción en tiempo real.
+
+Acabo de detectar un permiso de {{tipo}} por ${{valor}} en {{ciudad}} que podría ser de tu interés.
+
+¿Quieres que te envíe un reporte de prueba gratuito con todos los detalles?
+
+Saludos,
+Josuan Rivera
+Founder, URUS Intelligence</textarea>
+
+<div class="actions">
+<button id="btn-enviar" onclick="enviarEmail()">📤 Enviar a Seleccionados</button>
+<button class="btn-secondary" onclick="enviarATodos()">📤 Enviar a Todos</button>
+<span id="envio-status"></span>
+</div>
+</div>
+</section>
+
+<!-- Historial -->
+<section id="historial" class="tab-content">
+<h2>📬 Historial de Envíos</h2>
+<div class="filters">
+<input type="text" id="filtro-historial" placeholder="Buscar por email o nombre...">
+<select id="filtro-estado-envio">
+<option value="">Todos los estados</option>
+<option value="enviado">Enviado</option>
+<option value="entregado">Entregado</option>
+<option value="abierto">Abierto</option>
+<option value="respondido">Respondido</option>
+<option value="fallido">Fallido</option>
+</select>
+<button onclick="cargarHistorial()">🔍 Buscar</button>
+</div>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>Fecha</th>
+<th>Contacto</th>
+<th>Email</th>
+<th>Asunto</th>
+<th>Estado</th>
+<th>Respuesta</th>
+</tr>
+</thead>
+<tbody id="historial-body"></tbody>
+</table>
+</div>
+</section>
+
+<!-- Scraper -->
+<section id="scraper" class="tab-content">
+<h2>🚀 Scraper de Permisos</h2>
+<div class="scraper-controls">
+<button onclick="scrapearAustin()">🔍 Escanear Austin</button>
+<button onclick="scrapearMiami()">🔍 Escanear Miami</button>
+<button onclick="scrapearDallas()">🔍 Escanear Dallas</button>
+<button onclick="scrapearHouston()">🔍 Escanear Houston</button>
+</div>
+<div id="scraper-result"></div>
+<div style="margin-top:20px;">
+<h3 style="color:#fff;margin-bottom:12px;">Configuración del Scraper</h3>
+<div class="editor" style="padding:16px;">
+<label>Umbral mínimo de valor ($):</label>
+<input type="number" id="umbral-scraper" value="50000" min="0">
+<label>Límite de resultados:</label>
+<input type="number" id="limite-scraper" value="100" min="1" max="500">
+</div>
+</div>
+</section>
+</main>
+</div>
+
+<!-- Modal de confirmación -->
+<div class="modal" id="confirm-modal">
+<div class="modal-content">
+<h3 id="modal-title">Confirmar</h3>
+<p id="modal-message"></p>
+<div class="modal-actions">
+<button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+<button class="btn" id="modal-confirm-btn" onclick="confirmarAccion()">Confirmar</button>
+</div>
+</div>
+</div>
+
+  <script>
+// ============================================================
+// CONFIGURACIÓN
+// ============================================================
+const API_BASE = 'https://www.urusverify.com';
+let accionPendiente = null;
+
+// ============================================================
+// VERIFICAR CONEXIÓN
+// ============================================================
+async function verificarConexion() {
+try {
+const response = await fetch(`${API_BASE}/v1/radar/stats`);
+if (response.ok) {
+document.getElementById('status-text').textContent = '✅ Conectado a Railway';
+document.querySelector('.status-dot').style.background = '#00ff88';
+} else {
+document.getElementById('status-text').textContent = '⚠️ Conectado pero con errores';
+document.querySelector('.status-dot').style.background = '#ffaa00';
+}
+} catch (error) {
+document.getElementById('status-text').textContent = '❌ Sin conexión';
+document.querySelector('.status-dot').style.background = '#ff4444';
+}
+}
+
+// ============================================================
+// NAVEGACIÓN
+// ============================================================
+document.querySelectorAll('.nav-links li').forEach(item => {
+item.addEventListener('click', () => {
+document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
+item.classList.add('active');
+
+document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+document.getElementById(item.dataset.tab).classList.add('active');
+
+// Cargar datos según la pestaña
+switch(item.dataset.tab) {
+case 'dashboard':
+cargarDashboard();
+break;
+case 'contactos':
+cargarContactos();
+break;
+case 'permisos':
+cargarPermisos();
+break;
+case 'enviar':
+cargarPermisosSelect();
+break;
+case 'historial':
+cargarHistorial();
+break;
+}
+});
+});
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function cargarDashboard() {
+const msgEl = document.getElementById('dashboard-message');
+msgEl.innerHTML = '<div class="loading">Cargando estadísticas...</div>';
+
+try {
+const response = await fetch(`${API_BASE}/v1/radar/stats`);
+const data = await response.json();
+
+if (data.ok) {
+document.getElementById('total-contactos').textContent = data.stats.contactos || 0;
+document.getElementById('total-permisos').textContent = data.stats.permisos || 0;
+document.getElementById('enviados-hoy').textContent = data.stats.enviados_hoy || 0;
+document.getElementById('respuestas').textContent = data.stats.respuestas || 0;
+msgEl.innerHTML = '';
+} else {
+msgEl.innerHTML = `<div class="message message-error">Error: ${data.error || 'No se pudieron cargar las estadísticas'}</div>`;
+}
+} catch (error) {
+msgEl.innerHTML = `<div class="message message-error">Error de conexión: ${error.message}</div>`;
+}
+}
+
+// ============================================================
+// CONTACTOS
+// ============================================================
+async function cargarContactos() {
+const nombre = document.getElementById('filtro-nombre').value;
+const email = document.getElementById('filtro-email').value;
+const ciudad = document.getElementById('filtro-ciudad').value;
+const tipo = document.getElementById('filtro-tipo').value;
+
+let url = `${API_BASE}/v1/radar/contactos?limite=500`;
+if (nombre) url += `&nombre=${encodeURIComponent(nombre)}`;
+if (email) url += `&email=${encodeURIComponent(email)}`;
+if (ciudad) url += `&ciudad=${encodeURIComponent(ciudad)}`;
+if (tipo) url += `&tipo=${encodeURIComponent(tipo)}`;
+
+const tbody = document.getElementById('contactos-body');
+tbody.innerHTML = '<tr><td colspan="8" class="loading">Cargando contactos...</td></tr>';
+
+try {
+const response = await fetch(url);
+const data = await response.json();
+
+tbody.innerHTML = '';
+
+if (data.ok && data.contactos && data.contactos.length > 0) {
+data.contactos.forEach(c => {
+const tr = document.createElement('tr');
+tr.innerHTML = `
+<td><input type="checkbox" class="contacto-check" value="${c.email}" data-nombre="${c.nombre || ''}" data-empresa="${c.empresa || ''}" data-ciudad="${c.ciudad || ''}" data-tipo="${c.tipo || ''}"></td>
+<td>${c.nombre || 'N/A'}</td>
+<td>${c.email || 'N/A'}</td>
+<td>${c.telefono || 'N/A'}</td>
+<td>${c.empresa || 'N/A'}</td>
+<td>${c.ciudad || 'N/A'}</td>
+<td><span class="badge badge-info">${c.tipo || 'N/A'}</span></td>
+<td>${c.fecha_registro ? new Date(c.fecha_registro).toLocaleDateString() : 'N/A'}</td>
+`;
+tbody.appendChild(tr);
+});
+document.getElementById('contactos-count').textContent = `${data.contactos.length} contactos encontrados`;
+} else {
+tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;padding:40px;">No se encontraron contactos</td></tr>';
+document.getElementById('contactos-count').textContent = '0 contactos';
+}
+} catch (error) {
+tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ff4444;padding:40px;">Error: ${error.message}</td></tr>`;
+}
+}
+
+function toggleAllCheckboxes(master) {
+document.querySelectorAll('.contacto-check').forEach(cb => cb.checked = master.checked);
+}
+
+function seleccionarTodos() {
+document.querySelectorAll('.contacto-check').forEach(cb => cb.checked = true);
+document.getElementById('select-all').checked = true;
+}
+
+function deseleccionarTodos() {
+document.querySelectorAll('.contacto-check').forEach(cb => cb.checked = false);
+document.getElementById('select-all').checked = false;
+}
+
+// ============================================================
+// PERMISOS
+// ============================================================
+async function cargarPermisos() {
+const ciudad = document.getElementById('filtro-ciudad-permiso').value;
+const montoMin = document.getElementById('filtro-monto-min').value;
+const montoMax = document.getElementById('filtro-monto-max').value;
+const estado = document.getElementById('filtro-estado').value;
+
+let url = `${API_BASE}/v1/radar/eventos?limite=200`;
+if (ciudad) url += `&ciudad=${encodeURIComponent(ciudad)}`;
+if (montoMin) url += `&monto_min=${montoMin}`;
+if (montoMax) url += `&monto_max=${montoMax}`;
+if (estado) url += `&estado=${encodeURIComponent(estado)}`;
+
+const tbody = document.getElementById('permisos-body');
+tbody.innerHTML = '<tr><td colspan="7" class="loading">Cargando permisos...</td></tr>';
+
+try {
+const response = await fetch(url);
+const data = await response.json();
+
+tbody.innerHTML = '';
+
+if (data.ok && data.eventos && data.eventos.length > 0) {
+data.eventos.forEach(p => {
+const tr = document.createElement('tr');
+const valor = p.valor_estimado ? `$${Number(p.valor_estimado).toLocaleString()}` : 'N/A';
+const estadoClass = p.estado === 'Nuevo' ? 'badge-success' : p.estado === 'En revisión' ? 'badge-warning' : 'badge-info';
+tr.innerHTML = `
+<td>#${p.id}</td>
+<td>${p.tipo_evento || 'N/A'}</td>
+<td>${p.ubicacion || 'N/A'}</td>
+<td style="color:#00ff88;font-weight:600;">${valor}</td>
+<td>${p.fecha_registro ? new Date(p.fecha_registro).toLocaleDateString() : 'N/A'}</td>
+<td><span class="badge ${estadoClass}">${p.estado || 'Nuevo'}</span></td>
+<td>${p.score || 'N/A'}</td>
+`;
+tbody.appendChild(tr);
+});
+document.getElementById('permisos-count').textContent = `${data.eventos.length} permisos encontrados`;
+} else {
+tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:40px;">No se encontraron permisos</td></tr>';
+document.getElementById('permisos-count').textContent = '0 permisos';
+}
+} catch (error) {
+tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ff4444;padding:40px;">Error: ${error.message}</td></tr>`;
+}
+}
+
+// ============================================================
+// CARGAR PERMISOS EN SELECT
+// ============================================================
+async function cargarPermisosSelect() {
+const select = document.getElementById('permiso-select');
+select.innerHTML = '<option value="">Cargando permisos...</option>';
+
+try {
+const response = await fetch(`${API_BASE}/v1/radar/eventos?limite=50`);
+const data = await response.json();
+
+select.innerHTML = '<option value="">Seleccionar permiso...</option>';
+
+if (data.ok && data.eventos) {
+data.eventos.forEach(p => {
+const option = document.createElement('option');
+const valor = p.valor_estimado ? `$${Number(p.valor_estimado).toLocaleString()}` : 'N/A';
+option.value = p.id;
+option.textContent = `${p.tipo_evento || 'N/A'} - ${p.ubicacion || 'N/A'} - ${valor}`;
+select.appendChild(option);
+});
+}
+} catch (error) {
+select.innerHTML = '<option value="">Error al cargar permisos</option>';
+console.error('Error:', error);
+}
+}
+
+// ============================================================
+// SUBIR CSV
+// ============================================================
+const dropZone = document.getElementById('drop-zone');
+
+dropZone.addEventListener('dragover', (e) => {
+e.preventDefault();
+dropZone.classList.add('dragover');
+});
+
+dropZone.addEventListener('dragleave', () => {
+dropZone.classList.remove('dragover');
+});
+
+dropZone.addEventListener('drop', (e) => {
+e.preventDefault();
+dropZone.classList.remove('dragover');
+const file = e.dataTransfer.files[0];
+if (file) procesarCSV(file);
+});
+
+function handleFileSelect(event) {
+const file = event.target.files[0];
+if (file) procesarCSV(file);
+}
+
+async function procesarCSV(file) {
+const statusEl = document.getElementById('upload-status');
+const progressContainer = document.getElementById('progress-container');
+const progressFill = document.getElementById('progress-fill');
+const progressText = document.getElementById('progress-text');
+
+if (!file.name.endsWith('.csv')) {
+statusEl.innerHTML = '<div class="message message-error">❌ El archivo debe ser .csv</div>';
+return;
+}
+
+progressContainer.style.display = 'block';
+progressFill.style.width = '10%';
+progressText.textContent = 'Leyendo archivo...';
+statusEl.innerHTML = '';
+
+try {
+const text = await file.text();
+const lines = text.split('\n').filter(line => line.trim());
+
+if (lines.length < 2) {
+statusEl.innerHTML = '<div class="message message-error">❌ El archivo está vacío o solo tiene encabezados</div>';
+progressContainer.style.display = 'none';
+return;
+}
+
+const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+const requiredHeaders = ['nombre', 'email'];
+const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+
+if (missingHeaders.length > 0) {
+statusEl.innerHTML = `<div class="message message-error">❌ Faltan columnas: ${missingHeaders.join(', ')}</div>`;
+progressContainer.style.display = 'none';
+return;
+}
+
+progressFill.style.width = '30%';
+progressText.textContent = `Procesando ${lines.length - 1} contactos...`;
+
+const contactos = [];
+for (let i = 1; i < lines.length; i++) {
+const values = lines[i].split(',').map(v => v.trim());
+const contacto = {};
+headers.forEach((header, index) => {
+contacto[header] = values[index] || '';
+});
+contactos.push(contacto);
+}
+
+progressFill.style.width = '60%';
+progressText.textContent = `Subiendo ${contactos.length} contactos al servidor...`;
+
+const response = await fetch(`${API_BASE}/v1/radar/contactos`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ contactos })
+});
+
+const data = await response.json();
+
+progressFill.style.width = '100%';
+progressText.textContent = '✅ Completo';
+
+if (data.ok) {
+statusEl.innerHTML = `<div class="message message-success">✅ ${data.importados || contactos.length} contactos subidos exitosamente</div>`;
+setTimeout(() => {
+progressContainer.style.display = 'none';
+progressFill.style.width = '0%';
+}, 3000);
+} else {
+statusEl.innerHTML = `<div class="message message-error">❌ Error: ${data.error || 'No se pudieron subir los contactos'}</div>`;
+}
+} catch (error) {
+statusEl.innerHTML = `<div class="message message-error">❌ Error: ${error.message}</div>`;
+progressContainer.style.display = 'none';
+}
+}
+
+// ============================================================
+// ENVIAR EMAIL
+// ============================================================
+async function enviarEmail() {
+const checkedBoxes = document.querySelectorAll('.contacto-check:checked');
+if (checkedBoxes.length === 0) {
+document.getElementById('envio-status').textContent = '❌ Selecciona al menos un contacto';
+return;
+}
+
+const asunto = document.getElementById('asunto-email').value;
+const plantilla = document.getElementById('plantilla-email').value;
+const permisoId = document.getElementById('permiso-select').value;
+
+if (!asunto || !plantilla) {
+document.getElementById('envio-status').textContent = '❌ Completa el asunto y la plantilla';
+return;
+}
+
+document.getElementById('btn-enviar').disabled = true;
+document.getElementById('envio-status').textContent = '🔄 Enviando...';
+
+try {
+const contactos = Array.from(checkedBoxes).map(cb => ({
+email: cb.value,
+nombre: cb.dataset.nombre,
+empresa: cb.dataset.empresa,
+ciudad: cb.dataset.ciudad,
+tipo: cb.dataset.tipo
+}));
+
+const response = await fetch(`${API_BASE}/v1/radar/enviar-lote`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({
+contactos,
+asunto,
+plantilla,
+permiso_id: permisoId || null
+})
+});
+
+const data = await response.json();
+
+if (data.ok) {
+document.getElementById('envio-status').textContent = `✅ ${data.enviados || contactos.length} emails enviados`;
+} else {
+document.getElementById('envio-status').textContent = `❌ Error: ${data.error || 'No se pudieron enviar los emails'}`;
+}
+} catch (error) {
+document.getElementById('envio-status').textContent = `❌ Error: ${error.message}`;
+} finally {
+document.getElementById('btn-enviar').disabled = false;
+}
+}
+
+async function enviarATodos() {
+const asunto = document.getElementById('asunto-email').value;
+const plantilla = document.getElementById('plantilla-email').value;
+const permisoId = document.getElementById('permiso-select').value;
+
+if (!asunto || !plantilla) {
+document.getElementById('envio-status').textContent = '❌ Completa el asunto y la plantilla';
+return;
+}
+
+// Confirmar
+document.getElementById('modal-title').textContent = '⚠️ Enviar a Todos';
+document.getElementById('modal-message').textContent = '¿Estás seguro de enviar este email a TODOS los contactos? Esta acción no se puede deshacer.';
+document.getElementById('confirm-modal').classList.add('active');
+accionPendiente = async () => {
+document.getElementById('btn-enviar').disabled = true;
+document.getElementById('envio-status').textContent = '🔄 Enviando a todos...';
+
+try {
+const response = await fetch(`${API_BASE}/v1/radar/enviar-lote`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({
+todos: true,
+asunto,
+plantilla,
+permiso_id: permisoId || null
+})
+});
+
+const data = await response.json();
+
+if (data.ok) {
+document.getElementById('envio-status').textContent = `✅ ${data.enviados || 'Todos'} los emails enviados`;
+} else {
+document.getElementById('envio-status').textContent = `❌ Error: ${data.error || 'No se pudieron enviar los emails'}`;
+}
+} catch (error) {
+document.getElementById('envio-status').textContent = `❌ Error: ${error.message}`;
+} finally {
+document.getElementById('btn-enviar').disabled = false;
+}
+};
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function cerrarModal() {
+document.getElementById('confirm-modal').classList.remove('active');
+accionPendiente = null;
+}
+
+function confirmarAccion() {
+if (accionPendiente) {
+accionPendiente();
+cerrarModal();
+}
+}
+
+// ============================================================
+// HISTORIAL
+// ============================================================
+async function cargarHistorial() {
+const filtro = document.getElementById('filtro-historial').value;
+const estado = document.getElementById('filtro-estado-envio').value;
+
+let url = `${API_BASE}/v1/radar/historial?limite=100`;
+if (filtro) url += `&buscar=${encodeURIComponent(filtro)}`;
+if (estado) url += `&estado=${encodeURIComponent(estado)}`;
+
+const tbody = document.getElementById('historial-body');
+tbody.innerHTML = '<tr><td colspan="6" class="loading">Cargando historial...</td></tr>';
+
+try {
+const response = await fetch(url);
+const data = await response.json();
+
+tbody.innerHTML = '';
+
+if (data.ok && data.historial && data.historial.length > 0) {
+data.historial.forEach(h => {
+const tr = document.createElement('tr');
+const estadoClass = h.estado === 'enviado' ? 'badge-success' : h.estado === 'fallido' ? 'badge-error' : 'badge-warning';
+tr.innerHTML = `
+<td>${new Date(h.fecha_envio).toLocaleString()}</td>
+<td>${h.nombre_contacto || 'N/A'}</td>
+<td>${h.email_contacto || 'N/A'}</td>
+<td>${h.asunto || 'N/A'}</td>
+<td><span class="badge ${estadoClass}">${h.estado || 'N/A'}</span></td>
+<td>${h.respuesta || '—'}</td>
+`;
+tbody.appendChild(tr);
+});
+} else {
+tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;padding:40px;">No hay historial de envíos</td></tr>';
+}
+} catch (error) {
+tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#ff4444;padding:40px;">Error: ${error.message}</td></tr>`;
+}
+}
+
+// ============================================================
+// SCRAPER
+// ============================================================
+async function scrapearAustin() {
+await ejecutarScraper('Austin');
+}
+
+async function scrapearMiami() {
+await ejecutarScraper('Miami');
+}
+
+async function scrapearDallas() {
+await ejecutarScraper('Dallas');
+}
+
+async function scrapearHouston() {
+await ejecutarScraper('Houston');
+}
+
+async function ejecutarScraper(ciudad) {
+const resultEl = document.getElementById('scraper-result');
+const umbral = document.getElementById('umbral-scraper').value || 50000;
+const limite = document.getElementById('limite-scraper').value || 100;
+
+resultEl.innerHTML = `<div class="message message-info">🔄 Escaneando ${ciudad}...</div>`;
+
+try {
+const response = await fetch(`${API_BASE}/v1/radar/scan-${ciudad.toLowerCase()}`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ umbral, limite })
+});
+
+const data = await response.json();
+
+if (data.ok) {
+resultEl.innerHTML = `<div class="message message-success">✅ ${ciudad}: ${data.permisos || 0} permisos encontrados</div>`;
+} else {
+resultEl.innerHTML = `<div class="message message-error">❌ Error en ${ciudad}: ${data.error || 'No se pudo escanear'}</div>`;
+}
+} catch (error) {
+resultEl.innerHTML = `<div class="message message-error">❌ Error de conexión: ${error.message}</div>`;
+}
+}
+
+// ============================================================
+// INICIALIZAR
+// ============================================================
+verificarConexion();
+cargarDashboard();
+</script>
+</body>
+</html>
