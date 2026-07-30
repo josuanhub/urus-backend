@@ -941,7 +941,7 @@ progressFill.style.width = '60%';
 progressText.textContent = `Subiendo ${contactos.length} contactos...`;
 
 // Usar POST /v1/radar/contactos (el endpoint que SÍ existe)
-const response = await fetch(`${API_BASE}/radar/contactos`, {
+const response = await fetch(`${API_BASE}/v1/radar/contactos`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ contactos })
