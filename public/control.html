@@ -1088,7 +1088,7 @@ contactos.push(contacto);
 progressFill.style.width = '60%';
 progressText.textContent = `Subiendo ${contactos.length} contactos al servidor...`;
 
-const response = await fetch(`${API_BASE}/radar/contactos`, {
+const response = await fetch(`${API_BASE}/radar/ingest-lote`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ contactos })
