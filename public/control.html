@@ -853,7 +853,7 @@ const tbody = document.getElementById('permisos-body');
 tbody.innerHTML = '<tr><td colspan="6" class="loading">Cargando permisos...</td></tr>';
 
 try {
-const response = await fetch(`${API_BASE}/radar/eventos?limite=50`);
+const response = await fetch(`${API_BASE}/eventos?limite=50`);
 const data = await response.json();
 tbody.innerHTML = '';
 
