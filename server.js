@@ -12037,6 +12037,174 @@ app.post('/api/activar-prueba', async (req, res) => {
 
 
 
+// ============================================================
+// URUS RADAR — Endpoints para Centro de Control
+// ============================================================
+
+// 1. CREAR TABLA DE CONTACTOS (si no existe)
+async function ensureContactosTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS contactos_radar (
+      id SERIAL PRIMARY KEY,
+      nombre TEXT,
+      email TEXT UNIQUE,
+      telefono TEXT,
+      empresa TEXT,
+      ciudad TEXT DEFAULT 'Miami',
+      tipo TEXT DEFAULT 'Roofing',
+      website TEXT,
+      activo BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('✅ Tabla contactos_radar lista');
+}
+
+// 2. SUBIR CONTACTOS (desde CSV o manual)
+// POST /v1/radar/contactos
+app.post('/v1/radar/contactos', express.json({ limit: '10mb' }), async (req, res) => {
+  try {
+    const { contactos } = req.body;
+    
+    if (!Array.isArray(contactos) || contactos.length === 0) {
+      return res.status(400).json({ ok: false, error: 'contactos debe ser un array' });
+    }
+
+    let insertados = 0;
+    for (const c of contactos) {
+      try {
+        await pool.query(`
+          INSERT INTO contactos_radar (nombre, email, telefono, empresa, ciudad, tipo, website)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ON CONFLICT (email) DO UPDATE SET
+            nombre = EXCLUDED.nombre,
+            telefono = EXCLUDED.telefono,
+            empresa = EXCLUDED.empresa,
+            ciudad = EXCLUDED.ciudad,
+            tipo = EXCLUDED.tipo
+        `, [c.nombre, c.email, c.telefono, c.empresa, c.ciudad, c.tipo, c.website]);
+        insertados++;
+      } catch (e) {
+        console.error('Error insertando contacto:', e.message);
+      }
+    }
+
+    res.json({ ok: true, insertados, total: contactos.length });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 3. VER CONTACTOS
+// GET /v1/radar/contactos?ciudad=Miami&tipo=Roofing&limite=50
+app.get('/v1/radar/contactos', async (req, res) => {
+  try {
+    const { ciudad, tipo, limite = 100 } = req.query;
+    
+    let query = 'SELECT * FROM contactos_radar WHERE activo = true';
+    const params = [];
+    let paramIndex = 1;
+
+    if (ciudad) {
+      query += ` AND ciudad ILIKE $${paramIndex}`;
+      params.push(`%${ciudad}%`);
+      paramIndex++;
+    }
+    if (tipo) {
+      query += ` AND tipo ILIKE $${paramIndex}`;
+      params.push(`%${tipo}%`);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
+    params.push(parseInt(limite));
+
+    const r = await pool.query(query, params);
+    res.json({ ok: true, total: r.rows.length, contactos: r.rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 4. ENVIAR EMAIL A VARIOS CONTACTOS
+// POST /v1/radar/enviar-lote
+app.post('/v1/radar/enviar-lote', express.json(), async (req, res) => {
+  try {
+    const { contactos, plantilla, asunto } = req.body;
+
+    if (!Array.isArray(contactos) || contactos.length === 0) {
+      return res.status(400).json({ ok: false, error: 'contactos requerido' });
+    }
+    if (!plantilla) {
+      return res.status(400).json({ ok: false, error: 'plantilla requerida' });
+    }
+
+    let enviados = 0;
+    let errores = 0;
+
+    for (const c of contactos) {
+      if (!c.email) continue;
+
+      // Reemplazar variables en la plantilla
+      let mensaje = plantilla
+        .replace(/\{\{nombre\}\}/g, c.nombre || 'Cliente')
+        .replace(/\{\{empresa\}\}/g, c.empresa || c.nombre || '')
+        .replace(/\{\{ciudad\}\}/g, c.ciudad || 'tu zona')
+        .replace(/\{\{tipo\}\}/g, c.tipo || 'construcción');
+
+      try {
+        // Usar el endpoint de send-email que ya tienes
+        const response = await fetch(`https://${req.hostname}/api/radar/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            destinatario: c.email,
+            nombreCliente: c.nombre,
+            region: c.ciudad,
+            permisos: req.body.permisos || []
+          })
+        });
+
+        if (response.ok) enviados++;
+        else errores++;
+      } catch (e) {
+        errores++;
+      }
+    }
+
+    res.json({ ok: true, enviados, errores, total: contactos.length });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 5. ESTADÍSTICAS RÁPIDAS
+// GET /v1/radar/stats
+app.get('/v1/radar/stats', async (req, res) => {
+  try {
+    const contactos = await pool.query('SELECT COUNT(*) as total FROM contactos_radar');
+    const permisos = await pool.query('SELECT COUNT(*) as total FROM radar_eventos');
+    const porCiudad = await pool.query('SELECT ciudad, COUNT(*) as total FROM contactos_radar GROUP BY ciudad ORDER BY total DESC');
+
+    res.json({
+      ok: true,
+      stats: {
+        contactos: parseInt(contactos.rows[0].total),
+        permisos: parseInt(permisos.rows[0].total),
+        porCiudad: porCiudad.rows
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Llamar ensureContactosTable al iniciar
+ensureContactosTable();
+
+
+
+
 
 // ---------- Boot ----------
 (async () => {
