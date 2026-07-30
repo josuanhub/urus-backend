@@ -1022,32 +1022,78 @@ progressContainer.style.display = 'none';
 return;
 }
 
-const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-const requiredHeaders = ['nombre', 'email'];
-const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-if (missingHeaders.length > 0) {
-statusEl.innerHTML = `<div class="message message-error">❌ Faltan columnas: ${missingHeaders.join(', ')}</div>`;
-progressContainer.style.display = 'none';
-return;
+// Detectar si usa tabs o comas
+const firstLine = lines[0];
+let separator = ',';
+if (firstLine.includes('\t')) {
+separator = '\t';
 }
+
+const headers = lines[0].split(separator).map(h => h.trim().toLowerCase());
+console.log('Headers detectados:', headers);
+console.log('Separador usado:', separator === '\t' ? 'TAB' : 'COMA');
+
+// Mapear columnas de Apify a lo que espera el backend
+const columnMap = {
+'name': 'nombre',
+'nombre': 'nombre',
+'email': 'email',
+'phone': 'telefono',
+'telefono': 'telefono',
+'website': 'empresa',
+'empresa': 'empresa',
+'address': 'direccion',
+'direccion': 'direccion',
+'ciudad': 'ciudad',
+'city': 'ciudad',
+'searchterm': 'tipo',
+'tipo': 'tipo',
+'rating': 'rating',
+'reviews': 'reviews'
+};
 
 progressFill.style.width = '30%';
 progressText.textContent = `Procesando ${lines.length - 1} contactos...`;
+
 const contactos = [];
 for (let i = 1; i < lines.length; i++) {
-const values = lines[i].split(',').map(v => v.trim());
+const values = lines[i].split(separator).map(v => v.trim());
+const contactoRaw = {};
+headers.forEach((header, index) => {
+contactoRaw[header] = values[index] || '';
+});
+
+// Mapear al formato que espera el backend
 const contacto = {};
-headers.forEach((header, index) => { contacto[header] = values[index] || ''; });
+for (const [key, value] of Object.entries(contactoRaw)) {
+const mappedKey = columnMap[key] || key;
+if (!contacto[mappedKey]) {
+contacto[mappedKey] = value;
+}
+}
+
+// Si no hay nombre, usar el website como nombre de empresa
+if (!contacto.nombre && contactoRaw.website) {
+contacto.nombre = contactoRaw.website.replace(/https?:\/\//, '').split('/')[0];
+}
+
+// Si no hay empresa, usar el nombre
+if (!contacto.empresa && contacto.nombre) {
+contacto.empresa = contacto.nombre;
+}
+
 contactos.push(contacto);
 }
 
 progressFill.style.width = '60%';
 progressText.textContent = `Subiendo ${contactos.length} contactos al servidor...`;
+
 const response = await fetch(`${API_BASE}/radar/contactos`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ contactos })
 });
+
 const data = await response.json();
 progressFill.style.width = '100%';
 progressText.textContent = '✅ Completo';
@@ -1063,7 +1109,6 @@ statusEl.innerHTML = `<div class="message message-error">❌ Error: ${error.mess
 progressContainer.style.display = 'none';
 }
 }
-
     // ============================================================
 // ENVIAR EMAIL
 // ============================================================
