@@ -726,7 +726,7 @@ let accionPendiente = null;
 // ============================================================
 async function verificarConexion() {
 try {
-const response = await fetch(`${API_BASE}/radar/stats`);
+const response = await fetch(`${API_BASE}/stats`);
 if (response.ok) {
 document.getElementById('status-text').textContent = '✅ Conectado a Railway';
 document.querySelector('.status-dot').style.background = '#00ff88';
