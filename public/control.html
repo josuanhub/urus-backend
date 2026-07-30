@@ -795,7 +795,7 @@ async function cargarContactos() {
 const ciudad = document.getElementById('filtro-ciudad').value;
 const tipo = document.getElementById('filtro-tipo').value;
 
-let url = `${API_BASE}/radar/contactos?limite=500`;
+let url = `${API_BASE}/contactos?limite=500`;
 if (ciudad) url += `&ciudad=${encodeURIComponent(ciudad)}`;
 if (tipo) url += `&tipo=${encodeURIComponent(tipo)}`;
 
