@@ -248,69 +248,6 @@ function generateMunicipalOperationalDiagnosis(profile) {
 // ✅ IMPORTANTE: Railway está detrás de proxy (para evitar warnings de rate-limit y IPs)
 app.set("trust proxy", 1);
 
-// ===== SUBIR CSV =====
-const multer = require('multer');
-const upload = multer({ dest: '/tmp/uploads/' });
-const fs = require('fs');
-const csv = require('csv-parser');
-
-app.post('/v1/radar/subir-csv', upload.single('archivo'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ ok: false, error: 'No se subió ningún archivo' });
-    }
-
-    const contactos = [];
-    
-    fs.createReadStream(req.file.path)
-      .pipe(csv())
-      .on('data', (row) => {
-        contactos.push({
-          nombre: row.nombre || row.Name || row.Nombre || '',
-          email: row.email || row.Email || row.EmailAddress || '',
-          telefono: row.telefono || row.Phone || row.Telefono || '',
-          empresa: row.empresa || row.Company || row.Empresa || '',
-          ciudad: row.ciudad || row.City || row.Ciudad || 'Miami',
-          tipo: row.tipo || row.Type || row.Tipo || 'Roofing',
-          website: row.website || row.Website || ''
-        });
-      })
-      .on('end', async () => {
-        fs.unlinkSync(req.file.path);
-
-        if (contactos.length === 0) {
-          return res.json({ ok: false, error: 'CSV vacío o formato incorrecto' });
-        }
-
-        let insertados = 0;
-        for (const c of contactos) {
-          if (!c.email) continue;
-          try {
-            await pool.query(`
-              INSERT INTO contactos_radar (nombre, email, telefono, empresa, ciudad, tipo, website)
-              VALUES ($1, $2, $3, $4, $5, $6, $7)
-              ON CONFLICT (email) DO UPDATE SET
-                nombre = EXCLUDED.nombre,
-                telefono = EXCLUDED.telefono,
-                empresa = EXCLUDED.empresa,
-                ciudad = EXCLUDED.ciudad,
-                tipo = EXCLUDED.tipo
-            `, [c.nombre, c.email, c.telefono, c.empresa, c.ciudad, c.tipo, c.website]);
-            insertados++;
-          } catch (e) {
-            console.error('Error insertando:', e.message);
-          }
-        }
-
-        res.json({ ok: true, insertados, total: contactos.length });
-      });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-// ===== FIN SUBIR CSV =====
-
-
 app.use(cors({
   origin: true,
   credentials: true
