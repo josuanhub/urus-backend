@@ -521,7 +521,6 @@ grid-template-columns: repeat(2, 1fr);
 }
 </style>
 </head>
-<body>
 
   <div class="container">
 <!-- Sidebar -->
@@ -774,12 +773,13 @@ Founder, URUS Intelligence</textarea>
 </div>
 </div>
 </div>
+<body>
 
   <script>
 // ============================================================
-// CONFIGURACIÓN
+// CONFIGURACIÓN - CAMBIO CLAVE: /v1/radar → /api/radar
 // ============================================================
-const API_BASE = 'https://www.urusverify.com';
+const API_BASE = 'https://www.urusverify.com/api';
 let accionPendiente = null;
 
 // ============================================================
@@ -787,7 +787,7 @@ let accionPendiente = null;
 // ============================================================
 async function verificarConexion() {
 try {
-const response = await fetch(`${API_BASE}/v1/radar/stats`);
+const response = await fetch(`${API_BASE}/radar/stats`);
 if (response.ok) {
 document.getElementById('status-text').textContent = '✅ Conectado a Railway';
 document.querySelector('.status-dot').style.background = '#00ff88';
@@ -812,23 +812,12 @@ item.classList.add('active');
 document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
 document.getElementById(item.dataset.tab).classList.add('active');
 
-// Cargar datos según la pestaña
 switch(item.dataset.tab) {
-case 'dashboard':
-cargarDashboard();
-break;
-case 'contactos':
-cargarContactos();
-break;
-case 'permisos':
-cargarPermisos();
-break;
-case 'enviar':
-cargarPermisosSelect();
-break;
-case 'historial':
-cargarHistorial();
-break;
+case 'dashboard': cargarDashboard(); break;
+case 'contactos': cargarContactos(); break;
+case 'permisos': cargarPermisos(); break;
+case 'enviar': cargarPermisosSelect(); break;
+case 'historial': cargarHistorial(); break;
 }
 });
 });
@@ -839,11 +828,9 @@ break;
 async function cargarDashboard() {
 const msgEl = document.getElementById('dashboard-message');
 msgEl.innerHTML = '<div class="loading">Cargando estadísticas...</div>';
-
 try {
-const response = await fetch(`${API_BASE}/v1/radar/stats`);
+const response = await fetch(`${API_BASE}/radar/stats`);
 const data = await response.json();
-
 if (data.ok) {
 document.getElementById('total-contactos').textContent = data.stats.contactos || 0;
 document.getElementById('total-permisos').textContent = data.stats.permisos || 0;
@@ -867,7 +854,7 @@ const email = document.getElementById('filtro-email').value;
 const ciudad = document.getElementById('filtro-ciudad').value;
 const tipo = document.getElementById('filtro-tipo').value;
 
-let url = `${API_BASE}/v1/radar/contactos?limite=500`;
+let url = `${API_BASE}/radar/contactos?limite=500`;
 if (nombre) url += `&nombre=${encodeURIComponent(nombre)}`;
 if (email) url += `&email=${encodeURIComponent(email)}`;
 if (ciudad) url += `&ciudad=${encodeURIComponent(ciudad)}`;
@@ -879,7 +866,6 @@ tbody.innerHTML = '<tr><td colspan="8" class="loading">Cargando contactos...</td
 try {
 const response = await fetch(url);
 const data = await response.json();
-
 tbody.innerHTML = '';
 
 if (data.ok && data.contactos && data.contactos.length > 0) {
@@ -893,8 +879,7 @@ tr.innerHTML = `
 <td>${c.empresa || 'N/A'}</td>
 <td>${c.ciudad || 'N/A'}</td>
 <td><span class="badge badge-info">${c.tipo || 'N/A'}</span></td>
-<td>${c.fecha_registro ? new Date(c.fecha_registro).toLocaleDateString() : 'N/A'}</td>
-`;
+<td>${c.fecha_registro ? new Date(c.fecha_registro).toLocaleDateString() : 'N/A'}</td>`;
 tbody.appendChild(tr);
 });
 document.getElementById('contactos-count').textContent = `${data.contactos.length} contactos encontrados`;
@@ -930,7 +915,7 @@ const montoMin = document.getElementById('filtro-monto-min').value;
 const montoMax = document.getElementById('filtro-monto-max').value;
 const estado = document.getElementById('filtro-estado').value;
 
-let url = `${API_BASE}/v1/radar/eventos?limite=200`;
+let url = `${API_BASE}/radar/eventos?limite=200`;
 if (ciudad) url += `&ciudad=${encodeURIComponent(ciudad)}`;
 if (montoMin) url += `&monto_min=${montoMin}`;
 if (montoMax) url += `&monto_max=${montoMax}`;
@@ -942,7 +927,6 @@ tbody.innerHTML = '<tr><td colspan="7" class="loading">Cargando permisos...</td>
 try {
 const response = await fetch(url);
 const data = await response.json();
-
 tbody.innerHTML = '';
 
 if (data.ok && data.eventos && data.eventos.length > 0) {
@@ -957,8 +941,7 @@ tr.innerHTML = `
 <td style="color:#00ff88;font-weight:600;">${valor}</td>
 <td>${p.fecha_registro ? new Date(p.fecha_registro).toLocaleDateString() : 'N/A'}</td>
 <td><span class="badge ${estadoClass}">${p.estado || 'Nuevo'}</span></td>
-<td>${p.score || 'N/A'}</td>
-`;
+<td>${p.score || 'N/A'}</td>`;
 tbody.appendChild(tr);
 });
 document.getElementById('permisos-count').textContent = `${data.eventos.length} permisos encontrados`;
@@ -977,13 +960,10 @@ tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ff4444;pa
 async function cargarPermisosSelect() {
 const select = document.getElementById('permiso-select');
 select.innerHTML = '<option value="">Cargando permisos...</option>';
-
 try {
-const response = await fetch(`${API_BASE}/v1/radar/eventos?limite=50`);
+const response = await fetch(`${API_BASE}/radar/eventos?limite=50`);
 const data = await response.json();
-
 select.innerHTML = '<option value="">Seleccionar permiso...</option>';
-
 if (data.ok && data.eventos) {
 data.eventos.forEach(p => {
 const option = document.createElement('option');
@@ -1003,16 +983,8 @@ console.error('Error:', error);
 // SUBIR CSV
 // ============================================================
 const dropZone = document.getElementById('drop-zone');
-
-dropZone.addEventListener('dragover', (e) => {
-e.preventDefault();
-dropZone.classList.add('dragover');
-});
-
-dropZone.addEventListener('dragleave', () => {
-dropZone.classList.remove('dragover');
-});
-
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', (e) => {
 e.preventDefault();
 dropZone.classList.remove('dragover');
@@ -1044,7 +1016,6 @@ statusEl.innerHTML = '';
 try {
 const text = await file.text();
 const lines = text.split('\n').filter(line => line.trim());
-
 if (lines.length < 2) {
 statusEl.innerHTML = '<div class="message message-error">❌ El archivo está vacío o solo tiene encabezados</div>';
 progressContainer.style.display = 'none';
@@ -1054,7 +1025,6 @@ return;
 const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
 const requiredHeaders = ['nombre', 'email'];
 const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-
 if (missingHeaders.length > 0) {
 statusEl.innerHTML = `<div class="message message-error">❌ Faltan columnas: ${missingHeaders.join(', ')}</div>`;
 progressContainer.style.display = 'none';
@@ -1063,37 +1033,28 @@ return;
 
 progressFill.style.width = '30%';
 progressText.textContent = `Procesando ${lines.length - 1} contactos...`;
-
 const contactos = [];
 for (let i = 1; i < lines.length; i++) {
 const values = lines[i].split(',').map(v => v.trim());
 const contacto = {};
-headers.forEach((header, index) => {
-contacto[header] = values[index] || '';
-});
+headers.forEach((header, index) => { contacto[header] = values[index] || ''; });
 contactos.push(contacto);
 }
 
 progressFill.style.width = '60%';
 progressText.textContent = `Subiendo ${contactos.length} contactos al servidor...`;
-
-const response = await fetch(`${API_BASE}/v1/radar/contactos`, {
+const response = await fetch(`${API_BASE}/radar/contactos`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ contactos })
 });
-
 const data = await response.json();
-
 progressFill.style.width = '100%';
 progressText.textContent = '✅ Completo';
 
 if (data.ok) {
 statusEl.innerHTML = `<div class="message message-success">✅ ${data.importados || contactos.length} contactos subidos exitosamente</div>`;
-setTimeout(() => {
-progressContainer.style.display = 'none';
-progressFill.style.width = '0%';
-}, 3000);
+setTimeout(() => { progressContainer.style.display = 'none'; progressFill.style.width = '0%'; }, 3000);
 } else {
 statusEl.innerHTML = `<div class="message message-error">❌ Error: ${data.error || 'No se pudieron subir los contactos'}</div>`;
 }
@@ -1103,7 +1064,7 @@ progressContainer.style.display = 'none';
 }
 }
 
-// ============================================================
+    // ============================================================
 // ENVIAR EMAIL
 // ============================================================
 async function enviarEmail() {
@@ -1112,11 +1073,9 @@ if (checkedBoxes.length === 0) {
 document.getElementById('envio-status').textContent = '❌ Selecciona al menos un contacto';
 return;
 }
-
 const asunto = document.getElementById('asunto-email').value;
 const plantilla = document.getElementById('plantilla-email').value;
 const permisoId = document.getElementById('permiso-select').value;
-
 if (!asunto || !plantilla) {
 document.getElementById('envio-status').textContent = '❌ Completa el asunto y la plantilla';
 return;
@@ -1134,7 +1093,7 @@ ciudad: cb.dataset.ciudad,
 tipo: cb.dataset.tipo
 }));
 
-const response = await fetch(`${API_BASE}/v1/radar/enviar-lote`, {
+const response = await fetch(`${API_BASE}/radar/enviar-lote`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({
@@ -1169,7 +1128,6 @@ document.getElementById('envio-status').textContent = '❌ Completa el asunto y 
 return;
 }
 
-// Confirmar
 document.getElementById('modal-title').textContent = '⚠️ Enviar a Todos';
 document.getElementById('modal-message').textContent = '¿Estás seguro de enviar este email a TODOS los contactos? Esta acción no se puede deshacer.';
 document.getElementById('confirm-modal').classList.add('active');
@@ -1178,7 +1136,7 @@ document.getElementById('btn-enviar').disabled = true;
 document.getElementById('envio-status').textContent = '🔄 Enviando a todos...';
 
 try {
-const response = await fetch(`${API_BASE}/v1/radar/enviar-lote`, {
+const response = await fetch(`${API_BASE}/radar/enviar-lote`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({
@@ -1226,7 +1184,7 @@ async function cargarHistorial() {
 const filtro = document.getElementById('filtro-historial').value;
 const estado = document.getElementById('filtro-estado-envio').value;
 
-let url = `${API_BASE}/v1/radar/historial?limite=100`;
+let url = `${API_BASE}/radar/historial?limite=100`;
 if (filtro) url += `&buscar=${encodeURIComponent(filtro)}`;
 if (estado) url += `&estado=${encodeURIComponent(estado)}`;
 
@@ -1236,7 +1194,6 @@ tbody.innerHTML = '<tr><td colspan="6" class="loading">Cargando historial...</td
 try {
 const response = await fetch(url);
 const data = await response.json();
-
 tbody.innerHTML = '';
 
 if (data.ok && data.historial && data.historial.length > 0) {
@@ -1249,8 +1206,7 @@ tr.innerHTML = `
 <td>${h.email_contacto || 'N/A'}</td>
 <td>${h.asunto || 'N/A'}</td>
 <td><span class="badge ${estadoClass}">${h.estado || 'N/A'}</span></td>
-<td>${h.respuesta || '—'}</td>
-`;
+<td>${h.respuesta || '—'}</td>`;
 tbody.appendChild(tr);
 });
 } else {
@@ -1288,7 +1244,7 @@ const limite = document.getElementById('limite-scraper').value || 100;
 resultEl.innerHTML = `<div class="message message-info">🔄 Escaneando ${ciudad}...</div>`;
 
 try {
-const response = await fetch(`${API_BASE}/v1/radar/scan-${ciudad.toLowerCase()}`, {
+const response = await fetch(`${API_BASE}/radar/scan-${ciudad.toLowerCase()}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ umbral, limite })
