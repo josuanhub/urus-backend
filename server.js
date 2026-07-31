@@ -12018,10 +12018,81 @@ app.post('/api/activar-prueba', async (req, res) => {
       return res.status(400).json({ error: 'Email es requerido' });
     }
 
-    console.log(`[ACTIVACIÓN] Nuevo registro: ${email}`);
+    // 1. GUARDAR EN BD
+    await pool.query(
+      `INSERT INTO suscriptores (email, estado, fecha_activacion, fecha_expiracion)
+       VALUES ($1, 'activo', NOW(), NOW() + INTERVAL '7 days')
+       ON CONFLICT (email) DO NOTHING`,
+      [email]
+    );
 
-    // Aquí después conectas la base de datos
-    // Por ahora solo registramos y respondemos
+    // 2. BUSCAR PERMISO RECIENTE PARA INCLUIRLO
+    const permisoResult = await pool.query(
+      `SELECT * FROM radar_eventos 
+       ORDER BY fecha_registro DESC 
+       LIMIT 1`
+    );
+    
+    const permiso = permisoResult.rows[0] || {};
+    const datos = permiso.datos_evento || {};
+
+    // 3. ENVIAR EMAIL DE BIENVENIDA CON DATOS DEL PROYECTO
+    const htmlBienvenida = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+        <div style="background: #1a73e8; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">🔓 Acceso VIP Activado</h1>
+          <p style="margin: 5px 0 0; font-size: 14px; opacity: 0.9;">Tu prueba gratuita de 7 días con URUS Intelligence</p>
+        </div>
+        
+        <div style="padding: 30px; background: white; border-radius: 0 0 8px 8px;">
+          <p>Hola,</p>
+          <p><strong>Confirmado.</strong> Tu prueba gratuita de 7 días con URUS Intelligence está activa a partir de hoy.</p>
+          
+          <div style="background: #f0f7ff; border-left: 4px solid #1a73e8; padding: 20px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin: 0 0 15px; color: #1a73e8;">📌 Proyecto Detectado:</h3>
+            <p style="margin: 5px 0;"><strong>Proyecto:</strong> ${datos.proyecto || datos.descripcion || 'Desarrollo Comercial & Solar'}</p>
+            <p style="margin: 5px 0;"><strong>Ubicación:</strong> ${permiso.ubicacion || 'Dorado Beach Residences'}</p>
+            <p style="margin: 5px 0;"><strong>Valor Estimado:</strong> $${permiso.valor_estimado ? new Intl.NumberFormat('en-US').format(permiso.valor_estimado) : '1,250,000'}</p>
+            <p style="margin: 5px 0;"><strong>Tipo:</strong> ${permiso.tipo_evento || 'PERMISO_CONSTRUCCION'}</p>
+          </div>
+          
+          <p style="margin-top: 20px;"><strong>💡 Consejo URUS:</strong> Este permiso fue publicado recientemente. Te sugerimos contactar al desarrollador directamente.</p>
+          
+          <p style="margin-top: 30px;">Para asegurar que solo recibas lo que te interesa, responde a este correo indicando:</p>
+          <ul style="padding-left: 20px; line-height: 1.8;">
+            <li>Tus zonas de cobertura</li>
+            <li>Tu especialidad</li>
+            <li>Presupuesto mínimo de proyecto</li>
+          </ul>
+          
+          <p style="margin-top: 30px; color: #666; font-size: 14px;">
+            Éxito con tus proyectos.<br>
+            <strong>URUS Intelligence Engine</strong>
+          </p>
+        </div>
+      </div>
+    `;
+
+    // Enviar email con Resend
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+      },
+      body: JSON.stringify({
+        from: 'URUS Intelligence <reportes@urusverify.com>',
+        to: [email],
+        subject: '🔓 Acceso VIP Activado + Detalles del Proyecto',
+        html: htmlBienvenida
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Error enviando email');
+    }
+
+    console.log(`[ACTIVACIÓN] Email enviado a: ${email}`);
 
     res.json({
       success: true,
@@ -12034,7 +12105,6 @@ app.post('/api/activar-prueba', async (req, res) => {
     res.status(500).json({ error: 'Error interno' });
   }
 });
-
 
 
 // ============================================================
