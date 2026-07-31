@@ -12010,12 +12010,12 @@ app.post('/api/radar/activar-alerta', async (req, res) => {
 
 
 // Endpoint para activar prueba gratis desde el botón del email
-app.post('/api/activar-prueba', async (req, res) => {
+app.get('/api/activar-prueba', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email } = req.query;
 
     if (!email) {
-      return res.status(400).json({ error: 'Email es requerido' });
+      return res.status(400).send('Email no válido');
     }
 
     // 1. GUARDAR EN BD
@@ -12094,18 +12094,43 @@ app.post('/api/activar-prueba', async (req, res) => {
 
     console.log(`[ACTIVACIÓN] Email enviado a: ${email}`);
 
-    res.json({
-      success: true,
-      message: `Prueba gratis activada para ${email}`,
-      email: email
-    });
+    // 4. MOSTRAR PÁGINA DE CONFIRMACIÓN
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>✅ Prueba Activada</title>
+      </head>
+      <body style="margin:0; padding:0; background-color:#f4f4f4; font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh;">
+        <div style="background:white; border-radius:12px; padding:40px; max-width:500px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+          <div style="font-size:60px; margin-bottom:20px;">✅</div>
+          <h1 style="color:#1a73e8; margin:0 0 10px 0;">¡Tu prueba está activa!</h1>
+          <p style="color:#666; font-size:16px; margin:0 0 20px 0;">
+            Tu prueba gratuita de 7 días con URUS Intelligence comenzó.
+          </p>
+          <p style="color:#666; font-size:14px; margin:0 0 30px 0;">
+            Revisa tu email — te enviamos los detalles del proyecto detectado.
+          </p>
+          <div style="background:#f0f7ff; border-radius:8px; padding:15px; margin-bottom:30px;">
+            <p style="color:#1a73e8; font-size:14px; margin:0;">
+              📧 Te enviamos un email con los datos del proyecto.
+            </p>
+          </div>
+          <p style="color:#999; font-size:12px; margin:0;">
+            URUS Intelligence — Data & Automation for High-Ticket Construction
+          </p>
+        </div>
+      </body>
+      </html>
+    `);
 
   } catch (error) {
     console.error('[ACTIVACIÓN] Error:', error);
-    res.status(500).json({ error: 'Error interno' });
+    res.status(500).send('Error activando prueba');
   }
 });
-
 
 // ============================================================
 // URUS RADAR — Endpoints para Centro de Control
