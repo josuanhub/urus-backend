@@ -11865,7 +11865,7 @@ app.post('/api/radar/send-email', async (req, res) => {
   }
 
   const totalValor = permisos.reduce((acc, p) => acc + (Number(p.valorEstimado) || 0), 0);
-  const html = generarHtmlReporteVip({ nombreCliente, region, totalValor, permisos });
+const html = generarHtmlReporteVip({ nombreCliente, region, totalValor, permisos, destinatario });
   const asunto = `🔵 Reporte VIP — ${permisos.length} oportunidades en ${region || 'tu zona'}`;
 
   try {
