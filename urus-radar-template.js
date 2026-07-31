@@ -104,7 +104,7 @@ function generarHtmlReporteVip(data) {
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td align="center">
-                       <a href="https://urusverify.com/api/activar-prueba?email=${encodeURIComponent(destinatario || '')}" style="display:inline-block; padding:14px 32px; background-color:#1a73e8; color:#ffffff; text-decoration:none; border-radius:6px; font-size:16px; font-weight:bold;">
+                       <a href="https://urusverify.com/api/activar-prueba?email={{email}}" style="display:inline-block; padding:14px 32px; background-color:#1a73e8; color:#ffffff; text-decoration:none; border-radius:6px; font-size:16px; font-weight:bold;">
   ▶️ ACTIVAR PRUEBA GRATIS
 </a>
                       </td>
