@@ -1,7 +1,8 @@
 // urus-radar-template.js
 
 function generarHtmlReporteVip(data) {
-  const { nombreCliente, region, totalValor, permisos } = data;
+  // 1. Extraemos también 'email' del objeto data
+  const { nombreCliente, email, region, totalValor, permisos } = data;
 
   const totalFormateado = (totalValor || 0).toLocaleString('en-US', {
     style: 'currency',
@@ -41,6 +42,9 @@ function generarHtmlReporteVip(data) {
       </table>
     `;
   }).join('');
+
+  // Encodeamos el email para evitar fallos con caracteres especiales
+  const emailQueryParam = encodeURIComponent(email || '');
 
   return `
     <!DOCTYPE html>
@@ -92,9 +96,8 @@ function generarHtmlReporteVip(data) {
                   </p>
 
                   <!-- CTA -->
-                  <p style="font-size:14px; color:#333333; margin:0 0 20px 0;">
-                    <strong>Cada día recibes las mejores oportunidades nuevas de construcción de tu mercado antes que tu competencia.><br>
-                    URUS rastrea oportunidades de alto valor en tiempo real y te las entrega antes que tu competencia.
+                  <p style="font-size:14px; color:#333333; margin:0 0 10px 0;">
+                    <strong>URUS rastrea oportunidades de alto valor en tiempo real y te las entrega antes que tu competencia.</strong>
                   </p>
                   <p style="font-size:14px; color:#666666; margin:0 0 30px 0;">
                     Pruébalo sin pagar un solo centavo:
@@ -104,9 +107,9 @@ function generarHtmlReporteVip(data) {
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td align="center">
-                       <a href="https://urusverify.com/api/activar-prueba?email={{email}}" style="display:inline-block; padding:14px 32px; background-color:#1a73e8; color:#ffffff; text-decoration:none; border-radius:6px; font-size:16px; font-weight:bold;">
-  ▶️ ACTIVAR PRUEBA GRATIS
-</a>
+                        <a href="https://urusverify.com/api/activar-prueba?email=${emailQueryParam}" style="display:inline-block; padding:14px 32px; background-color:#1a73e8; color:#ffffff; text-decoration:none; border-radius:6px; font-size:16px; font-weight:bold;">
+                          ▶️ ACTIVAR PRUEBA GRATIS
+                        </a>
                       </td>
                     </tr>
                   </table>
@@ -138,4 +141,3 @@ function generarHtmlReporteVip(data) {
 }
 
 module.exports = { generarHtmlReporteVip };
-
