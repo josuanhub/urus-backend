@@ -12330,6 +12330,81 @@ app.post('/v1/radar/contactos', async (req, res) => {
 
 
 
+// Endpoint para activar prueba gratis desde el botón del email (CAMBIADO A GET)
+app.get('/api/activar-prueba', async (req, res) => {
+  try {
+    // Cuando viene por enlace <a>, el dato viene en req.query, no en req.body
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).send(`
+        <div style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+          <h2>❌ Error</h2>
+          <p>No se proporcionó un correo electrónico válido.</p>
+        </div>
+      `);
+    }
+
+    // 1. GUARDAR EN BD (PostgreSQL / Supabase pool)
+    await pool.query(
+      `INSERT INTO suscriptores (email, estado, fecha_activacion, fecha_expiracion)
+       VALUES ($1, 'activo', NOW(), NOW() + INTERVAL '7 days')
+       ON CONFLICT (email) DO NOTHING`,
+      [email]
+    );
+
+    // 2. BUSCAR PERMISO RECIENTE PARA INCLUIRLO
+    const permisoResult = await pool.query(
+      `SELECT * FROM radar_eventos 
+       ORDER BY fecha_registro DESC 
+       LIMIT 1`
+    );
+    
+    const permiso = permisoResult.rows[0] || {};
+    const datos = permiso.datos_evento || {};
+
+    // 3. RESPONDER AL NAVEGADOR CON UNA PÁGINA DE CONFIRMACIÓN
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Prueba Activada — URUS Intelligence</title>
+      </head>
+      <body style="margin:0; padding:0; background-color:#111111; color:#ffffff; font-family: Arial, sans-serif;">
+        <div style="max-width: 600px; margin: 60px auto; background: #1a1a1a; padding: 40px; border-radius: 12px; border: 1px solid #333; text-align: center;">
+          <h1 style="color: #4CAF50; font-size: 28px; margin-bottom: 10px;">🎉 ¡Prueba Gratis Activada!</h1>
+          <p style="font-size: 16px; color: #cccccc; margin-bottom: 30px;">
+            Tu suscripción para <strong>${email}</strong> ha sido verificada con éxito.
+          </p>
+          <div style="background: #222222; padding: 20px; border-radius: 8px; text-align: left; margin-bottom: 30px; border-left: 4px solid #1a73e8;">
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #888888;">Último proyecto detectado por el Radar:</p>
+            <p style="margin: 0; font-size: 16px; font-weight: bold; color: #ffffff;">
+              📍 ${permiso.ubicacion || 'Zona METRO'} — $${Number(permiso.valor_estimado || 0).toLocaleString('en-US')}
+            </p>
+          </div>
+          <p style="font-size: 14px; color: #888888;">
+            Comenzarás a recibir nuestras alertas de alto valor directamente en tu correo y canales vinculados.
+          </p>
+        </div>
+      </body>
+      </html>
+    `);
+
+  } catch (error) {
+    console.error('Error al activar prueba gratis:', error);
+    return res.status(500).send(`
+      <div style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+        <h2>⚠️ Error Servidor</h2>
+        <p>Ocurrió un problema procesando la solicitud: ${error.message}</p>
+      </div>
+    `);
+  }
+});
+
+
+
+
 
 
 // ---------- Boot ----------
