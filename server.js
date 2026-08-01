@@ -12641,6 +12641,168 @@ app.get('/v1/radar/stats', async (req, res) => {
 });
 
 
+// ============================================================
+// ENVIAR A TODOS LOS CONTACTOS DE AUSTIN AUTOMÁTICAMENTE
+// POST /v1/radar/enviar-austin-auto
+// ============================================================
+app.post('/v1/radar/enviar-austin-auto', async (req, res) => {
+  try {
+    const { soloPrueba } = req.body;
+
+    // 1. Traer todos los contactos de Austin
+    const contactosRes = await pool.query(
+      `SELECT * FROM contactos_radar 
+       WHERE ciudad ILIKE '%austin%' AND activo = true`
+    );
+    const contactos = contactosRes.rows;
+
+    if (contactos.length === 0 && !soloPrueba) {
+      return res.status(400).json({ ok: false, error: 'No hay contactos de Austin' });
+    }
+
+    // 2. Traer los 3 permisos más recientes de Austin con valor > $50,000
+    const permisosRes = await pool.query(
+      `SELECT * FROM radar_eventos 
+       WHERE (tipo_evento ILIKE '%AUSTIN%')
+       AND (valor_estimado > 50000 OR (datos_evento->>'valorEstimado')::numeric > 50000)
+       ORDER BY fecha_registro DESC 
+       LIMIT 3`
+    );
+    const permisos = permisosRes.rows;
+
+    if (permisos.length === 0) {
+      return res.status(400).json({ ok: false, error: 'No hay permisos de Austin con valor > $50,000' });
+    }
+
+    // 3. Definir contactos finales (prueba o reales)
+    const contactosFinales = soloPrueba 
+      ? [{ email: 'urusgovx@gmail.com', nombre: 'Josuan - Test', ciudad: 'Austin' }]
+      : contactos;
+
+    // Responder de inmediato
+    res.json({ 
+      ok: true, 
+      mensaje: soloPrueba 
+        ? '📧 Email de prueba enviado a urusgovx@gmail.com'
+        : `🚀 Enviando a ${contactos.length} contactos de Austin con ${permisos.length} permisos`,
+      contactos: contactosFinales.length,
+      permisos: permisos.length,
+      modo: soloPrueba ? 'PRUEBA' : 'PRODUCCIÓN'
+    });
+
+    // 4. Proceso en segundo plano con goteo de 3 segundos
+    (async () => {
+      let enviados = 0;
+      let errores = 0;
+
+      for (const c of contactosFinales) {
+        try {
+          // Construir tarjetas HTML para cada permiso
+          let tarjetasHTML = '';
+          let totalValor = 0;
+
+          for (const p of permisos) {
+            const d = p.datos_evento || {};
+            const ubicacion = p.ubicacion || d.direccion || 'Austin, TX';
+            const tipo = d.tipo_permiso || d.trabajo || 'Permiso de Construcción';
+            const valor = Number(p.valor_estimado || d.valorEstimado || d.valor_total || 0);
+            const entidad = d.solicitante || d.dueno || 'Desarrollador';
+            const link = d.link_permiso || '#';
+            
+            totalValor += valor;
+
+            tarjetasHTML += `
+              <div style="background: #12121a; border-left: 4px solid #00d4ff; padding: 15px; margin: 15px 0; border-radius: 6px;">
+                <p style="margin: 4px 0; font-size: 14px; color: #ffffff;"><strong>📍 Ubicación:</strong> ${ubicacion}</p>
+                <p style="margin: 4px 0; font-size: 14px; color: #ffffff;"><strong>🏗️ Tipo:</strong> ${tipo}</p>
+                <p style="margin: 4px 0; font-size: 14px; color: #00ff88;"><strong>💰 Presupuesto:</strong> $${valor.toLocaleString('en-US')}</p>
+                <p style="margin: 4px 0; font-size: 14px; color: #ffffff;"><strong>👤 Entidad:</strong> ${entidad}</p>
+                ${link !== '#' ? `<p style="margin: 4px 0; font-size: 12px; color: #00d4ff;"><a href="${link}" target="_blank" style="color: #00d4ff;">🔗 Ver permiso original</a></p>` : ''}
+              </div>
+            `;
+          }
+
+          // Link para activar prueba
+          const linkPrueba = `https://www.urusverify.com/api/activar-prueba?email=${encodeURIComponent(c.email)}`;
+
+          // HTML final
+          const htmlEmail = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #0a0a0f; color: #ffffff; border-radius: 8px;">
+              <div style="background: #1a73e8; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+                <h1 style="margin: 0; font-size: 22px;">🚨 ALERTA URUS</h1>
+                <p style="margin: 5px 0 0; font-size: 14px; opacity: 0.9;">Oportunidades detectadas en tiempo real</p>
+              </div>
+              <div style="padding: 20px;">
+                <p style="font-size: 15px; line-height: 1.6; color: #e0e0e0;">Hola ${c.nombre || 'Estimado/a'},</p>
+                <p style="font-size: 15px; line-height: 1.6; color: #e0e0e0;">Se detectaron ${permisos.length} oportunidades en Austin, TX con un volumen total de <strong style="color: #00ff88;">$${totalValor.toLocaleString('en-US')}</strong>.</p>
+                <p style="font-size: 14px; color: #888888;">Nadie en el mercado abierto lo sabe todavía. Pero el sistema de URUS ya lo detectó.</p>
+                
+                ${tarjetasHTML}
+
+                <div style="background: #12121a; padding: 15px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #00d4ff;">
+                  <p style="margin: 0; font-size: 13px; color: #e0e0e0;"><strong>Por qué estás recibiendo esto:</strong></p>
+                  <p style="margin: 5px 0 0; font-size: 13px; color: #888888;">Esta información no está en el periódico ni en listas públicas habituales. Es una alerta privada exclusiva para la red VIP de URUS Intelligence.</p>
+                </div>
+
+                <p style="font-size: 14px; color: #e0e0e0;">El contratista que llega primero a la mesa no negocia en subasta: cierra el contrato. Mientras tu competencia espera a que el permiso salga en las noticias, tú puedes tener la propuesta en el escritorio del dueño hoy.</p>
+
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${linkPrueba}" target="_blank" style="background-color: #00d4ff; color: #000000; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 15px;">
+                    🚀 ACTIVAR PRUEBA GRATIS
+                  </a>
+                </div>
+
+                <p style="font-size: 13px; color: #888888; text-align: center;">Un solo contrato de estos paga 10 años de inteligencia de datos.</p>
+                <p style="font-size: 12px; color: #666666; margin-top: 30px; text-align: center;">
+                  URUS Intelligence<br>Data & Automation for High-Ticket Construction
+                </p>
+              </div>
+            </div>
+          `;
+
+          // Enviar por Resend
+          const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+            },
+            body: JSON.stringify({
+              from: process.env.EMAIL_FROM || 'URUS Intelligence <reportes@urusverify.com>',
+              to: [c.email],
+              subject: `🚨 ${permisos.length} Oportunidades en Austin, TX — $${totalValor.toLocaleString('en-US')}`,
+              html: htmlEmail
+            })
+          });
+
+          if (response.ok) {
+            enviados++;
+            console.log(`[ENVIADO] ${c.email}`);
+          } else {
+            errores++;
+            console.error(`[ERROR] ${c.email}: ${response.status}`);
+          }
+
+        } catch (e) {
+          errores++;
+          console.error(`[ERROR] ${c.email}: ${e.message}`);
+        }
+
+        // Esperar 3 segundos entre envíos
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+
+      console.log(`[AUSTIN AUTO] Completado. Enviados: ${enviados} | Errores: ${errores}`);
+    })();
+
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+
+
 
 
 
