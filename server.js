@@ -12208,6 +12208,14 @@ try {
 }
 
 
+// Carga segura del módulo (sin re-declarar la variable)
+try {
+  const templateModule = require('./urus-radar-template');
+  generarHtmlReporteVip = templateModule.generarHtmlReporteVip;
+} catch (e) {
+  console.warn('Advertencia cargando urus-radar-template:', e.message);
+}
+
 
 // POST /v1/radar/disparar-campana
 app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
@@ -12216,12 +12224,11 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
   try {
     let contactos = [];
 
-    // MODO PRUEBA
+    // MODO PRUEBA vs MODO REAL
     if (emailPrueba) {
       contactos = [{ nombre: 'Josuan (Prueba)', email: emailPrueba, ciudad: ciudad }];
       console.log(`[MODO PRUEBA ACTIVADO] Test para: ${emailPrueba}`);
     } else {
-      // MODO REAL
       const contactosRes = await pool.query(
         `SELECT * FROM contacts 
          WHERE (ciudad ILIKE $1 OR region ILIKE $1) 
@@ -12237,7 +12244,7 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
       return res.status(404).json({ ok: false, error: `No se encontraron contactos con email para ${ciudad}` });
     }
 
-    // TRAER PERMISOS CON FALLBACK RÁPIDO (Evita congelar la base de datos)
+    // OBTENER PERMISOS DE LA BD CON FALLBACK
     let permisosLista = [];
     try {
       const permisosRes = await pool.query(
@@ -12257,7 +12264,6 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
       console.warn('Error consultando radar_eventos, usando mock de respaldo:', dbErr.message);
     }
 
-    // Fallback por si la DB no devolvió permisos
     if (permisosLista.length === 0) {
       permisosLista = [{
         ubicacion: `${ciudad}, TX - Registro Oficial`,
@@ -12269,8 +12275,7 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
 
     const totalVolumen = permisosLista.reduce((acc, curr) => acc + curr.valorEstimado, 0);
 
-    // RESPONDER DE INMEDIATO AL CLIENTE (200 OK)
-    // Esto previene el Error 502 Bad Gateway
+    // RESPUESTA INMEDIATA (Previene Bad Gateway 502)
     res.json({
       ok: true,
       modo: emailPrueba ? 'PRUEBA' : 'PRODUCCIÓN',
@@ -12280,7 +12285,7 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
       total_contactos: contactos.length
     });
 
-    // PROCESO DE GOTEO EN SEGUNDO PLANO
+    // GOTEO EN SEGUNDO PLANO
     (async () => {
       let enviados = 0;
       let errores = 0;
@@ -12297,8 +12302,7 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
             permisos: permisosLista
           });
         } else {
-          // Plantilla simple de emergencia si falla la importación
-          htmlEmail = `<h2>Alerta URUS - ${ciudad}</h2><p>Hola ${c.nombre}, oportundades detectadas en ${ciudad}.</p>`;
+          htmlEmail = `<h2>Alerta URUS - ${ciudad}</h2><p>Hola ${c.nombre}, oportunidades detectadas en ${ciudad}.</p>`;
         }
 
         try {
@@ -12322,7 +12326,6 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
           errores++;
         }
 
-        // Si es prueba manda de inmediato, si es lote espera 3s
         if (!emailPrueba) {
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
