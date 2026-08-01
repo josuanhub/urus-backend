@@ -12380,7 +12380,7 @@ app.get('/api/activar-prueba', async (req, res) => {
           <div style="background: #222222; padding: 20px; border-radius: 8px; text-align: left; margin-bottom: 30px; border-left: 4px solid #1a73e8;">
             <p style="margin: 0 0 10px 0; font-size: 14px; color: #888888;">Último proyecto detectado por el Radar:</p>
             <p style="margin: 0; font-size: 16px; font-weight: bold; color: #ffffff;">
-              📍 ${permiso.ubicacion || 'Zona METRO'} — $${Number(permiso.valor_estimado || 0).toLocaleString('en-US')}
+              📍 ${permiso.region || permiso.ubicacion || 'Zona METRO'} — $${Number(permiso.valor_estimado || permiso.valorEstimado || 0).toLocaleString('en-US')}
             </p>
           </div>
           <p style="font-size: 14px; color: #888888;">
