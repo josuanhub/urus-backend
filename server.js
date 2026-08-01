@@ -12744,15 +12744,7 @@ app.post('/v1/radar/enviar-austin-auto', async (req, res) => {
                   <p style="margin: 5px 0 0; font-size: 13px; color: #888888;">Esta información no está en el periódico ni en listas públicas habituales. Es una alerta privada exclusiva para la red VIP de URUS Intelligence.</p>
                 </div>
 
-                <p style="font-size: 14px; color: #e0e0e0;">Por qué estás recibiendo esto:
-
-Esta información no está en el periódico ni en listas públicas habituales. Es una alerta privada exclusiva para la red VIP de URUS Intelligence.
-
-El contratista que llega primero a la mesa no negocia en subasta: cierra el contrato. Mientras tu competencia espera a que el permiso salga en las noticias, tú puedes tener la propuesta en el escritorio del dueño hoy.
-
-URUS rastrea oportunidades de alto valor en tiempo real y te las entrega antes que tu competencia.
-
-Pruébalo sin pagar un solo centavo:</p>
+                <p style="font-size: 14px; color: #e0e0e0;">El contratista que llega primero a la mesa no negocia en subasta: cierra el contrato. Mientras tu competencia espera a que el permiso salga en las noticias, tú puedes tener la propuesta en el escritorio del dueño hoy.</p>
 
                 <div style="text-align: center; margin: 30px 0;">
                   <a href="${linkPrueba}" target="_blank" style="background-color: #00d4ff; color: #000000; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 15px;">
