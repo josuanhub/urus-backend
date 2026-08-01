@@ -12647,8 +12647,7 @@ app.get('/v1/radar/stats', async (req, res) => {
 // ============================================================
 app.post('/v1/radar/enviar-austin-auto', async (req, res) => {
   try {
-    const { soloPrueba } = req.body;
-
+    const soloPrueba = false;
     // 1. Traer todos los contactos de Austin
     const contactosRes = await pool.query(
       `SELECT * FROM contactos_radar 
