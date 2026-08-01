@@ -12196,57 +12196,122 @@ app.get('/v1/radar/contactos', async (req, res) => {
   }
 });
 
-// 4. ENVIAR EMAIL A VARIOS CONTACTOS
+// 4. ENVIAR EMAIL A VARIOS CONTACTOS (CON GOTEO Y PERSONALIZACIÓN POR CIUDAD)
 // POST /v1/radar/enviar-lote
 app.post('/v1/radar/enviar-lote', express.json(), async (req, res) => {
   try {
     const { contactos, plantilla, asunto } = req.body;
 
     if (!Array.isArray(contactos) || contactos.length === 0) {
-      return res.status(400).json({ ok: false, error: 'contactos requerido' });
-    }
-    if (!plantilla) {
-      return res.status(400).json({ ok: false, error: 'plantilla requerida' });
+      return res.status(400).json({ ok: false, error: 'Lista de contactos requerida' });
     }
 
-    let enviados = 0;
-    let errores = 0;
+    // Responder de inmediato al frontend para no bloquear la pantalla
+    res.json({ 
+      ok: true, 
+      mensaje: 'Proceso de envío por goteo iniciado en segundo plano', 
+      total: contactos.length 
+    });
 
-    for (const c of contactos) {
-      if (!c.email) continue;
+    // Proceso en segundo plano (Goteo)
+    (async () => {
+      let enviados = 0;
+      let errores = 0;
 
-      // Reemplazar variables en la plantilla
-      let mensaje = plantilla
-        .replace(/\{\{nombre\}\}/g, c.nombre || 'Cliente')
-        .replace(/\{\{empresa\}\}/g, c.empresa || c.nombre || '')
-        .replace(/\{\{ciudad\}\}/g, c.ciudad || 'tu zona')
-        .replace(/\{\{tipo\}\}/g, c.tipo || 'construcción');
+      for (const c of contactos) {
+        if (!c.email) continue;
 
-      try {
-        // Usar el endpoint de send-email que ya tienes
-        const response = await fetch(`https://${req.hostname}/api/radar/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            destinatario: c.email,
-            nombreCliente: c.nombre,
-            region: c.ciudad,
-            permisos: req.body.permisos || []
-          })
-        });
+        let ubicacionPermiso = c.ciudad || 'Austin, TX';
+        let valorPermiso = 0;
 
-        if (response.ok) enviados++;
-        else errores++;
-      } catch (e) {
-        errores++;
+        try {
+          const permisoRes = await pool.query(
+            `SELECT * FROM radar_eventos 
+             WHERE (region ILIKE $1 OR ubicacion ILIKE $1 OR datos_evento->>'ubicacion' ILIKE $1)
+             AND (valor_estimado > 0 OR (datos_evento->>'valorEstimado')::numeric > 0)
+             ORDER BY fecha_registro DESC LIMIT 1`,
+            [`%${c.ciudad || 'Miami'}%`]
+          );
+
+          if (permisoRes.rows.length > 0) {
+            const p = permisoRes.rows[0];
+            const d = p.datos_evento || {};
+            ubicacionPermiso = p.region || p.ubicacion || d.ubicacion || c.ciudad;
+            valorPermiso = Number(p.valor_estimado || d.valorEstimado || 0);
+          }
+        } catch (e) {
+          console.warn(`[ENVIAR LOTE] Error buscando permiso para ${c.ciudad}:`, e.message);
+        }
+
+        let texto = plantilla
+          .replace(/\{\{nombre\}\}/g, c.nombre || 'Estimado/a')
+          .replace(/\{\{empresa\}\}/g, c.empresa || c.nombre || 'tu empresa')
+          .replace(/\{\{ciudad\}\}/g, c.ciudad || 'tu zona')
+          .replace(/\{\{tipo\}\}/g, c.tipo || 'construcción');
+
+        const mensajeHTML = texto.replace(/\n/g, '<br>');
+        const linkPrueba = `https://www.urusverify.com/api/activar-prueba?email=${encodeURIComponent(c.email)}`;
+        const pixelApertura = `https://www.urusverify.com/api/pixel?email=${encodeURIComponent(c.email)}`;
+
+        const htmlEmail = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #0a0a0f; color: #ffffff; border-radius: 8px;">
+            <div style="padding: 20px;">
+              <p style="font-size: 15px; line-height: 1.6; color: #e0e0e0;">${mensajeHTML}</p>
+              
+              <div style="background: #12121a; border-left: 4px solid #00d4ff; padding: 15px; margin: 25px 0; border-radius: 6px;">
+                <h4 style="margin: 0 0 10px; color: #00d4ff; font-size: 13px; text-transform: uppercase;">📌 Proyecto Detectado en ${c.ciudad || 'tu zona'}:</h4>
+                <p style="margin: 4px 0; font-size: 14px; color: #ffffff;"><strong>Ubicación:</strong> ${ubicacionPermiso}</p>
+                <p style="margin: 4px 0; font-size: 14px; color: #00ff88;"><strong>Valor Estimado:</strong> $${valorPermiso.toLocaleString('en-US')}</p>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${linkPrueba}" target="_blank" style="background-color: #00d4ff; color: #000000; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 15px;">
+                  🚀 Activar Prueba Gratis de 7 Días
+                </a>
+              </div>
+
+              <p style="color: #666666; font-size: 12px; margin-top: 30px; text-align: center;">
+                URUS Intelligence Engine • Detección en Tiempo Real
+              </p>
+            </div>
+            <img src="${pixelApertura}" width="1" height="1" style="display:none;" />
+          </div>
+        `;
+
+        try {
+          const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+            },
+            body: JSON.stringify({
+              from: process.env.EMAIL_FROM || 'URUS Intelligence <reportes@urusverify.com>',
+              to: [c.email],
+              subject: (asunto || 'Nuevas Oportunidades en {{ciudad}}').replace(/\{\{ciudad\}\}/g, c.ciudad || 'tu zona'),
+              html: htmlEmail
+            })
+          });
+
+          if (response.ok) enviados++;
+          else errores++;
+        } catch (e) {
+          errores++;
+        }
+
+        // Retardo de 1.5 segundos entre cada envío (goteo)
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
-    }
 
-    res.json({ ok: true, enviados, errores, total: contactos.length });
+      console.log(`[GOTEO COMPLETADO] Enviados: ${enviados} | Errores: ${errores}`);
+    })();
+
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+
 
 // 5. ESTADÍSTICAS RÁPIDAS
 // GET /v1/radar/stats
