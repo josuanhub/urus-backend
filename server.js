@@ -12198,19 +12198,30 @@ app.get('/v1/radar/contactos', async (req, res) => {
 
 
 
-post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
-  // Recibimos 'emailPrueba' de manera opcional
+// Asegúrate de que la ruta del require coincida exactamente con tu archivo en Railway
+let generarHtmlReporteVip;
+try {
+  const templateModule = require('./urus-radar-template');
+  generarHtmlReporteVip = templateModule.generarHtmlReporteVip;
+} catch (e) {
+  console.error('Error cargando urus-radar-template:', e.message);
+}
+
+
+
+// POST /v1/radar/disparar-campana
+app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
   const { ciudad = 'Austin', emailPrueba = null } = req.body;
 
   try {
     let contactos = [];
 
-    // MODO PRUEBA: Si mandas emailPrueba, NO consulta a la base de contactos masiva
+    // MODO PRUEBA
     if (emailPrueba) {
       contactos = [{ nombre: 'Josuan (Prueba)', email: emailPrueba, ciudad: ciudad }];
-      console.log(`[MODO PRUEBA ACTIVADO] Enviando test a: ${emailPrueba}`);
+      console.log(`[MODO PRUEBA ACTIVADO] Test para: ${emailPrueba}`);
     } else {
-      // MODO REAL: Filtrar en PostgreSQL solo contactos reales con email válido
+      // MODO REAL
       const contactosRes = await pool.query(
         `SELECT * FROM contacts 
          WHERE (ciudad ILIKE $1 OR region ILIKE $1) 
@@ -12223,27 +12234,43 @@ post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
     }
 
     if (contactos.length === 0) {
-      return res.status(404).json({ ok: false, error: `No hay contactos disponibles para ${ciudad}` });
+      return res.status(404).json({ ok: false, error: `No se encontraron contactos con email para ${ciudad}` });
     }
 
-    // Traer los permisos/proyectos destacados de la misma ciudad
-    const permisosRes = await pool.query(
-      `SELECT * FROM radar_eventos 
-       WHERE ubicacion ILIKE $1 OR datos_evento->>'ubicacion' ILIKE $1
-       ORDER BY valor_estimado DESC LIMIT 3`,
-      [`%${ciudad}%`]
-    );
+    // TRAER PERMISOS CON FALLBACK RÁPIDO (Evita congelar la base de datos)
+    let permisosLista = [];
+    try {
+      const permisosRes = await pool.query(
+        `SELECT * FROM radar_eventos 
+         WHERE ubicacion ILIKE $1 OR region ILIKE $1
+         ORDER BY id DESC LIMIT 3`,
+        [`%${ciudad}%`]
+      );
 
-    const permisosLista = permisosRes.rows.map(p => ({
-      ubicacion: p.ubicacion || p.datos_evento?.ubicacion || `${ciudad}, TX`,
-      tipo_tramite: p.tipo_tramite || p.datos_evento?.tipo || 'Permiso Comercial',
-      valorEstimado: Number(p.valor_estimado || p.datos_evento?.valorEstimado || 1250000),
-      solicitante: p.solicitante || p.datos_evento?.solicitante || 'Registro Público'
-    }));
+      permisosLista = permisosRes.rows.map(p => ({
+        ubicacion: p.ubicacion || p.region || `${ciudad}, TX`,
+        tipo_tramite: p.tipo_tramite || 'Permiso Comercial',
+        valorEstimado: Number(p.valor_estimado || 1250000),
+        solicitante: p.solicitante || 'Registro Público'
+      }));
+    } catch (dbErr) {
+      console.warn('Error consultando radar_eventos, usando mock de respaldo:', dbErr.message);
+    }
+
+    // Fallback por si la DB no devolvió permisos
+    if (permisosLista.length === 0) {
+      permisosLista = [{
+        ubicacion: `${ciudad}, TX - Registro Oficial`,
+        tipo_tramite: 'Permiso Comercial / Desarrollo',
+        valorEstimado: 2500000,
+        solicitante: 'Registro Público Autorizado'
+      }];
+    }
 
     const totalVolumen = permisosLista.reduce((acc, curr) => acc + curr.valorEstimado, 0);
 
-    // Responder de inmediato al Dashboard
+    // RESPONDER DE INMEDIATO AL CLIENTE (200 OK)
+    // Esto previene el Error 502 Bad Gateway
     res.json({
       ok: true,
       modo: emailPrueba ? 'PRUEBA' : 'PRODUCCIÓN',
@@ -12253,19 +12280,26 @@ post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
       total_contactos: contactos.length
     });
 
-    // Proceso de Goteo en Segundo Plano
+    // PROCESO DE GOTEO EN SEGUNDO PLANO
     (async () => {
       let enviados = 0;
       let errores = 0;
 
       for (const c of contactos) {
-        const htmlEmail = generarHtmlReporteVip({
-          nombreCliente: c.nombre || c.empresa || 'Estimado/a',
-          email: c.email,
-          region: ciudad,
-          totalValor: totalVolumen,
-          permisos: permisosLista
-        });
+        let htmlEmail = '';
+
+        if (typeof generarHtmlReporteVip === 'function') {
+          htmlEmail = generarHtmlReporteVip({
+            nombreCliente: c.nombre || c.empresa || 'Estimado/a',
+            email: c.email,
+            region: ciudad,
+            totalValor: totalVolumen,
+            permisos: permisosLista
+          });
+        } else {
+          // Plantilla simple de emergencia si falla la importación
+          htmlEmail = `<h2>Alerta URUS - ${ciudad}</h2><p>Hola ${c.nombre}, oportundades detectadas en ${ciudad}.</p>`;
+        }
 
         try {
           const response = await fetch('https://api.resend.com/emails', {
@@ -12288,17 +12322,23 @@ post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
           errores++;
         }
 
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Si es prueba manda de inmediato, si es lote espera 3s
+        if (!emailPrueba) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
       }
 
       console.log(`[CAMPAÑA ${ciudad.toUpperCase()}] Finalizada. Enviados: ${enviados} | Errores: ${errores}`);
     })();
 
   } catch (err) {
-    console.error('Error procesando campaña:', err.message);
-    if (!res.headersSent) res.status(500).json({ ok: false, error: err.message });
+    console.error('Error fatal en disparar-campana:', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
   }
-  
+});
+
 
 
 // 5. ESTADÍSTICAS RÁPIDAS
