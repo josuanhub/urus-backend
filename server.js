@@ -12196,148 +12196,121 @@ app.get('/v1/radar/contactos', async (req, res) => {
   }
 });
 
-
-
-// Asegúrate de que la ruta del require coincida exactamente con tu archivo en Railway
-let generarHtmlReporteVip;
-try {
-  const templateModule = require('./urus-radar-template');
-  generarHtmlReporteVip = templateModule.generarHtmlReporteVip;
-} catch (e) {
-  console.error('Error cargando urus-radar-template:', e.message);
-}
-
-
-// Carga segura del módulo (sin re-declarar la variable)
-try {
-  const templateModule = require('./urus-radar-template');
-  generarHtmlReporteVip = templateModule.generarHtmlReporteVip;
-} catch (e) {
-  console.warn('Advertencia cargando urus-radar-template:', e.message);
-}
-
-
-// =========================================================
-// NUEVO ENDPOINT: DISPARAR CAMPAÑA POR GOTEO (AUSTIN / B2B)
-// =========================================================
-app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
-  const { ciudad = 'Austin', emailPrueba = null } = req.body;
-
+// 4. ENVIAR EMAIL A VARIOS CONTACTOS (CON GOTEO Y PERSONALIZACIÓN POR CIUDAD)
+// POST /v1/radar/enviar-lote
+app.post('/v1/radar/enviar-lote', express.json(), async (req, res) => {
   try {
-    let contactos = [];
+    const { contactos, plantilla, asunto } = req.body;
 
-    // 1. MODO PRUEBA vs MODO REAL
-    if (emailPrueba) {
-      contactos = [{ nombreCliente: 'Josuan (Prueba)', destinatario: emailPrueba, region: ciudad }];
-      console.log(`[MODO PRUEBA ACTIVADO] Test para: ${emailPrueba}`);
-    } else {
-      const contactosRes = await pool.query(
-        `SELECT * FROM contacts 
-         WHERE (ciudad ILIKE $1 OR region ILIKE $1) 
-           AND email IS NOT NULL 
-           AND email NOT ILIKE '%N/A%' 
-           AND email LIKE '%@%'`,
-        [`%${ciudad}%`]
-      );
-      contactos = contactosRes.rows.map(c => ({
-        nombreCliente: c.nombre || c.empresa || 'Cliente VIP',
-        destinatario: c.email,
-        region: ciudad
-      }));
+    if (!Array.isArray(contactos) || contactos.length === 0) {
+      return res.status(400).json({ ok: false, error: 'Lista de contactos requerida' });
     }
 
-    if (contactos.length === 0) {
-      return res.status(404).json({ ok: false, error: `No se encontraron contactos con email para ${ciudad}` });
-    }
-
-    // 2. BUSCAR PERMISOS EN POSTGRESQL (Con datos de respaldo si la tabla está vacía)
-    let permisosLista = [];
-    try {
-      const permisosRes = await pool.query(
-        `SELECT * FROM radar_eventos 
-         WHERE ubicacion ILIKE $1 OR region ILIKE $1
-         ORDER BY id DESC LIMIT 3`,
-        [`%${ciudad}%`]
-      );
-
-      permisosLista = permisosRes.rows.map((p, index) => ({
-        caso: p.caso || `2026-${ciudad.substring(0,3).toUpperCase()}-00${index + 1}`,
-        tipo_tramite: p.tipo_tramite || 'Commercial Permitting',
-        solicitante: p.solicitante || 'Registro Público',
-        ubicacion: p.ubicacion || p.region || `${ciudad}, TX`,
-        valorEstimado: Number(p.valor_estimado || 1250000),
-        score: Number(p.score || 90)
-      }));
-    } catch (dbErr) {
-      console.warn('Advertencia buscando en radar_eventos, usando respaldo:', dbErr.message);
-    }
-
-    if (permisosLista.length === 0) {
-      permisosLista = [{
-        caso: `2026-${ciudad.substring(0,3).toUpperCase()}-001`,
-        tipo_tramite: 'Development Permitting',
-        solicitante: 'Registro Oficial',
-        ubicacion: `${ciudad}, TX`,
-        valorEstimado: 1250000,
-        score: 95
-      }];
-    }
-
-    // 3. RESPONDER DE INMEDIATO AL FRONTEND (Evita el error 502 Bad Gateway)
-    res.json({
-      ok: true,
-      modo: emailPrueba ? 'PRUEBA' : 'PRODUCCIÓN',
-      mensaje: emailPrueba 
-        ? `Correo de prueba enviado a ${emailPrueba}` 
-        : `Campaña iniciada para ${contactos.length} contactos en ${ciudad}`,
-      total_contactos: contactos.length
+    // Responder de inmediato al frontend para no bloquear la pantalla
+    res.json({ 
+      ok: true, 
+      mensaje: 'Proceso de envío por goteo iniciado en segundo plano', 
+      total: contactos.length 
     });
 
-    // 4. GOTEO EN SEGUNDO PLANO
-    // Reutiliza directo tu endpoint probado /api/radar/send-email
+    // Proceso en segundo plano (Goteo)
     (async () => {
       let enviados = 0;
       let errores = 0;
-      const PORT = process.env.PORT || 3000;
 
       for (const c of contactos) {
-        const payload = {
-          destinatario: c.destinatario,
-          nombreCliente: c.nombreCliente,
-          region: c.region,
-          permisos: permisosLista
-        };
+        if (!c.email) continue;
+
+        let ubicacionPermiso = c.ciudad || 'Austin, TX';
+        let valorPermiso = 0;
 
         try {
-          const response = await fetch(`http://127.0.0.1:${PORT}/api/radar/send-email`, {
+          const permisoRes = await pool.query(
+            `SELECT * FROM radar_eventos 
+             WHERE (region ILIKE $1 OR ubicacion ILIKE $1 OR datos_evento->>'ubicacion' ILIKE $1)
+             AND (valor_estimado > 0 OR (datos_evento->>'valorEstimado')::numeric > 0)
+             ORDER BY fecha_registro DESC LIMIT 1`,
+            [`%${c.ciudad || 'Miami'}%`]
+          );
+
+          if (permisoRes.rows.length > 0) {
+            const p = permisoRes.rows[0];
+            const d = p.datos_evento || {};
+            ubicacionPermiso = p.region || p.ubicacion || d.ubicacion || c.ciudad;
+            valorPermiso = Number(p.valor_estimado || d.valorEstimado || 0);
+          }
+        } catch (e) {
+          console.warn(`[ENVIAR LOTE] Error buscando permiso para ${c.ciudad}:`, e.message);
+        }
+
+        let texto = plantilla
+          .replace(/\{\{nombre\}\}/g, c.nombre || 'Estimado/a')
+          .replace(/\{\{empresa\}\}/g, c.empresa || c.nombre || 'tu empresa')
+          .replace(/\{\{ciudad\}\}/g, c.ciudad || 'tu zona')
+          .replace(/\{\{tipo\}\}/g, c.tipo || 'construcción');
+
+        const mensajeHTML = texto.replace(/\n/g, '<br>');
+        const linkPrueba = `https://www.urusverify.com/api/activar-prueba?email=${encodeURIComponent(c.email)}`;
+        const pixelApertura = `https://www.urusverify.com/api/pixel?email=${encodeURIComponent(c.email)}`;
+
+        const htmlEmail = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #0a0a0f; color: #ffffff; border-radius: 8px;">
+            <div style="padding: 20px;">
+              <p style="font-size: 15px; line-height: 1.6; color: #e0e0e0;">${mensajeHTML}</p>
+              
+              <div style="background: #12121a; border-left: 4px solid #00d4ff; padding: 15px; margin: 25px 0; border-radius: 6px;">
+                <h4 style="margin: 0 0 10px; color: #00d4ff; font-size: 13px; text-transform: uppercase;">📌 Proyecto Detectado en ${c.ciudad || 'tu zona'}:</h4>
+                <p style="margin: 4px 0; font-size: 14px; color: #ffffff;"><strong>Ubicación:</strong> ${ubicacionPermiso}</p>
+                <p style="margin: 4px 0; font-size: 14px; color: #00ff88;"><strong>Valor Estimado:</strong> $${valorPermiso.toLocaleString('en-US')}</p>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${linkPrueba}" target="_blank" style="background-color: #00d4ff; color: #000000; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 15px;">
+                  🚀 Activar Prueba Gratis de 7 Días
+                </a>
+              </div>
+
+              <p style="color: #666666; font-size: 12px; margin-top: 30px; text-align: center;">
+                URUS Intelligence Engine • Detección en Tiempo Real
+              </p>
+            </div>
+            <img src="${pixelApertura}" width="1" height="1" style="display:none;" />
+          </div>
+        `;
+
+        try {
+          const response = await fetch('https://api.resend.com/emails', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+            },
+            body: JSON.stringify({
+              from: process.env.EMAIL_FROM || 'URUS Intelligence <reportes@urusverify.com>',
+              to: [c.email],
+              subject: (asunto || 'Nuevas Oportunidades en {{ciudad}}').replace(/\{\{ciudad\}\}/g, c.ciudad || 'tu zona'),
+              html: htmlEmail
+            })
           });
 
           if (response.ok) enviados++;
           else errores++;
         } catch (e) {
-          console.error(`Error enviando a ${c.destinatario}:`, e.message);
           errores++;
         }
 
-        // Si es la lista masiva real, aplica el retardo de 3 segundos
-        if (!emailPrueba) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
+        // Retardo de 1.5 segundos entre cada envío (goteo)
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
-      console.log(`[CAMPAÑA ${ciudad.toUpperCase()}] Finalizada. Enviados: ${enviados} | Errores: ${errores}`);
+      console.log(`[GOTEO COMPLETADO] Enviados: ${enviados} | Errores: ${errores}`);
     })();
 
   } catch (err) {
-    console.error('Error en disparar-campana:', err.message);
-    if (!res.headersSent) {
-      res.status(500).json({ ok: false, error: err.message });
-    }
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
+
 
 
 // 5. ESTADÍSTICAS RÁPIDAS
