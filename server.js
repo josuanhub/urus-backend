@@ -12439,6 +12439,144 @@ app.get('/api/activar-prueba', async (req, res) => {
 
 
 
+// 1. OBTENER EL ÚLTIMO PERMISO DE ALTO VALOR (Para adjuntar en los emails automáticos)
+app.get('/v1/radar/ultimo-permiso', async (req, res) => {
+  try {
+    const permisoResult = await pool.query(
+      `SELECT * FROM radar_eventos 
+       WHERE (valor_estimado > 0 OR (datos_evento->>'valorEstimado')::numeric > 0)
+       ORDER BY fecha_registro DESC 
+       LIMIT 1`
+    );
+    const permiso = permisoResult.rows[0] || {};
+    res.json({ ok: true, permiso });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 2. ENVIAR LOTE CON TRACKING Y MENSAJE PERSONALIZADO CON BOTÓN DE ACTIVACIÓN
+app.post('/v1/radar/enviar-lote', express.json(), async (req, res) => {
+  try {
+    const { contactos, plantilla, asunto, permisos } = req.body;
+
+    if (!Array.isArray(contactos) || contactos.length === 0) {
+      return res.status(400).json({ ok: false, error: 'Lista de contactos requerida' });
+    }
+
+    // Traer el último permiso real para inyectar los datos en el correo
+    const permisoResult = await pool.query(
+      `SELECT * FROM radar_eventos 
+       WHERE (valor_estimado > 0 OR (datos_evento->>'valorEstimado')::numeric > 0)
+       ORDER BY fecha_registro DESC 
+       LIMIT 1`
+    );
+    const p = permisoResult.rows[0] || {};
+    const datos = p.datos_evento || {};
+    const ubicacionPermiso = p.region || p.ubicacion || datos.ubicacion || 'Austin, TX';
+    const valorPermiso = Number(p.valor_estimado || datos.valorEstimado || 0);
+
+    let enviados = 0;
+    let errores = 0;
+
+    for (const c of contactos) {
+      if (!c.email) continue;
+
+      // Reemplazo dinámico de etiquetas personalizadas
+      let mensajeTexto = plantilla
+        .replace(/\{\{nombre\}\}/g, c.nombre || 'Estimado/a')
+        .replace(/\{\{empresa\}\}/g, c.empresa || 'tu empresa')
+        .replace(/\{\{ciudad\}\}/g, c.ciudad || 'tu zona')
+        .replace(/\{\{tipo\}\}/g, c.tipo || 'construcción');
+
+      // Convertir saltos de línea a <br> para el HTML
+      const mensajeFormatted = mensajeTexto.replace(/\n/g, '<br>');
+
+      // URL única para activar prueba gratis de 7 días
+      const linkPrueba = `https://www.urusverify.com/api/activar-prueba?email=${encodeURIComponent(c.email)}`;
+
+      // Plantilla HTML profesional de URUS Intelligence
+      const htmlEmail = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #0a0a0f; color: #ffffff; border-radius: 8px;">
+          <div style="padding: 20px;">
+            <p style="font-size: 15px; line-height: 1.6; color: #e0e0e0;">${mensajeFormatted}</p>
+            
+            <!-- Tarjeta del Permiso Detectado -->
+            <div style="background: #12121a; border-left: 4px solid #00d4ff; padding: 15px; margin: 25px 0; border-radius: 6px;">
+              <h4 style="margin: 0 0 10px; color: #00d4ff; font-size: 14px; text-transform: uppercase;">📌 Proyecto Reciente Detectado:</h4>
+              <p style="margin: 4px 0; font-size: 14px; color: #ffffff;"><strong>Ubicación:</strong> ${ubicacionPermiso}</p>
+              <p style="margin: 4px 0; font-size: 14px; color: #00ff88;"><strong>Valor Estimado:</strong> $${valorPermiso.toLocaleString('en-US')}</p>
+            </div>
+
+            <!-- Botón de Llamado a la Acción -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${linkPrueba}" target="_blank" style="background-color: #00d4ff; color: #000000; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 15px;">
+                🚀 Activar Prueba Gratis de 7 Días
+              </a>
+            </div>
+
+            <p style="color: #666666; font-size: 12px; margin-top: 30px; text-align: center;">
+              URUS Intelligence Engine • Detección e Inteligencia Comercial en Tiempo Real
+            </p>
+          </div>
+        </div>
+      `;
+
+      try {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+          },
+          body: JSON.stringify({
+            from: process.env.EMAIL_FROM || 'URUS Intelligence <reportes@urusverify.com>',
+            to: [c.email],
+            subject: asunto.replace(/\{\{ciudad\}\}/g, c.ciudad || 'tu zona'),
+            html: htmlEmail
+          })
+        });
+
+        if (response.ok) {
+          enviados++;
+        } else {
+          errores++;
+        }
+      } catch (e) {
+        errores++;
+      }
+    }
+
+    res.json({ ok: true, enviados, errores, total: contactos.length });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 3. STATS CON MÉTRICAS COMPLETAS DE SUSCRIPCIÓN
+app.get('/v1/radar/stats', async (req, res) => {
+  try {
+    const contactos = await pool.query('SELECT COUNT(*) as total FROM contactos_radar');
+    const permisos = await pool.query('SELECT COUNT(*) as total FROM radar_eventos');
+    const activos = await pool.query("SELECT COUNT(*) as total FROM suscriptores WHERE estado = 'activo'");
+    const porCiudad = await pool.query('SELECT ciudad, COUNT(*) as total FROM contactos_radar GROUP BY ciudad ORDER BY total DESC');
+
+    res.json({
+      ok: true,
+      stats: {
+        contactos: parseInt(contactos.rows[0].total),
+        permisos: parseInt(permisos.rows[0].total),
+        activos: parseInt(activos.rows[0].total),
+        porCiudad: porCiudad.rows
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+
 
 
 // ---------- Boot ----------
