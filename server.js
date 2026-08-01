@@ -12330,10 +12330,9 @@ app.post('/v1/radar/contactos', async (req, res) => {
 
 
 
-// Endpoint para activar prueba gratis desde el botón del email (CAMBIADO A GET)
+// Endpoint para activar prueba gratis desde el botón del email (GET)
 app.get('/api/activar-prueba', async (req, res) => {
   try {
-    // Cuando viene por enlace <a>, el dato viene en req.query, no en req.body
     const { email } = req.query;
 
     if (!email) {
@@ -12345,7 +12344,7 @@ app.get('/api/activar-prueba', async (req, res) => {
       `);
     }
 
-    // 1. GUARDAR EN BD (PostgreSQL / Supabase pool)
+    // 1. GUARDAR EN BD
     await pool.query(
       `INSERT INTO suscriptores (email, estado, fecha_activacion, fecha_expiracion)
        VALUES ($1, 'activo', NOW(), NOW() + INTERVAL '7 days')
@@ -12353,17 +12352,53 @@ app.get('/api/activar-prueba', async (req, res) => {
       [email]
     );
 
-    // 2. BUSCAR PERMISO RECIENTE PARA INCLUIRLO
+    // 2. BUSCAR EL ÚLTIMO PERMISO REAL (filtrando los de $0)
     const permisoResult = await pool.query(
       `SELECT * FROM radar_eventos 
+       WHERE (valor_estimado > 0 OR (datos_evento->>'valorEstimado')::numeric > 0)
        ORDER BY fecha_registro DESC 
        LIMIT 1`
     );
     
     const permiso = permisoResult.rows[0] || {};
     const datos = permiso.datos_evento || {};
+    const ubicacionFinal = permiso.region || permiso.ubicacion || datos.ubicacion || 'Austin, TX';
+    const valorFinal = Number(permiso.valor_estimado || datos.valorEstimado || 0);
 
-    // 3. RESPONDER AL NAVEGADOR CON UNA PÁGINA DE CONFIRMACIÓN
+    // 3. ENVIAR CORREO DE BIENVENIDA / CONFIRMACIÓN POR RESEND
+    if (process.env.RESEND_API_KEY) {
+      const htmlBienvenida = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #111; color: #fff; border-radius: 8px;">
+          <h2 style="color: #4CAF50; margin-top: 0;">🔓 Acceso VIP Activado</h2>
+          <p>Hola,</p>
+          <p>Tu prueba gratuita de 7 días con <strong>URUS Intelligence</strong> está oficialmente activa para <strong>${email}</strong>.</p>
+          
+          <div style="background: #222; border-left: 4px solid #1a73e8; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin: 0 0 10px; color: #1a73e8;">📌 Último Proyecto Detectado:</h3>
+            <p style="margin: 5px 0;"><strong>Ubicación:</strong> ${ubicacionFinal}</p>
+            <p style="margin: 5px 0;"><strong>Valor Estimado:</strong> $${valorFinal.toLocaleString('en-US')}</p>
+          </div>
+          
+          <p style="color: #aaa; font-size: 13px;">Comenzarás a recibir nuestras alertas de alto valor directamente en tu correo.</p>
+        </div>
+      `;
+
+      fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || 'URUS Intelligence <reportes@urusverify.com>',
+          to: [email],
+          subject: '🔓 Acceso VIP Activado — URUS Radar',
+          html: htmlBienvenida
+        })
+      }).catch(err => console.error('[ACTIVACIÓN] Error enviando email bienvenida:', err));
+    }
+
+    // 4. RESPONDER AL NAVEGADOR
     return res.send(`
       <!DOCTYPE html>
       <html>
@@ -12380,11 +12415,11 @@ app.get('/api/activar-prueba', async (req, res) => {
           <div style="background: #222222; padding: 20px; border-radius: 8px; text-align: left; margin-bottom: 30px; border-left: 4px solid #1a73e8;">
             <p style="margin: 0 0 10px 0; font-size: 14px; color: #888888;">Último proyecto detectado por el Radar:</p>
             <p style="margin: 0; font-size: 16px; font-weight: bold; color: #ffffff;">
-              📍 ${permiso.region || permiso.ubicacion || 'Zona METRO'} — $${Number(permiso.valor_estimado || permiso.valorEstimado || 0).toLocaleString('en-US')}
+              📍 ${ubicacionFinal} — $${valorFinal.toLocaleString('en-US')}
             </p>
           </div>
           <p style="font-size: 14px; color: #888888;">
-            Comenzarás a recibir nuestras alertas de alto valor directamente en tu correo y canales vinculados.
+            Comenzarás a recibir nuestras alertas de alto valor directamente en tu correo.
           </p>
         </div>
       </body>
@@ -12401,7 +12436,6 @@ app.get('/api/activar-prueba', async (req, res) => {
     `);
   }
 });
-
 
 
 
