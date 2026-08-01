@@ -12217,17 +12217,19 @@ try {
 }
 
 
-// POST /v1/radar/disparar-campana
+// =========================================================
+// NUEVO ENDPOINT: DISPARAR CAMPAÑA POR GOTEO (AUSTIN / B2B)
+// =========================================================
 app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
   const { ciudad = 'Austin', emailPrueba = null } = req.body;
 
   try {
     let contactos = [];
 
-    // MODO PRUEBA vs MODO REAL
+    // 1. MODO PRUEBA vs MODO REAL
     if (emailPrueba) {
       contactos = [{ nombreCliente: 'Josuan (Prueba)', destinatario: emailPrueba, region: ciudad }];
-      console.log(`[MODO PRUEBA ACTIVADO] Test enviado a: ${emailPrueba}`);
+      console.log(`[MODO PRUEBA ACTIVADO] Test para: ${emailPrueba}`);
     } else {
       const contactosRes = await pool.query(
         `SELECT * FROM contacts 
@@ -12245,10 +12247,10 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
     }
 
     if (contactos.length === 0) {
-      return res.status(404).json({ ok: false, error: `No hay contactos con email para ${ciudad}` });
+      return res.status(404).json({ ok: false, error: `No se encontraron contactos con email para ${ciudad}` });
     }
 
-    // OBTENER PERMISOS DE LA DB
+    // 2. BUSCAR PERMISOS EN POSTGRESQL (Con datos de respaldo si la tabla está vacía)
     let permisosLista = [];
     try {
       const permisosRes = await pool.query(
@@ -12267,10 +12269,9 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
         score: Number(p.score || 90)
       }));
     } catch (dbErr) {
-      console.warn('Error consultando radar_eventos, usando respaldo:', dbErr.message);
+      console.warn('Advertencia buscando en radar_eventos, usando respaldo:', dbErr.message);
     }
 
-    // Fallback por si la DB está vacía
     if (permisosLista.length === 0) {
       permisosLista = [{
         caso: `2026-${ciudad.substring(0,3).toUpperCase()}-001`,
@@ -12282,17 +12283,18 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
       }];
     }
 
-    // RESPUESTA INMEDIATA AL DASHBOARD (200 OK)
+    // 3. RESPONDER DE INMEDIATO AL FRONTEND (Evita el error 502 Bad Gateway)
     res.json({
       ok: true,
       modo: emailPrueba ? 'PRUEBA' : 'PRODUCCIÓN',
       mensaje: emailPrueba 
-        ? `Iniciado test para ${emailPrueba}` 
+        ? `Correo de prueba enviado a ${emailPrueba}` 
         : `Campaña iniciada para ${contactos.length} contactos en ${ciudad}`,
       total_contactos: contactos.length
     });
 
-    // GOTEO EN SEGUNDO PLANO (Reutiliza tu endpoint /api/radar/send-email)
+    // 4. GOTEO EN SEGUNDO PLANO
+    // Reutiliza directo tu endpoint probado /api/radar/send-email
     (async () => {
       let enviados = 0;
       let errores = 0;
@@ -12307,7 +12309,6 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
         };
 
         try {
-          // Llamada interna a tu endpoint existente
           const response = await fetch(`http://127.0.0.1:${PORT}/api/radar/send-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -12317,11 +12318,11 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
           if (response.ok) enviados++;
           else errores++;
         } catch (e) {
-          console.error(`Error reenviando a /api/radar/send-email para ${c.destinatario}:`, e.message);
+          console.error(`Error enviando a ${c.destinatario}:`, e.message);
           errores++;
         }
 
-        // Si es goteo masivo, espera 3 segundos entre envíos
+        // Si es la lista masiva real, aplica el retardo de 3 segundos
         if (!emailPrueba) {
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
