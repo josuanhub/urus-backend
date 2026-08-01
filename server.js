@@ -12226,8 +12226,8 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
 
     // MODO PRUEBA vs MODO REAL
     if (emailPrueba) {
-      contactos = [{ nombre: 'Josuan (Prueba)', email: emailPrueba, ciudad: ciudad }];
-      console.log(`[MODO PRUEBA ACTIVADO] Test para: ${emailPrueba}`);
+      contactos = [{ nombreCliente: 'Josuan (Prueba)', destinatario: emailPrueba, region: ciudad }];
+      console.log(`[MODO PRUEBA ACTIVADO] Test enviado a: ${emailPrueba}`);
     } else {
       const contactosRes = await pool.query(
         `SELECT * FROM contacts 
@@ -12237,14 +12237,18 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
            AND email LIKE '%@%'`,
         [`%${ciudad}%`]
       );
-      contactos = contactosRes.rows;
+      contactos = contactosRes.rows.map(c => ({
+        nombreCliente: c.nombre || c.empresa || 'Cliente VIP',
+        destinatario: c.email,
+        region: ciudad
+      }));
     }
 
     if (contactos.length === 0) {
-      return res.status(404).json({ ok: false, error: `No se encontraron contactos con email para ${ciudad}` });
+      return res.status(404).json({ ok: false, error: `No hay contactos con email para ${ciudad}` });
     }
 
-    // OBTENER PERMISOS DE LA BD CON FALLBACK
+    // OBTENER PERMISOS DE LA DB
     let permisosLista = [];
     try {
       const permisosRes = await pool.query(
@@ -12254,78 +12258,70 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
         [`%${ciudad}%`]
       );
 
-      permisosLista = permisosRes.rows.map(p => ({
+      permisosLista = permisosRes.rows.map((p, index) => ({
+        caso: p.caso || `2026-${ciudad.substring(0,3).toUpperCase()}-00${index + 1}`,
+        tipo_tramite: p.tipo_tramite || 'Commercial Permitting',
+        solicitante: p.solicitante || 'Registro Público',
         ubicacion: p.ubicacion || p.region || `${ciudad}, TX`,
-        tipo_tramite: p.tipo_tramite || 'Permiso Comercial',
         valorEstimado: Number(p.valor_estimado || 1250000),
-        solicitante: p.solicitante || 'Registro Público'
+        score: Number(p.score || 90)
       }));
     } catch (dbErr) {
-      console.warn('Error consultando radar_eventos, usando mock de respaldo:', dbErr.message);
+      console.warn('Error consultando radar_eventos, usando respaldo:', dbErr.message);
     }
 
+    // Fallback por si la DB está vacía
     if (permisosLista.length === 0) {
       permisosLista = [{
-        ubicacion: `${ciudad}, TX - Registro Oficial`,
-        tipo_tramite: 'Permiso Comercial / Desarrollo',
-        valorEstimado: 2500000,
-        solicitante: 'Registro Público Autorizado'
+        caso: `2026-${ciudad.substring(0,3).toUpperCase()}-001`,
+        tipo_tramite: 'Development Permitting',
+        solicitante: 'Registro Oficial',
+        ubicacion: `${ciudad}, TX`,
+        valorEstimado: 1250000,
+        score: 95
       }];
     }
 
-    const totalVolumen = permisosLista.reduce((acc, curr) => acc + curr.valorEstimado, 0);
-
-    // RESPUESTA INMEDIATA (Previene Bad Gateway 502)
+    // RESPUESTA INMEDIATA AL DASHBOARD (200 OK)
     res.json({
       ok: true,
       modo: emailPrueba ? 'PRUEBA' : 'PRODUCCIÓN',
       mensaje: emailPrueba 
-        ? `Correo de prueba enviado a ${emailPrueba}` 
+        ? `Iniciado test para ${emailPrueba}` 
         : `Campaña iniciada para ${contactos.length} contactos en ${ciudad}`,
       total_contactos: contactos.length
     });
 
-    // GOTEO EN SEGUNDO PLANO
+    // GOTEO EN SEGUNDO PLANO (Reutiliza tu endpoint /api/radar/send-email)
     (async () => {
       let enviados = 0;
       let errores = 0;
+      const PORT = process.env.PORT || 3000;
 
       for (const c of contactos) {
-        let htmlEmail = '';
-
-        if (typeof generarHtmlReporteVip === 'function') {
-          htmlEmail = generarHtmlReporteVip({
-            nombreCliente: c.nombre || c.empresa || 'Estimado/a',
-            email: c.email,
-            region: ciudad,
-            totalValor: totalVolumen,
-            permisos: permisosLista
-          });
-        } else {
-          htmlEmail = `<h2>Alerta URUS - ${ciudad}</h2><p>Hola ${c.nombre}, oportunidades detectadas en ${ciudad}.</p>`;
-        }
+        const payload = {
+          destinatario: c.destinatario,
+          nombreCliente: c.nombreCliente,
+          region: c.region,
+          permisos: permisosLista
+        };
 
         try {
-          const response = await fetch('https://api.resend.com/emails', {
+          // Llamada interna a tu endpoint existente
+          const response = await fetch(`http://127.0.0.1:${PORT}/api/radar/send-email`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
-            },
-            body: JSON.stringify({
-              from: process.env.EMAIL_FROM || 'URUS Intelligence <reportes@urusverify.com>',
-              to: [c.email],
-              subject: `🚨 ALERTA URUS: Oportunidades detectadas en ${ciudad}`,
-              html: htmlEmail
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
           });
 
           if (response.ok) enviados++;
           else errores++;
         } catch (e) {
+          console.error(`Error reenviando a /api/radar/send-email para ${c.destinatario}:`, e.message);
           errores++;
         }
 
+        // Si es goteo masivo, espera 3 segundos entre envíos
         if (!emailPrueba) {
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
@@ -12335,13 +12331,12 @@ app.post('/v1/radar/disparar-campana', express.json(), async (req, res) => {
     })();
 
   } catch (err) {
-    console.error('Error fatal en disparar-campana:', err.message);
+    console.error('Error en disparar-campana:', err.message);
     if (!res.headersSent) {
       res.status(500).json({ ok: false, error: err.message });
     }
   }
 });
-
 
 
 // 5. ESTADÍSTICAS RÁPIDAS
