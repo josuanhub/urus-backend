@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>URUS Agricultural Intelligence — Puerto Rico Farms 2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:#f3f4f6;color:#111827;font-size:14px}
+
+/* LAYOUT */
+.page{max-width:960px;margin:0 auto;background:white}
+
+/* PORTADA */
+.cover{background:#0b0b0b;color:white;padding:72px 64px;min-height:100vh;position:relative;border-left:8px solid #c9a24d}
+.cover-urus{font-size:72px;font-weight:700;letter-spacing:-2px;color:white;line-height:1}
+.cover-sub{font-size:24px;color:#c9a24d;margin-top:12px}
+.cover-divider{width:80px;height:3px;background:#c9a24d;margin:32px 0}
+.cover-title{font-size:36px;font-weight:700;line-height:1.25;max-width:620px;margin-bottom:40px}
+.cover-meta{color:#9ca3af;line-height:2.2;font-size:14px}
+.cover-meta strong{color:#d1d5db}
+.cover-intel{margin-top:48px;background:#0f0f0f;border:1px solid #374151;border-left:6px solid #dc2626;padding:24px 28px;border-radius:0 10px 10px 0;max-width:680px}
+.cover-intel-label{font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.cover-intel-text{font-size:15px;color:#d1d5db;line-height:1.75}
+.cover-intel-text strong{color:white}
+.cover-still{margin-top:20px;background:#0a1a0a;border:1px solid #166534;border-left:6px solid #16a34a;padding:20px 28px;border-radius:0 10px 10px 0;max-width:680px}
+.cover-still-text{font-size:15px;color:#86efac;line-height:1.75}
+.cover-still-text strong{color:#d1fae5}
+.cover-footer{position:absolute;bottom:48px;right:64px;font-size:12px;color:#4b5563;letter-spacing:1px}
+
+/* SECCIONES */
+.section{padding:56px 64px;border-bottom:1px solid #f3f4f6}
+.section:last-child{border-bottom:none}
+.section-label{font-size:11px;color:#9ca3af;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+.section-title{font-size:28px;font-weight:700;color:#111827;margin-bottom:6px;padding-bottom:10px;border-bottom:4px solid #c9a24d}
+
+/* MÉTRICAS */
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:28px 0}
+.metric{background:#111827;border-radius:10px;padding:18px 14px;color:white}
+.metric-label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.metric-value{font-size:26px;font-weight:700;color:#c9a24d;line-height:1}
+.metric-sub{font-size:11px;color:#6b7280;margin-top:8px;line-height:1.45}
+
+/* NARRATIVA DE URGENCIA */
+.urgency-block{background:#0b0b0b;border-radius:12px;padding:28px 32px;margin:24px 0;border-left:6px solid #c9a24d}
+.urgency-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+.urgency-text{font-size:16px;color:#d1d5db;line-height:1.85}
+.urgency-text strong{color:#c9a24d}
+
+/* GRANT CARDS */
+.cat-section{margin:32px 0 0}
+.cat-header{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid #f3f4f6}
+.cat-emoji{font-size:20px}
+.cat-title{font-size:17px;font-weight:700;color:#111827}
+.cat-count{font-size:12px;color:#9ca3af;margin-left:auto}
+
+.grant-card{border:1px solid #e5e7eb;border-radius:10px;margin-bottom:14px;overflow:hidden}
+.grant-top{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;border-bottom:1px solid #f3f4f6}
+.grant-top-left h3{font-size:15px;font-weight:700;color:#111827;margin-bottom:3px}
+.grant-top-agency{font-size:12px;color:#6b7280}
+.grant-top-right{flex-shrink:0;margin-left:14px;text-align:right}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:4px;white-space:nowrap}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-orange{background:#fef3c7;color:#92400e}
+.badge-green{background:#d1fae5;color:#065f46}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-purple{background:#ede9fe;color:#5b21b6}
+.badge-gray{background:#f3f4f6;color:#374151}
+.badge-block{display:block}
+
+.grant-body{padding:16px 20px;background:#fafafa}
+.grant-amount{font-size:15px;font-weight:700;color:#16a34a;margin-bottom:6px}
+.grant-deadline{font-size:13px;font-weight:700;margin-bottom:10px}
+.grant-desc{font-size:13px;color:#4b5563;line-height:1.7;margin-bottom:10px}
+.grant-detail{font-size:13px;color:#374151;margin-bottom:6px;line-height:1.55}
+.grant-detail strong{color:#111827}
+
+.grant-action{background:#111827;padding:12px 16px;border-radius:8px;margin-top:12px}
+.grant-action-label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+.grant-action-text{font-size:13px;color:#e5e7eb;line-height:1.55}
+.grant-contact{font-size:12px;color:#6b7280;margin-top:8px}
+
+/* TABLA RESUMEN */
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:#111827}
+th{color:white;padding:10px 12px;text-align:left;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;font-weight:600}
+tbody tr:nth-child(even){background:#f9fafb}
+tbody tr:nth-child(odd){background:white}
+td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+td:first-child{font-weight:600;color:#111827}
+
+/* BOXES */
+.box-dark{background:#0b0b0b;border-radius:10px;padding:24px 28px;margin:20px 0;border-left:5px solid #c9a24d}
+.box-dark-label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px}
+.box-dark-text{font-size:14px;color:#d1d5db;line-height:1.85}
+.box-dark-text strong{color:#c9a24d}
+
+.box-gold{border-left:5px solid #c9a24d;background:#fffbeb;padding:14px 18px;border-radius:0 8px 8px 0;margin:14px 0}
+.box-gold-text{font-size:13px;color:#78350f;line-height:1.7}
+
+.footer-bar{background:#0b0b0b;padding:24px 64px;text-align:center;font-size:12px;color:#4b5563;letter-spacing:0.5px}
+
+/* URUS CLIENT DELIVERY — RESPONSIVE LAYER */
+html { scroll-behavior:smooth; }
+body { -webkit-text-size-adjust:100%; }
+.page { width:100%; max-width:960px; }
+.cover { min-height:100svh; }
+.section { scroll-margin-top:18px; }
+.grant-card { break-inside:avoid; }
+a { color:inherit; }
+
+@media (max-width: 720px) {
+  body { font-size:14px; background:#fff; }
+  .page { max-width:none; width:100%; }
+  .cover {
+    min-height:100svh;
+    padding:48px 24px 86px;
+    border-left-width:5px;
+  }
+  .cover-urus { font-size:54px; letter-spacing:-1.5px; }
+  .cover-sub { font-size:20px; margin-top:9px; }
+  .cover-divider { margin:24px 0; width:64px; }
+  .cover-title {
+    font-size:27px;
+    line-height:1.2;
+    margin-bottom:28px;
+    max-width:none;
+  }
+  .cover-meta { font-size:12px; line-height:1.75; }
+  .cover-intel, .cover-still {
+    max-width:none;
+    margin-top:28px;
+    padding:18px 18px;
+  }
+  .cover-intel-text, .cover-still-text {
+    font-size:13px;
+    line-height:1.65;
+  }
+  .cover-footer {
+    bottom:24px;
+    right:24px;
+    font-size:10px;
+  }
+
+  .section { padding:38px 20px; }
+  .section-label { font-size:9px; letter-spacing:1.7px; margin-bottom:10px; }
+  .section-title {
+    font-size:23px;
+    line-height:1.2;
+    padding-bottom:9px;
+    border-bottom-width:3px;
+  }
+
+  .metrics {
+    grid-template-columns:repeat(2,1fr);
+    gap:8px;
+    margin:20px 0;
+  }
+  .metric { padding:15px 12px; border-radius:9px; }
+  .metric-label { font-size:8px; }
+  .metric-value { font-size:23px; }
+  .metric-sub { font-size:10px; }
+
+  .urgency-block, .box-dark {
+    padding:20px 18px;
+    margin:18px 0;
+  }
+  .urgency-text, .box-dark-text { font-size:14px; line-height:1.7; }
+  .box-gold { padding:13px 15px; }
+
+  .grant-card { margin-bottom:12px; }
+  .grant-top {
+    display:block;
+    padding:15px 16px;
+  }
+  .grant-top-left h3 { font-size:14px; line-height:1.35; }
+  .grant-top-agency { font-size:11px; line-height:1.45; margin-top:4px; }
+  .grant-top-right {
+    margin:11px 0 0;
+    text-align:left;
+  }
+  .badge { font-size:9px; padding:3px 8px; margin-right:4px; }
+  .grant-body { padding:15px 16px; }
+  .grant-amount { font-size:14px; line-height:1.4; }
+  .grant-deadline { font-size:12px; line-height:1.45; }
+  .grant-desc, .grant-detail { font-size:12px; line-height:1.6; }
+  .grant-action { padding:11px 13px; margin-top:11px; }
+  .grant-action-text { font-size:12px; line-height:1.5; }
+  .grant-contact { font-size:10.5px; line-height:1.45; }
+
+  /* Mobile summary: turn the wide table into stacked cards */
+  table, thead, tbody, tr, th, td { display:block; width:100%; }
+  thead { display:none; }
+  tbody tr {
+    background:#fff !important;
+    border:1px solid #e5e7eb;
+    border-radius:9px;
+    margin-bottom:10px;
+    padding:9px 12px;
+  }
+  tbody td {
+    display:grid;
+    grid-template-columns:105px 1fr;
+    gap:8px;
+    padding:5px 0;
+    border-bottom:0;
+    font-size:11px;
+    line-height:1.4;
+  }
+  tbody td:first-child {
+    display:block;
+    font-size:13px;
+    padding-bottom:7px;
+  }
+  tbody td:nth-child(2)::before { content:"Category"; }
+  tbody td:nth-child(3)::before { content:"Potential"; }
+  tbody td:nth-child(4)::before { content:"Deadline / Status"; }
+  tbody td:nth-child(5)::before { content:"Immediate Action"; }
+  tbody td:not(:first-child)::before {
+    font-weight:700;
+    color:#9ca3af;
+    font-size:9px;
+    text-transform:uppercase;
+    letter-spacing:.4px;
+  }
+
+  .footer-bar { padding:20px 20px; font-size:10px; line-height:1.6; }
+}
+
+@media (max-width:380px) {
+  .metrics { grid-template-columns:1fr; }
+  .cover-title { font-size:25px; }
+  .section { padding-left:16px; padding-right:16px; }
+}
+
+@media(max-width:720px){.urus-mobile-nav{display:block!important;}}
+</style>
+</head>
+<body><div class="urus-mobile-nav" style="display:none;position:sticky;top:0;z-index:1000;background:#0b0b0b;color:#c9a24d;padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:.7px;border-bottom:1px solid #222">URUS · Agricultural Funding Intelligence</div>
+<div class="page">
+<!-- ══ PORTADA ══════════════════════════════════════════════════ -->
+<div class="cover">
+<div class="cover-urus">URUS</div>
+<div class="cover-sub">Agricultural Intelligence</div>
+<div class="cover-divider"></div>
+<div class="cover-title">Complete Federal Funding Report for Farms and Agricultural Projects in Puerto Rico</div>
+<div class="cover-meta">
+<strong>Date:</strong> August 8, 2026<br/>
+<strong>Programs identified:</strong> 16 active or upcoming federal funding programs<br/>
+<strong>Agencies monitored:</strong> USDA FSA · NRCS Caribbean · USDA Rural Development · DOE · HUD/PRDOH · FEMA · EPA · JSF<br/>
+<strong>Estimated potential:</strong> $50,000 – $1,000,000+ depending on operation type<br/>
+<strong>Classification:</strong> Confidential · Client use only
+  </div>
+<div class="cover-intel">
+<div class="cover-intel-label">Operational Intelligence Note</div>
+<div class="cover-intel-text">The system detected that <strong>two funding windows expired this week</strong> — ASCF on August 7 and preliminary SDRP Stage on August 12 — without being captured. These programs represented significant direct payments for agricultural producers in Puerto Rico. <strong>The system identified what was left on the table and what is still available.</strong></div>
+</div>
+<div class="cover-still">
+<div class="cover-still-text"><strong>What is still open:</strong> 14 programs with active windows — SDRP through August 12, EQIP and conservation year-round, REAP solar, VAPG value-added, CDBG-DR, HMGP, CRP, and NRCS Caribbean green funding. The complete analysis is on the following pages.</div>
+</div>
+<div class="cover-footer">URUS ∴ urusverify.com · August 2026</div>
+</div>
+<!-- ══ RESUMEN EJECUTIVO ════════════════════════════════════════ -->
+<div class="section">
+<div class="section-label">Section 1</div>
+<div class="section-title">Executive Summary</div>
+<p style="font-size:15px;line-height:1.8;color:#374151;margin:20px 0">The URUS system monitored all relevant federal databases for agricultural producers in Puerto Rico and identified <strong>16 active or upcoming programs</strong> with potential from $50,000 to $1,000,000+ depending on crop type, farm size, and historical loss profile. This analysis was generated using public data — without requiring operation-specific information.</p>
+<div class="metrics">
+<div class="metric"><div class="metric-label">Programs Detected</div><div class="metric-value">16</div><div class="metric-sub">All agricultural sectors in PR</div></div>
+<div class="metric"><div class="metric-label">Critical Urgency</div><div class="metric-value">2</div><div class="metric-sub">SDRP: 12 ago · ARC/PLC: 31 ago</div></div>
+<div class="metric"><div class="metric-label">Maximum Potential</div><div class="metric-value">$1M+</div><div class="metric-sub">REAP + EQIP + VAPG combined</div></div>
+<div class="metric"><div class="metric-label">Agencies</div><div class="metric-value">6</div><div class="metric-sub">FSA · NRCS · USDA RD · DOE · EPA · JSF</div></div>
+<div class="metric"><div class="metric-label">Sectors</div><div class="metric-value">6</div><div class="metric-sub">Disaster · Green · Solar · Market · Insurance · Other</div></div>
+</div>
+<div class="urgency-block">
+<div class="urgency-label">The Situation This Week</div>
+<div class="urgency-text">
+      ASCF (Specialty Crops) expired on August 7. SDRP expires on August 12. These two programs alone represent access to <strong>millions in direct federal assistance</strong> for producers with disaster losses in 2023-2024 and for fruit, coffee, vegetable, and specialty crop producers with acres reported in 2025.<br/><br/>
+<strong>What remains:</strong> SDRP may still be active if the FSA administrative system has not been closed. There are 14 additional programs with open windows. The detailed analysis follows in the sections below — ordered by urgency.
+    </div>
+</div>
+<div class="box-dark">
+<div class="box-dark-label">What URUS Needs to Go to the Next Level</div>
+<div class="box-dark-text">This analysis covers the full universe without operation-specific data. With the <strong>crop type, acreage, disaster loss history, and legal structure of the operation</strong>, the system can filter to the 3-5 programs with the highest probability of approval, calculate the estimated potential specific to this farm, and prepare the fastest path to the first funding opportunity.</div>
+</div>
+</div>
+<!-- ══ URGENTS ═════════════════════════════════════════════════ -->
+<div class="section">
+<div class="section-label">Section 2</div>
+<div class="section-title">⚠ Urgent Deadlines — Immediate Action</div>
+<!-- SDRP -->
+<div class="grant-card" style="border-left:5px solid #dc2626">
+<div class="grant-top" style="background:#fff8f8">
+<div class="grant-top-left">
+<h3>SDRP — Supplemental Disaster Relief Program</h3>
+<div class="grant-top-agency">USDA Farm Service Agency (FSA) · American Relief Act 2025</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-red badge-block">⚠ URGENT</span>
+<span class="badge badge-red badge-block">AUGUST 12, 2026</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">$$16 billion available · Payments increased to 70% factor</div>
+<div class="grant-deadline" style="color:#dc2626">Deadline: August 12, 2026</div>
+<div class="grant-desc">Direct payments for losses to crops, trees, bushes, and vines from natural disasters in 2023 and 2024. Puerto Rico qualifies for Tropical Storm Ernesto (August 2024), Hurricane Fiona (2022), and prior events. USDA has already paid $6.7 billion and increased the factor to 70% — double the amount originally estimated. Covers insured losses (Stage 1) and uninsured losses including shallow losses (Stage 2).</div>
+<div class="grant-detail"><strong>Stage 1:</strong> Losses covered by federal crop insurance or NAP. Applies with insurance documentation.</div>
+<div class="grant-detail"><strong>Stage 2:</strong> Uninsured losses, shallow losses, and quality losses. Applies with damage documentation.</div>
+<div class="grant-detail"><strong>PR qualifies for:</strong> Tropical Storm Ernesto (August 2024) · Hurricane Fiona (September 2022) · Seismic period (2020).</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action — Contact FSA Today</div>
+<div class="grant-action-text">Contact FSA Puerto Rico immediately. Request an application for Stage 1 and/or Stage 2 according to the type of losses. Bring disaster loss documentation. Deadline: August 12.</div>
+</div>
+<div class="grant-contact">FSA Puerto Rico · (787) 294-1650 · fsa.usda.gov/sdrp</div>
+</div>
+</div>
+<!-- ARC/PLC -->
+<div class="grant-card" style="border-left:5px solid #d97706">
+<div class="grant-top" style="background:#fffef8">
+<div class="grant-top-left">
+<h3>ARC/PLC — Base Acres Review (first time since 2002)</h3>
+<div class="grant-top-agency">USDA Farm Service Agency · Working Families Tax Cuts Act</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-orange badge-block">⚠ URGENT</span>
+<span class="badge badge-orange badge-block">31 AUGUST 2026</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">First opportunity in 24 years to increase base acres · Impact on future payments</div>
+<div class="grant-deadline" style="color:#d97706">Deadline: August 31, 2026 — 23 days</div>
+<div class="grant-desc">ARC and PLC programs protect producers when market prices or revenues decline. The Working Families Tax Cuts Act allows base acres to be updated for the first time since 2002. Up to 30 million new eligible acres nationwide. Base acres determine the amount of future safety-net payments. Zero cost, zero risk — only a review with FSA.</div>
+<div class="grant-detail"><strong>Elegibilidad:</strong> Owners of agricultural land with base acres registered with FSA Puerto Rico.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action — Review Before August 31</div>
+<div class="grant-action-text">Contact FSA Puerto Rico to review current base acres. No new application required. Quick process. May significantly increase future ARC/PLC payments.</div>
+</div>
+<div class="grant-contact">FSA Puerto Rico · fsa.usda.gov/state-offices/puerto-rico</div>
+</div>
+</div>
+</div>
+<!-- ══ CONSERVATION Y VERDE ═════════════════════════════════════ -->
+<div class="section">
+<div class="section-label">Section 3</div>
+<div class="section-title">🌱 Conservation, Green Funding and Sustainability</div>
+<p style="font-size:13px;color:#6b7280;margin:14px 0 24px">Programs administered by NRCS Caribbean Area — applications accepted year-round. These are among the most accessible and operationally impactful funding programs for farms in PR.</p>
+<!-- EQIP -->
+<div class="grant-card" style="border-left:5px solid #16a34a">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>EQIP — Environmental Quality Incentives Program</h3>
+<div class="grant-top-agency">USDA NRCS Caribbean Area · Puerto Rico y USVI</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-green badge-block">CONSERVATION</span>
+<span class="badge badge-green badge-block">OPEN YEAR-ROUND</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Up to $450,000 per producer · Direct payments for implemented practices</div>
+<div class="grant-deadline" style="color:#16a34a">Applications accepted year-round · 2026 cycle active</div>
+<div class="grant-desc">NRCS Caribbean’s most comprehensive program. Funds the implementation of conservation practices with direct payments to producers. NRCS Caribbean has funded projects in PR involving regenerative agriculture ($100K), coffee agroforestry ($75K), and soil conservation systems on sloped land for more than 20 years.</div>
+<div class="grant-detail"><strong>Eligible practices in PR:</strong> Efficient irrigation systems · Anti-erosion terraces · Ground cover · Coffee and cacao agroforestry · Silvopasture systems · Nutrient management · Sediment barriers.</div>
+<div class="grant-detail"><strong>Elegibilidad:</strong> Agricultural producers with eligible land. Priority for socially disadvantaged producers, veterans, and small and medium-sized farms.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Contact NRCS Caribbean Area in Guaynabo. Request an eligibility evaluation and list of available practices with payment rates. No fixed deadline.</div>
+</div>
+<div class="grant-contact">NRCS Caribbean Area · (787) 277-9764 · nrcs.usda.gov/state-offices/caribbean-area</div>
+</div>
+</div>
+<!-- CSP -->
+<div class="grant-card" style="border-left:5px solid #16a34a">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>CSP — Conservation Stewardship Program</h3>
+<div class="grant-top-agency">USDA NRCS Caribbean Area</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-green badge-block">CONSERVATION</span>
+<span class="badge badge-green badge-block">OPEN</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Annual payments based on the level of conservation implemented and improved</div>
+<div class="grant-deadline" style="color:#16a34a">Applications accepted year-round</div>
+<div class="grant-desc">Rewards producers who already have good conservation practices and want to improve them. Annual payments for the duration of the contract. Complements EQIP — ideal for farms with existing practices that want to move to the next level.</div>
+<div class="grant-detail"><strong>Elegibilidad:</strong> Producers with land under active production and basic conservation practices already implemented.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Contact NRCS Caribbean Area. Apply alongside EQIP to maximize benefits. Evaluate current farm practices.</div>
+</div>
+<div class="grant-contact">NRCS Caribbean Area · nrcs.usda.gov/state-offices/caribbean-area</div>
+</div>
+</div>
+<!-- ACEP -->
+<div class="grant-card" style="border-left:5px solid #16a34a">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>ACEP — Agricultural Conservation Easement Program</h3>
+<div class="grant-top-agency">USDA NRCS Caribbean Area</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-green badge-block">LAND</span>
+<span class="badge badge-green badge-block">ONGOING</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Payment of market value for land conservation rights</div>
+<div class="grant-deadline" style="color:#16a34a">Ongoing applications — case-by-case evaluation</div>
+<div class="grant-desc">NRCS pays agricultural landowners to establish permanent or long-term conservation easements. The owner retains possession. Ideal for land with fragile ecosystems, wetlands, forested areas, or high historical agricultural value.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Contact NRCS Caribbean Area for an evaluation of conservation value. Process may take several months. One-time payment for the rights conveyed.</div>
+</div>
+<div class="grant-contact">NRCS Caribbean Area · nrcs.usda.gov/state-offices/caribbean-area</div>
+</div>
+</div>
+<!-- CIG -->
+<div class="grant-card" style="border-left:5px solid #16a34a">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>CIG Caribbean — Conservation Innovation Grants</h3>
+<div class="grant-top-agency">USDA NRCS Caribbean Area · Financiado bajo EQIP</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-green badge-block">INNOVATION</span>
+<span class="badge badge-orange badge-block">PREPARE FOR 2027</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">$50,000 – $100,000 per innovative project</div>
+<div class="grant-deadline" style="color:#d97706">Annual solicitation — prepare for spring 2027</div>
+<div class="grant-desc">Grants for innovative agricultural conservation projects. Projects funded in PR: regenerative soils in Utuado ($99,949), multispecies coffee agroforestry ($75,000), tractors for sloped terrain ($43,980). Requires a research or replicable demonstration component.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Develop an innovative project proposal. Monitor the NRCS Caribbean solicitation — typically spring 2027.</div>
+</div>
+<div class="grant-contact">NRCS Caribbean Area · nrcs.usda.gov/state-offices/caribbean-area</div>
+</div>
+</div>
+<!-- CRP -->
+<div class="grant-card" style="border-left:5px solid #16a34a">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>CRP — Conservation Reserve Program</h3>
+<div class="grant-top-agency">USDA Farm Service Agency (FSA)</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-green badge-block">CONSERVATION</span>
+<span class="badge badge-green badge-block">BATCHING OPEN</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Annual rental payments for conservation land · 10–15 year contracts</div>
+<div class="grant-deadline" style="color:#16a34a">USDA announced a new ongoing batching period in 2026</div>
+<div class="grant-desc">Guaranteed annual payments to producers who remove environmentally sensitive land from active production. Ideal for portions of a farm with fragile soils, river edges, or wetland areas. The owner receives payment and the land improves its ecological value.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Contact FSA Puerto Rico to evaluate land eligibility. Ongoing batching period open in 2026.</div>
+</div>
+<div class="grant-contact">FSA Puerto Rico · fsa.usda.gov/state-offices/puerto-rico</div>
+</div>
+</div>
+</div>
+<!-- ══ ENERGÍA SOLAR ════════════════════════════════════════════ -->
+<div class="section">
+<div class="section-label">Section 4</div>
+<div class="section-title">⚡ Solar Energy and Energy Efficiency</div>
+<!-- REAP -->
+<div class="grant-card" style="border-left:5px solid #d97706">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>REAP — Rural Energy for America Program</h3>
+<div class="grant-top-agency">USDA Rural Development Puerto Rico · IRA + Farm Bill</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-orange badge-block">SOLAR / ENERGY</span>
+<span class="badge badge-orange badge-block">LOANS ACTIVE</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Grants: up to 50% of project cost (temporarily suspended) · Guaranteed loans: up to 75%</div>
+<div class="grant-deadline" style="color:#d97706">Loans: active and accepted · Grants: suspended — monitor reopening in fall 2026</div>
+<div class="grant-desc">Funds renewable energy systems (solar, wind, biomass) and energy-efficiency improvements on farms. USDA invested $6M in 31 solar projects in PR. Grants are temporarily suspended by the current administration, but guaranteed loans covering up to 75% of cost remain active. Eligible projects: solar on agricultural structures, electric irrigation, energy storage.</div>
+<div class="grant-detail"><strong>Eligible projects:</strong> Solar on greenhouses and warehouses · Electric irrigation motors · Diesel-to-electric replacement · Energy storage systems.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Apply for a guaranteed REAP loan now (active). Prepare an Energy Audit to be ready when grants reopen. Historically they open in the fall.</div>
+</div>
+<div class="grant-contact">USDA Rural Development Puerto Rico · rd.usda.gov · State Energy Coordinator PR</div>
+</div>
+</div>
+<!-- PR-ERF -->
+<div class="grant-card" style="border-left:5px solid #d97706">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>PR-ERF / Program Acceso Solar — CODEVyS</h3>
+<div class="grant-top-agency">DOE / FEMA / HUD · CODEVyS Puerto Rico</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-orange badge-block">SOLAR</span>
+<span class="badge badge-green badge-block">ACTIVE</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Solar and battery systems · Varies by project</div>
+<div class="grant-deadline" style="color:#16a34a">Active — DOE confirmed processing of application #1,000 in Arecibo (January 2025)</div>
+<div class="grant-desc">Active fund for solar energy and battery storage systems in Puerto Rico. Coordinates with FEMA and HUD for energy resilience projects. Especially relevant for farms in rural post-hurricane areas.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Contact CODEVyS Puerto Rico for eligibility evaluation and the application process for the Solar Access Program.</div>
+</div>
+<div class="grant-contact">CODEVyS Puerto Rico · Program Acceso Solar PR</div>
+</div>
+</div>
+</div>
+<!-- ══ DESARROLLO Y MERCADO ═════════════════════════════════════ -->
+<div class="section">
+<div class="section-label">Section 5</div>
+<div class="section-title">📈 Development, Market and Value-Added</div>
+<!-- VAPG -->
+<div class="grant-card" style="border-left:5px solid #1d4ed8">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>VAPG — Value Added Producer Grants</h3>
+<div class="grant-top-agency">USDA Rural Development Puerto Rico · Rural Business-Cooperative Service</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-blue badge-block">VALUE-ADDED</span>
+<span class="badge badge-blue badge-block">PREPARE NOW</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Up to $250,000 for planning · Up to $500,000 for working capital</div>
+<div class="grant-deadline" style="color:#1d4ed8">2026 cycle closed — prepare for 2027. In 2023 USDA PR awarded $770,000 to 4 projects in PR.</div>
+<div class="grant-desc">Grants to create new products, access new markets, or increase income through value-added activities. Projects funded in PR: Fincas Luis Roig (Yauco), Néstor Reyes Farm (Río Grande), Loyd Sanabria (Salinas), De Mi Tierra A Mi Pueblo (Caguas).</div>
+<div class="grant-detail"><strong>Eligible examples:</strong> Processing coffee beans into packaged coffee · Fruit into juices or preserves · Creating a private brand · Direct-to-consumer sales channel.</div>
+<div class="grant-detail"><strong>Elegibilidad:</strong> Independent producers, groups, cooperatives. Priority: beginning farmers, veterans, small and medium-sized farms.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Prepare a business plan and document production history. Contact USDA Rural Development PR for dates of the next cycle. Preparation takes 2–3 months.</div>
+</div>
+<div class="grant-contact">USDA Rural Development Puerto Rico · rd.usda.gov · State Director: Maximiliano J. Trujillo-Ortega</div>
+</div>
+</div>
+<!-- SARE -->
+<div class="grant-card" style="border-left:5px solid #1d4ed8">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>SARE Southern — Farmer/Rancher Grants</h3>
+<div class="grant-top-agency">USDA NIFA · Sustainable Agriculture Research &amp; Education · Southern Region (includes PR)</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-blue badge-block">SUSTAINABILITY</span>
+<span class="badge badge-blue badge-block">NOV. 2026 SOLICITATION</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Up to $20,000 individual · Up to $25,000 team · 2-year projects</div>
+<div class="grant-deadline" style="color:#1d4ed8">Solicitation typically November. PR has received $2.8M across 49 projects since 1988.</div>
+<div class="grant-desc">Grants for research and education in sustainable practices. Puerto Rico is part of SARE’s Southern region. Active 2025–2026 projects in PR include organic fertilizers and food resilience.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Develop an innovative sustainable agriculture project idea. Contact Southern SARE. Solicitation typically opens in November.</div>
+</div>
+<div class="grant-contact">Southern SARE · southern.sare.org · Includes Puerto Rico and USVI</div>
+</div>
+</div>
+<!-- RBDG -->
+<div class="grant-card" style="border-left:5px solid #1d4ed8">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>RBDG — Rural Business Development Grants</h3>
+<div class="grant-top-agency">USDA Rural Development</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-blue badge-block">RURAL BUSINESS</span>
+<span class="badge badge-blue badge-block">NEXT CYCLE</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Technical and financial assistance for rural businesses with fewer than 50 employees and $1M in revenue</div>
+<div class="grant-deadline" style="color:#d97706">2026 cycle closed (June 30). Prepare for the next solicitation.</div>
+<div class="grant-desc">Funds technical assistance for small rural businesses. Applies to agribusinesses, agricultural product processing, ecotourism, and agricultural support businesses. A farm with a processing operation may qualify as a small rural business.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Evaluate whether the operation qualifies as a rural business. Contact USDA Rural Development PR for dates of the next cycle.</div>
+</div>
+<div class="grant-contact">USDA Rural Development Puerto Rico · rd.usda.gov</div>
+</div>
+</div>
+</div>
+<!-- ══ CDBG-DR Y RECOVERY ══════════════════════════════════ -->
+<div class="section">
+<div class="section-label">Section 6</div>
+<div class="section-title">🏗 CDBG-DR, HMGP and Federal Recovery Funds</div>
+<div class="box-gold">
+<div class="box-gold-text"><strong>Context:</strong> CDBG-DR and HMGP funds are primarily administered at the municipal or state level in PR. Farms access them through the municipality, PRDOH, or direct application depending on the program. URUS actively monitors these funds.</div>
+</div>
+<!-- CDBG-DR -->
+<div class="grant-card" style="border-left:5px solid #7c3aed">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>CDBG-DR — Community Development Block Grant Disaster Recovery</h3>
+<div class="grant-top-agency">HUD / Puerto Rico Department of Housing (PRDOH) · $21.9B allocated to PR</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-purple badge-block">RECOVERY</span>
+<span class="badge badge-purple badge-block">ACTIVE</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">$21,900,000,000 allocated to PR · City-Rev: $1,298M active for revitalization</div>
+<div class="grant-deadline" style="color:#7c3aed">Active windows — City-Rev Program open to eligible municipalities</div>
+<div class="grant-desc">The largest federal recovery fund allocated to Puerto Rico after María and Irma. The City-Rev program has $1,298M for municipal corridor revitalization and economic development. Farms operating as agricultural businesses or that suffered damage from María may qualify under Economic Development categories.</div>
+<div class="grant-detail"><strong>Farm access:</strong> Through the municipality (City-Rev) · Directly under the Economic Development category · PRDOH has assistance programs for rural businesses.</div>
+<div class="grant-detail"><strong>PR Qualification:</strong> The entire island is eligible due to Hurricane María (2017) and Irma (2017) damage.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Contact PRDOH for programs specific to agricultural operations. Contact the municipality for access to the City-Rev Program. Document historical damage from María.</div>
+</div>
+<div class="grant-contact">Puerto Rico Department of Housing (PRDOH) · cdbg-dr.pr.gov · (787) 274-2527</div>
+</div>
+</div>
+<!-- HMGP -->
+<div class="grant-card" style="border-left:5px solid #7c3aed">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>HMGP — Hazard Mitigation Grant Program</h3>
+<div class="grant-top-agency">FEMA / PRDOH · $1,000M available under CDBG-MIT Global Match</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-purple badge-block">MITIGATION</span>
+<span class="badge badge-purple badge-block">ACTIVE</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">$1,000,000,000 available island-wide under Global Match Strategy</div>
+<div class="grant-deadline" style="color:#7c3aed">Active window · Requires a current municipal FEMA Mitigation Plan</div>
+<div class="grant-desc">Funds projects that reduce the impact of future disasters. For farms: flood-control infrastructure, drainage systems, retention terraces, resilient structures. The Global Match Strategy ($1B under CDBG-MIT) can be used as federal match for mitigation projects.</div>
+<div class="grant-detail"><strong>Eligible farm projects:</strong> Erosion-control terraces · Resilient drainage and irrigation systems · Hurricane-resistant structures · Animal shelters.</div>
+<div class="grant-detail"><strong>Requisito:</strong> The municipality must have a current FEMA Hazard Mitigation Plan as an access condition.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Verify whether the municipality has a current FEMA Mitigation Plan. Contact PRDOH for eligible agricultural mitigation projects. Document farm vulnerabilities.</div>
+</div>
+<div class="grant-contact">FEMA Puerto Rico · PRDOH · hmgp.pr.gov</div>
+</div>
+</div>
+<!-- MSROF -->
+<div class="grant-card" style="border-left:5px solid #7c3aed">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>MSROF — Municipal Service Reform and Outcomes Fund</h3>
+<div class="grant-top-agency">Puerto Rico Fiscal Oversight and Management Board</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-purple badge-block">MUNICIPAL</span>
+<span class="badge badge-purple badge-block">AF 2026 ACTIVE</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">$35.6M for 64 municipalities in FY 2026 · Up to $800,000 per municipality</div>
+<div class="grant-deadline" style="color:#7c3aed">FY 2026 active — access through municipality</div>
+<div class="grant-desc">The FOMB approved $35.6M for 64 municipalities subject to fiscal reforms. Farms may benefit if the municipality allocates funds to agricultural infrastructure, rural access roads, or community irrigation systems.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Contact the mayor’s office to propose agricultural infrastructure projects that can be funded through MSROF. The municipality applies directly.</div>
+</div>
+<div class="grant-contact">Municipal Mayor’s Office · Fiscal Oversight Board</div>
+</div>
+</div>
+<!-- NAP -->
+<div class="grant-card" style="border-left:5px solid #7c3aed">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>NAP — Noninsured Crop Disaster Assistance Program</h3>
+<div class="grant-top-agency">USDA Farm Service Agency (FSA)</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-purple badge-block">CROP INSURANCE</span>
+<span class="badge badge-green badge-block">ENROLLMENT OPEN</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Financial assistance for losses to crops not eligible for federal insurance</div>
+<div class="grant-deadline" style="color:#16a34a">Enrollment open — MUST be completed before the disaster, not after</div>
+<div class="grant-desc">Covers PR crops that do not have coverage under the federal insurance system: yautía, plantains, pigeon peas, breadfruit, yams, specialty vegetables, tropical flowers. When a disaster occurs, only producers already enrolled receive assistance.</div>
+<div class="grant-detail"><strong>⚠ Critical:</strong> Enrollment must be completed BEFORE the disaster. With hurricane season active, enrolling now is a strategic decision.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action — Preventive Protection</div>
+<div class="grant-action-text">Enroll in NAP with FSA Puerto Rico before the next season. Quick and low-cost process. Do not wait for a disaster to occur.</div>
+</div>
+<div class="grant-contact">FSA Puerto Rico · (787) 294-1650 · fsa.usda.gov/state-offices/puerto-rico</div>
+</div>
+</div>
+</div>
+<!-- ══ OTROS ════════════════════════════════════════════════════ -->
+<div class="section">
+<div class="section-label">Section 7</div>
+<div class="section-title">🌐 Other Available Funds</div>
+<!-- NJ-PR -->
+<div class="grant-card" style="border-left:5px solid #6b7280">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>NJ-PR Commission — Food Sovereignty</h3>
+<div class="grant-top-agency">New Jersey and Puerto Rico Commission · NJ Department of State</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-gray badge-block">FOOD</span>
+<span class="badge badge-gray badge-block">NEXT SOLICITATION</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Up to $50,000 per project · $200,000 total (2 grants available for PR)</div>
+<div class="grant-deadline" style="color:#374151">Annual solicitation — monitor for 2027</div>
+<div class="grant-desc">Competitive grants for projects in PR in the categories of Energy, Food Sovereignty, Health, and Empowerment. Agricultural food sovereignty and community food security projects qualify directly. Small fund but highly accessible for organizations with a community component.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">Monitor the annual NJPRC solicitation. If the operation includes a community or food sovereignty component, it is a relatively accessible fund.</div>
+</div>
+<div class="grant-contact">NJ Department of State · njprc@nj.gov</div>
+</div>
+</div>
+<!-- ORGANIC -->
+<div class="grant-card" style="border-left:5px solid #6b7280">
+<div class="grant-top">
+<div class="grant-top-left">
+<h3>USDA — Organic Certification Reimbursement</h3>
+<div class="grant-top-agency">USDA National Organic Program (NOP) · Farm Service Agency</div>
+</div>
+<div class="grant-top-right">
+<span class="badge badge-gray badge-block">ORGANIC</span>
+<span class="badge badge-green badge-block">OPEN</span>
+</div>
+</div>
+<div class="grant-body">
+<div class="grant-amount">Up to $500 reimbursement of annual organic certification cost</div>
+<div class="grant-deadline" style="color:#16a34a">Ongoing program — apply after obtaining certification</div>
+<div class="grant-desc">USDA reimburses up to $500 of the annual cost of organic certification or transition to organic certification. For farms transitioning to organic or already certified. Covers a significant portion of the annual certification cost.</div>
+<div class="grant-action">
+<div class="grant-action-label">Required Action</div>
+<div class="grant-action-text">If the farm has or seeks organic certification, request OACP reimbursement through FSA Puerto Rico after certification.</div>
+</div>
+<div class="grant-contact">FSA Puerto Rico · USDA National Organic Program · ams.usda.gov/nop</div>
+</div>
+</div>
+</div>
+<!-- ══ TABLA RESUMEN ════════════════════════════════════════════ -->
+<div class="section">
+<div class="section-label">Section 8</div>
+<div class="section-title">Summary Table — 16 Programs Detected</div>
+<table style="margin-top:20px">
+<thead>
+<tr>
+<th style="width:22%">Program</th>
+<th style="width:13%">Category</th>
+<th style="width:18%">Potential</th>
+<th style="width:16%">Deadline / Status</th>
+<th style="width:31%">Immediate Action</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>SDRP — Disaster Relief</td><td style="color:#dc2626;font-weight:700">⚠ URGENT</td><td style="color:#16a34a;font-weight:600">$16B national pool</td><td style="color:#dc2626;font-weight:700">August 12, 2026</td><td>Contact FSA Puerto Rico TODAY</td></tr>
+<tr><td>ARC/PLC — Base Acres</td><td style="color:#d97706;font-weight:700">⚠ URGENT</td><td style="color:#16a34a;font-weight:600">Increases future payments</td><td style="color:#d97706;font-weight:700">August 31, 2026</td><td>Review base acres with FSA</td></tr>
+<tr><td>EQIP</td><td style="color:#16a34a;font-weight:700">Green</td><td style="color:#16a34a;font-weight:600">Up to $450,000</td><td style="color:#16a34a">Open year-round</td><td>Contact NRCS Caribbean</td></tr>
+<tr><td>CSP — Stewardship</td><td style="color:#16a34a;font-weight:700">Green</td><td style="color:#16a34a;font-weight:600">Annual payments</td><td style="color:#16a34a">Open year-round</td><td>Contact NRCS Caribbean</td></tr>
+<tr><td>ACEP — Easements</td><td style="color:#16a34a;font-weight:700">Green / Tierra</td><td style="color:#16a34a;font-weight:600">Market value</td><td style="color:#16a34a">Ongoing</td><td>Evaluate land with NRCS</td></tr>
+<tr><td>CIG Caribbean</td><td style="color:#16a34a;font-weight:700">Innovation</td><td style="color:#16a34a;font-weight:600">$50K–$100K</td><td style="color:#d97706">Spring 2027</td><td>Prepare innovative proposal</td></tr>
+<tr><td>CRP — Reserve</td><td style="color:#16a34a;font-weight:700">Green / Tierra</td><td style="color:#16a34a;font-weight:600">Annual payments 10–15 years</td><td style="color:#16a34a">Batching open 2026</td><td>Evaluate land eligibility</td></tr>
+<tr><td>REAP Solar</td><td style="color:#d97706;font-weight:700">Energy</td><td style="color:#16a34a;font-weight:600">Up to $1M (grants)</td><td style="color:#d97706">Loans active</td><td>Apply for REAP loan now</td></tr>
+<tr><td>PR-ERF / CODEVyS</td><td style="color:#d97706;font-weight:700">Energy</td><td style="color:#16a34a;font-weight:600">Solar + battery</td><td style="color:#16a34a">Active</td><td>Contact CODEVyS PR</td></tr>
+<tr><td>VAPG — Value-Added</td><td style="color:#1d4ed8;font-weight:700">Development</td><td style="color:#16a34a;font-weight:600">Up to $500,000</td><td style="color:#1d4ed8">2027 cycle</td><td>Prepare business plan</td></tr>
+<tr><td>SARE — Sustainability</td><td style="color:#1d4ed8;font-weight:700">Development</td><td style="color:#16a34a;font-weight:600">Up to $25,000</td><td style="color:#1d4ed8">Nov. 2026 solicitation</td><td>Develop project idea</td></tr>
+<tr><td>RBDG — Rural Business</td><td style="color:#1d4ed8;font-weight:700">Development</td><td style="color:#16a34a;font-weight:600">Technical assistance</td><td style="color:#d97706">Next solicitation</td><td>Contact USDA Rural Dev PR</td></tr>
+<tr><td>CDBG-DR / City-Rev</td><td style="color:#7c3aed;font-weight:700">Recovery</td><td style="color:#16a34a;font-weight:600">$1,298M island-wide</td><td style="color:#7c3aed">Active via municipality</td><td>Contact PRDOH and municipality</td></tr>
+<tr><td>HMGP — Mitigation</td><td style="color:#7c3aed;font-weight:700">Recovery</td><td style="color:#16a34a;font-weight:600">$1,000M island-wide</td><td style="color:#7c3aed">Active</td><td>Verify municipal FEMA plan</td></tr>
+<tr><td>NAP — Crop Insurance</td><td style="color:#7c3aed;font-weight:700">Insurance</td><td style="color:#16a34a;font-weight:600">Loss assistance</td><td style="color:#16a34a">Enrollment open</td><td>Enroll BEFORE the hurricane</td></tr>
+<tr><td>NJ-PR Commission</td><td style="color:#374151;font-weight:700">Other</td><td style="color:#16a34a;font-weight:600">Up to $50,000</td><td style="color:#374151">Next solicitation 2027</td><td>Monitor solicitation</td></tr>
+</tbody>
+</table>
+<div class="box-dark" style="margin-top:32px">
+<div class="box-dark-label">What Comes After This Analysis</div>
+<div class="box-dark-text">
+      This report covers the full funding universe without operation-specific data. With the <strong>crop type, acreage, disaster loss history, and legal structure</strong>, the system can:<br/><br/>
+      → Filter to the 3-5 programs with the highest probability of approval for this specific farm<br/>
+      → Calculate the actual estimated potential in dollars<br/>
+      → Identify the shortest path to the first captured funding opportunity<br/>
+      → Prepare the documentation checklist required for each prioritized program
+    </div>
+</div>
+</div>
+<div class="footer-bar">
+  URUS Agricultural Intelligence · Federal Funding Intelligence System · Puerto Rico · August 2026 · Confidential<br/>
+  Sources: USDA FSA · NRCS Caribbean Area · USDA Rural Development · DOE · HUD/PRDOH · FEMA · EPA · JSF · urusverify.com
+</div>
+</div><!-- .page -->
+</body>
+</html>
