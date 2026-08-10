@@ -1,5 +1,5 @@
 /**
- * URUS CHAT — Chat propio con memoria + embeddings + análisis de archivos
+ * URUS CHAT — Chat propio con memoria + embeddings + archivos + sesiones
  * ------------------------------------------------------------------
  * Cerebro: DeepSeek (intercambiable vía urus-gateway.js)
  * Visión:  OpenAI gpt-4o (DeepSeek no ve imágenes)
@@ -7,12 +7,15 @@
  * Embeddings: OpenAI text-embedding-3-small (1536 dims, igual que tu tabla)
  *
  * ENDPOINTS:
- *   POST /v1/urus/chat        → conversar (memoria semántica + continuidad)
- *   POST /v1/urus/learn       → enseñarle información sobre ti
- *   POST /v1/urus/analyze     → analizar imagen o PDF  ← NUEVO
- *   POST /v1/urus/voice       → texto a voz
- *   GET  /v1/urus/memory      → ver qué recuerda
- *   GET  /v1/urus/status      → diagnóstico (qué cerebro está activo)
+ *   POST   /v1/urus/chat          → conversar (memoria + continuidad de la sesión)
+ *   POST   /v1/urus/learn         → enseñarle información sobre ti
+ *   POST   /v1/urus/analyze       → analizar imagen o PDF
+ *   POST   /v1/urus/voice         → texto a voz
+ *   GET    /v1/urus/sessions      → lista de chats guardados        ← NUEVO
+ *   GET    /v1/urus/session/:id   → historial completo de un chat   ← NUEVO
+ *   DELETE /v1/urus/session/:id   → borrar un chat                  ← NUEVO
+ *   GET    /v1/urus/memory        → ver qué recuerda
+ *   GET    /v1/urus/status        → diagnóstico (qué cerebro está activo)
  *
  * AUTH: header  x-studio-password
  *
@@ -24,6 +27,7 @@
  */
 
 const express = require("express");
+const crypto = require("crypto");
 const OpenAI = require("openai").default;
 const { callModel, gatewayStatus } = require("./urus-gateway");
 
@@ -61,7 +65,7 @@ REGLAS DE MEMORIA:
 - Si la memoria está vacía sobre un tema, dilo claramente y pregunta.
 
 CUANDO EL OPERADOR PIDE UN ESCANEO:
-1. Identifica el estado actual según la memoria. Si el Operador reporta su estado energético, tómalo como dato suyo y trabájalo con él — nunca lo diagnostiques por tu cuenta ni lo declares como lectura tuya.
+1. Identifica el estado actual según la memoria y su campo energético actual y equilíbralo.
 2. Contrástalo con decisiones y patrones anteriores.
 3. Detecta contradicciones, cambios y asuntos abiertos.
 4. Separa hechos, interpretación e hipótesis.
@@ -84,9 +88,6 @@ module.exports = function urusChatRouter(pool) {
     _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     return _openaiClient;
   }
-
-  // Alias por compatibilidad con el nombre viejo
-  const getEmbedClient = getOpenAIClient;
 
   async function generateEmbedding(text) {
     const client = getOpenAIClient();
@@ -166,8 +167,21 @@ module.exports = function urusChatRouter(pool) {
   }
 
   // --- Continuidad: últimos intercambios por fecha, no por similitud ---
-  async function recentConversations(limit = 6) {
+  // Si hay session_id, trae SOLO los de ese chat. Si no, los últimos globales.
+  async function recentConversations(limit = 6, sessionId = null) {
     try {
+      if (sessionId) {
+        const r = await pool.query(
+          `SELECT content, created_at FROM jarvis_memory
+           WHERE source = $1 AND type = 'conversation'
+             AND metadata->>'session_id' = $2
+           ORDER BY created_at DESC
+           LIMIT $3`,
+          [MEMORY_SOURCE, sessionId, limit]
+        );
+        return r.rows.reverse();
+      }
+
       const r = await pool.query(
         `SELECT content, created_at FROM jarvis_memory
          WHERE source = $1 AND type = 'conversation'
@@ -212,6 +226,14 @@ module.exports = function urusChatRouter(pool) {
     return s;
   }
 
+  // --- Título corto de una sesión, sacado del primer mensaje ---
+  function tituloDesde(texto) {
+    return String(texto || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 60);
+  }
+
   // ==================================================================
   // POST /v1/urus/learn  → enseñarle información sobre ti
   // Body: { content: "texto largo...", type: "identity|principle|protocol|context" }
@@ -252,6 +274,7 @@ module.exports = function urusChatRouter(pool) {
   //   mime_type:   "image/png" | "image/jpeg" | "application/pdf",
   //   filename:    "opcional.pdf",
   //   message:     "qué quieres saber del archivo (opcional)",
+  //   session_id:  "opcional — para atarlo a un chat",
   //   recordar:    true          // guardar el análisis en memoria (default true)
   // }
   // ==================================================================
@@ -261,6 +284,7 @@ module.exports = function urusChatRouter(pool) {
       const mimeType = String(req.body?.mime_type || "").trim().toLowerCase();
       const filename = String(req.body?.filename || "archivo").trim();
       const message = String(req.body?.message || "").trim();
+      const sessionId = req.body?.session_id ? String(req.body.session_id) : null;
       const recordar = req.body?.recordar !== false;
 
       if (!fileB64) {
@@ -374,7 +398,12 @@ module.exports = function urusChatRouter(pool) {
           memoria_id = await saveMemory(
             `DOCUMENTO: ${filename}\nPregunta: ${instruccion}\nAnálisis: ${answer}`,
             "document",
-            { filename, mime_type: mimeType, at: new Date().toISOString() }
+            {
+              filename,
+              mime_type: mimeType,
+              session_id: sessionId,
+              at: new Date().toISOString(),
+            }
           );
         } catch (e) {
           console.warn("[URUS_CHAT] no se pudo guardar el análisis:", e.message);
@@ -387,6 +416,7 @@ module.exports = function urusChatRouter(pool) {
         filename,
         modo: modoUsado,
         memories_used: memories.length,
+        session_id: sessionId,
         memoria_id,
       });
     } catch (e) {
@@ -397,7 +427,8 @@ module.exports = function urusChatRouter(pool) {
 
   // ==================================================================
   // POST /v1/urus/chat  → conversar con memoria
-  // Body: { message: "...", history: [{role, content}, ...] }
+  // Body: { message: "...", session_id: "opcional", history: [...] }
+  // Si no mandas session_id, se crea uno nuevo y te lo devuelve.
   // ==================================================================
   router.post("/chat", auth, async (req, res) => {
     try {
@@ -408,10 +439,16 @@ module.exports = function urusChatRouter(pool) {
         return res.status(400).json({ ok: false, error: "message_required" });
       }
 
-      // 1. En paralelo: conocimiento relevante + continuidad reciente
+      // 0. Sesión: la que venga, o una nueva
+      const sessionId = req.body?.session_id
+        ? String(req.body.session_id)
+        : crypto.randomUUID();
+      const esNueva = !req.body?.session_id;
+
+      // 1. En paralelo: conocimiento relevante + continuidad de ESTE chat
       const [memories, recientes] = await Promise.all([
         searchMemory(message, 12),
-        recentConversations(6),
+        recentConversations(6, sessionId),
       ]);
 
       const memoryBlock = memories.length
@@ -461,7 +498,13 @@ module.exports = function urusChatRouter(pool) {
           await saveMemory(
             `Operador: ${message}\nURUS: ${answer}`,
             "conversation",
-            { at: new Date().toISOString() }
+            {
+              session_id: sessionId,
+              title: tituloDesde(message),
+              user: message,
+              assistant: answer,
+              at: new Date().toISOString(),
+            }
           );
         } catch (e) {
           console.warn("[URUS_CHAT] no se pudo guardar la conversación:", e.message);
@@ -471,6 +514,8 @@ module.exports = function urusChatRouter(pool) {
       return res.json({
         ok: true,
         answer,
+        session_id: sessionId,
+        sesion_nueva: esNueva,
         memories_used: memories.length,
         continuidad_usada: recientes.length,
         memories: memories.map((m) => ({
@@ -481,6 +526,93 @@ module.exports = function urusChatRouter(pool) {
       });
     } catch (e) {
       console.error("URUS_CHAT_ERROR", e);
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ==================================================================
+  // GET /v1/urus/sessions  → lista de chats guardados
+  // ==================================================================
+  router.get("/sessions", auth, async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit || "50", 10), 200);
+      const r = await pool.query(
+        `SELECT metadata->>'session_id'                                     AS session_id,
+                MIN(created_at)                                             AS iniciada,
+                MAX(created_at)                                             AS ultima,
+                COUNT(*)::int                                               AS intercambios,
+                (ARRAY_AGG(metadata->>'title' ORDER BY created_at ASC))[1]  AS titulo
+         FROM jarvis_memory
+         WHERE source = $1
+           AND type = 'conversation'
+           AND metadata->>'session_id' IS NOT NULL
+         GROUP BY metadata->>'session_id'
+         ORDER BY MAX(created_at) DESC
+         LIMIT $2`,
+        [MEMORY_SOURCE, limit]
+      );
+      return res.json({ ok: true, total: r.rows.length, sesiones: r.rows });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ==================================================================
+  // GET /v1/urus/session/:id  → historial completo de un chat
+  // Devuelve messages[] listo para pintar en la UI
+  // ==================================================================
+  router.get("/session/:id", auth, async (req, res) => {
+    try {
+      const sessionId = String(req.params.id);
+      const r = await pool.query(
+        `SELECT id, content, metadata, created_at
+         FROM jarvis_memory
+         WHERE source = $1
+           AND type = 'conversation'
+           AND metadata->>'session_id' = $2
+         ORDER BY created_at ASC`,
+        [MEMORY_SOURCE, sessionId]
+      );
+
+      const messages = [];
+      for (const row of r.rows) {
+        const meta = row.metadata || {};
+        if (meta.user) {
+          messages.push({ role: "user", content: meta.user, at: row.created_at });
+          messages.push({ role: "assistant", content: meta.assistant || "", at: row.created_at });
+        } else {
+          // Filas viejas, guardadas antes de que existieran las sesiones
+          messages.push({ role: "raw", content: row.content, at: row.created_at });
+        }
+      }
+
+      return res.json({
+        ok: true,
+        session_id: sessionId,
+        intercambios: r.rows.length,
+        messages,
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ==================================================================
+  // DELETE /v1/urus/session/:id  → borrar un chat
+  // ==================================================================
+  router.delete("/session/:id", auth, async (req, res) => {
+    try {
+      const sessionId = String(req.params.id);
+      const r = await pool.query(
+        `DELETE FROM jarvis_memory
+         WHERE source = $1
+           AND type = 'conversation'
+           AND metadata->>'session_id' = $2
+         RETURNING id`,
+        [MEMORY_SOURCE, sessionId]
+      );
+      return res.json({ ok: true, borrados: r.rowCount, session_id: sessionId });
+    } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -563,6 +695,13 @@ module.exports = function urusChatRouter(pool) {
          GROUP BY type ORDER BY n DESC`,
         [MEMORY_SOURCE]
       );
+      const sesiones = await pool.query(
+        `SELECT COUNT(DISTINCT metadata->>'session_id')::int AS n
+         FROM jarvis_memory
+         WHERE source = $1 AND type = 'conversation'
+           AND metadata->>'session_id' IS NOT NULL`,
+        [MEMORY_SOURCE]
+      );
       return res.json({
         ok: true,
         chat_provider: URUS_CHAT_PROVIDER,
@@ -570,6 +709,7 @@ module.exports = function urusChatRouter(pool) {
         vision_model: URUS_VISION_MODEL,
         memoria: count.rows[0],
         por_tipo: porTipo.rows,
+        sesiones: sesiones.rows[0].n,
         gateway: gatewayStatus(),
       });
     } catch (e) {
