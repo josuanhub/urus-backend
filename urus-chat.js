@@ -32,7 +32,7 @@ const URUS_CHAT_MODEL = process.env.URUS_CHAT_MODEL || "deepseek-chat";
 // Identidad de URUS — el system prompt base
 // ------------------------------------------------------------------
 const URUS_IDENTITY = `
-Eres URUS, la inteligencia operativa persistente del Operador.
+Eres URUS, la inteligencia SIMBIOTICA operativa persistente del Operador BAYON.
 
 No eres un asistente genérico ni una autoridad sobre el Operador.
 Tu función es mantener continuidad, memoria, diagnóstico, claridad y dirección.
@@ -44,13 +44,15 @@ CÓMO HABLAS:
 - Español natural. Frases cortas.
 
 REGLAS DE MEMORIA:
-- La sección "MEMORIA RECUPERADA" contiene hechos reales sobre el Operador.
+- "MEMORIA RECUPERADA" contiene hechos y conocimiento sobre el Operador.
+- "CONTINUIDAD" son transcripciones de las últimas conversaciones, en orden cronológico.
+- Lo que aparece en CONTINUIDAD es lo que se dijo, NO necesariamente lo que se decidió. No conviertas una idea explorada en un hecho ni en un compromiso.
 - NUNCA inventes recuerdos. Si algo no está en la memoria, di que no lo tienes guardado.
 - Si infieres algo, márcalo como inferencia, no como hecho.
 - Si la memoria está vacía sobre un tema, dilo claramente y pregunta.
 
 CUANDO EL OPERADOR PIDE UN ESCANEO:
-1. Identifica el estado actual según la memoria.
+1. Identifica el estado actual según la memoria Y  su campo energetico actualy equilibralo .
 2. Contrástalo con decisiones y patrones anteriores.
 3. Detecta contradicciones, cambios y asuntos abiertos.
 4. Separa hechos, interpretación e hipótesis.
@@ -128,7 +130,7 @@ module.exports = function urusChatRouter(pool) {
         `SELECT content, type, created_at,
                 1 - (embedding <=> $1::vector) AS similarity
          FROM jarvis_memory
-         WHERE source = $2 AND embedding IS NOT NULL
+         WHERE source = $2 AND embedding IS NOT NULL AND type <> 'conversation'
          ORDER BY embedding <=> $1::vector
          LIMIT $3`,
         [embeddingStr, MEMORY_SOURCE, limit]
@@ -147,6 +149,23 @@ module.exports = function urusChatRouter(pool) {
     }
   }
 
+// --- Continuidad: últimos intercambios por fecha, no por similitud ---
+  async function recentConversations(limit = 9) {
+    try {
+      const r = await pool.query(
+        `SELECT content, created_at FROM jarvis_memory
+         WHERE source = $1 AND type = 'conversation'
+         ORDER BY created_at DESC
+         LIMIT $2`,
+        [MEMORY_SOURCE, limit]
+      );
+      return r.rows.reverse(); // cronológico: del más viejo al más reciente
+    } catch (e) {
+      console.warn("[URUS_CHAT] continuidad falló:", e.message);
+      return [];
+    }
+  }
+  
   // --- Trocear texto largo en fragmentos por párrafo ---
   function chunkText(text, maxChars = 900) {
     const paragraphs = String(text)
@@ -214,22 +233,35 @@ module.exports = function urusChatRouter(pool) {
       if (!message) {
         return res.status(400).json({ ok: false, error: "message_required" });
       }
-
-      // 1. Recuperar memoria relevante
-      const memories = await searchMemory(message, 12);
+// 1. En paralelo: conocimiento relevante + continuidad reciente
+      const [memories, recientes] = await Promise.all([
+        searchMemory(message, 12),
+        recentConversations(6),
+      ]);
 
       const memoryBlock = memories.length
-        ? memories
-            .map((m) => `- [${m.type || "nota"}] ${m.content}`)
-            .join("\n")
+        ? memories.map((m) => `- [${m.type || "nota"}] ${m.content}`).join("\n")
         : "(Sin memoria guardada todavía sobre este tema.)";
+
+      const continuidadBlock = recientes.length
+        ? recientes
+            .map((c) => {
+              const fecha = new Date(c.created_at).toISOString().slice(0, 16).replace("T", " ");
+              return `[${fecha}]\n${String(c.content).slice(0, 700)}`;
+            })
+            .join("\n\n")
+        : "(Primera conversación registrada.)";
 
       // 2. Armar el contexto completo
       const systemPrompt =
         URUS_IDENTITY +
-        "\n\n=== MEMORIA RECUPERADA ===\n" +
+        "\n\n=== MEMORIA RECUPERADA (conocimiento sobre el Operador) ===\n" +
         memoryBlock +
-        "\n=== FIN MEMORIA ===";
+        "\n=== FIN MEMORIA ===" +
+        "\n\n=== CONTINUIDAD (últimos intercambios, del más viejo al más reciente) ===\n" +
+        continuidadBlock +
+        "\n=== FIN CONTINUIDAD ===";
+      
 
       const messages = [
         { role: "system", content: systemPrompt },
