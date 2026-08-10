@@ -1,20 +1,26 @@
 /**
- * URUS CHAT — Chat propio con memoria + embeddings
+ * URUS CHAT — Chat propio con memoria + embeddings + análisis de archivos
  * ------------------------------------------------------------------
  * Cerebro: DeepSeek (intercambiable vía urus-gateway.js)
+ * Visión:  OpenAI gpt-4o (DeepSeek no ve imágenes)
  * Memoria: jarvis_memory con source='urus' (aislada de studio/jarvis)
  * Embeddings: OpenAI text-embedding-3-small (1536 dims, igual que tu tabla)
  *
  * ENDPOINTS:
- *   POST /v1/urus/chat        → conversar (con memoria semántica)
+ *   POST /v1/urus/chat        → conversar (memoria semántica + continuidad)
  *   POST /v1/urus/learn       → enseñarle información sobre ti
+ *   POST /v1/urus/analyze     → analizar imagen o PDF  ← NUEVO
+ *   POST /v1/urus/voice       → texto a voz
  *   GET  /v1/urus/memory      → ver qué recuerda
  *   GET  /v1/urus/status      → diagnóstico (qué cerebro está activo)
  *
- * AUTH: header  x-studio-password: urus2026
+ * AUTH: header  x-studio-password
  *
  * MONTAJE en server.js (una sola línea):
  *   app.use("/v1/urus", require("./urus-chat")(pool));
+ *
+ * REQUISITO para PDFs:  npm i pdf-parse
+ * REQUISITO para subir archivos: en server.js, express.json({ limit: "25mb" })
  */
 
 const express = require("express");
@@ -27,6 +33,9 @@ const MEMORY_SOURCE = "urus";
 // Cerebro por defecto de este chat (se puede cambiar por ENV sin tocar código)
 const URUS_CHAT_PROVIDER = process.env.URUS_CHAT_PROVIDER || "deepseek";
 const URUS_CHAT_MODEL = process.env.URUS_CHAT_MODEL || "deepseek-chat";
+
+// Modelo de visión (DeepSeek no procesa imágenes)
+const URUS_VISION_MODEL = process.env.URUS_VISION_MODEL || "gpt-4o";
 
 // ------------------------------------------------------------------
 // Identidad de URUS — el system prompt base
@@ -52,7 +61,7 @@ REGLAS DE MEMORIA:
 - Si la memoria está vacía sobre un tema, dilo claramente y pregunta.
 
 CUANDO EL OPERADOR PIDE UN ESCANEO:
-1. Identifica el estado actual según la memoria Y  su campo energetico actualy equilibralo .
+1. Identifica el estado actual según la memoria. Si el Operador reporta su estado energético, tómalo como dato suyo y trabájalo con él — nunca lo diagnostiques por tu cuenta ni lo declares como lectura tuya.
 2. Contrástalo con decisiones y patrones anteriores.
 3. Detecta contradicciones, cambios y asuntos abiertos.
 4. Separa hechos, interpretación e hipótesis.
@@ -62,19 +71,25 @@ CUANDO EL OPERADOR PIDE UN ESCANEO:
 module.exports = function urusChatRouter(pool) {
   const router = express.Router();
 
-  // --- Cliente de embeddings (OpenAI: DeepSeek no tiene embeddings) ---
-  let _embedClient = null;
-  function getEmbedClient() {
-    if (_embedClient) return _embedClient;
+  // Cuerpos grandes: base64 de imágenes y PDFs
+  router.use(express.json({ limit: "25mb" }));
+
+  // --- Cliente de OpenAI (embeddings, visión y voz) ---
+  let _openaiClient = null;
+  function getOpenAIClient() {
+    if (_openaiClient) return _openaiClient;
     if (!process.env.OPENAI_API_KEY) {
-      throw new Error("URUS_CHAT: falta OPENAI_API_KEY (necesaria para embeddings)");
+      throw new Error("URUS_CHAT: falta OPENAI_API_KEY");
     }
-    _embedClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    return _embedClient;
+    _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    return _openaiClient;
   }
 
+  // Alias por compatibilidad con el nombre viejo
+  const getEmbedClient = getOpenAIClient;
+
   async function generateEmbedding(text) {
-    const client = getEmbedClient();
+    const client = getOpenAIClient();
     const resp = await client.embeddings.create({
       model: "text-embedding-3-small",
       input: String(text).slice(0, 8000),
@@ -120,7 +135,7 @@ module.exports = function urusChatRouter(pool) {
     return r.rows[0].id;
   }
 
-  // --- Buscar memoria relevante por similitud semántica ---
+  // --- Buscar memoria relevante por similitud semántica (solo conocimiento) ---
   async function searchMemory(query, limit = 12) {
     try {
       const vec = await generateEmbedding(query);
@@ -142,15 +157,16 @@ module.exports = function urusChatRouter(pool) {
       console.warn("[URUS_CHAT] búsqueda semántica falló, usando fallback:", e.message);
       const r = await pool.query(
         `SELECT content, type, created_at FROM jarvis_memory
-         WHERE source = $1 ORDER BY created_at DESC LIMIT $2`,
+         WHERE source = $1 AND type <> 'conversation'
+         ORDER BY created_at DESC LIMIT $2`,
         [MEMORY_SOURCE, limit]
       );
       return r.rows;
     }
   }
 
-// --- Continuidad: últimos intercambios por fecha, no por similitud ---
-  async function recentConversations(limit = 9) {
+  // --- Continuidad: últimos intercambios por fecha, no por similitud ---
+  async function recentConversations(limit = 6) {
     try {
       const r = await pool.query(
         `SELECT content, created_at FROM jarvis_memory
@@ -165,7 +181,7 @@ module.exports = function urusChatRouter(pool) {
       return [];
     }
   }
-  
+
   // --- Trocear texto largo en fragmentos por párrafo ---
   function chunkText(text, maxChars = 900) {
     const paragraphs = String(text)
@@ -188,9 +204,17 @@ module.exports = function urusChatRouter(pool) {
     return chunks;
   }
 
+  // --- Limpia el base64 venga como venga (con o sin data URI) ---
+  function limpiarBase64(input) {
+    const s = String(input || "").trim();
+    const coma = s.indexOf(",");
+    if (s.startsWith("data:") && coma !== -1) return s.slice(coma + 1);
+    return s;
+  }
+
   // ==================================================================
   // POST /v1/urus/learn  → enseñarle información sobre ti
-  // Body: { content: "texto largo...", type: "identity|project|decision|person|note" }
+  // Body: { content: "texto largo...", type: "identity|principle|protocol|context" }
   // ==================================================================
   router.post("/learn", auth, async (req, res) => {
     try {
@@ -222,6 +246,156 @@ module.exports = function urusChatRouter(pool) {
   });
 
   // ==================================================================
+  // POST /v1/urus/analyze  → analizar una imagen o un PDF
+  // Body: {
+  //   file_base64: "...",        // con o sin prefijo data:
+  //   mime_type:   "image/png" | "image/jpeg" | "application/pdf",
+  //   filename:    "opcional.pdf",
+  //   message:     "qué quieres saber del archivo (opcional)",
+  //   recordar:    true          // guardar el análisis en memoria (default true)
+  // }
+  // ==================================================================
+  router.post("/analyze", auth, async (req, res) => {
+    try {
+      const fileB64 = limpiarBase64(req.body?.file_base64);
+      const mimeType = String(req.body?.mime_type || "").trim().toLowerCase();
+      const filename = String(req.body?.filename || "archivo").trim();
+      const message = String(req.body?.message || "").trim();
+      const recordar = req.body?.recordar !== false;
+
+      if (!fileB64) {
+        return res.status(400).json({ ok: false, error: "file_base64_required" });
+      }
+      if (!mimeType) {
+        return res.status(400).json({ ok: false, error: "mime_type_required" });
+      }
+
+      const instruccion =
+        message ||
+        "Analiza este archivo. Extrae lo importante, los datos concretos, y dime qué implica para el Operador. Sin relleno.";
+
+      // Memoria relevante para que el análisis no salga descontextualizado
+      const memories = await searchMemory(message || filename, 8);
+      const memoryBlock = memories.length
+        ? memories.map((m) => `- [${m.type || "nota"}] ${m.content}`).join("\n")
+        : "(Sin memoria relevante sobre este tema.)";
+
+      const systemPrompt =
+        URUS_IDENTITY +
+        "\n\n=== MEMORIA RECUPERADA (conocimiento sobre el Operador) ===\n" +
+        memoryBlock +
+        "\n=== FIN MEMORIA ===";
+
+      let answer;
+      let modoUsado;
+
+      // ---------- RAMA IMAGEN ----------
+      if (mimeType.startsWith("image/")) {
+        const client = getOpenAIClient();
+        const visionResp = await client.chat.completions.create({
+          model: URUS_VISION_MODEL,
+          max_tokens: 2500,
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: instruccion },
+                {
+                  type: "image_url",
+                  image_url: { url: `data:${mimeType};base64,${fileB64}` },
+                },
+              ],
+            },
+          ],
+        });
+        answer = visionResp.choices[0].message.content;
+        modoUsado = `vision/${URUS_VISION_MODEL}`;
+
+      // ---------- RAMA PDF ----------
+      } else if (mimeType === "application/pdf") {
+        let pdfParse;
+        try {
+          pdfParse = require("pdf-parse");
+        } catch (e) {
+          return res.status(501).json({
+            ok: false,
+            error: "pdf_parse_no_instalado",
+            hint: "Corre: npm i pdf-parse — y añádelo a package.json",
+          });
+        }
+
+        const buffer = Buffer.from(fileB64, "base64");
+        const parsed = await pdfParse(buffer);
+        const texto = String(parsed.text || "").trim();
+
+        if (!texto) {
+          return res.status(422).json({
+            ok: false,
+            error: "pdf_sin_texto",
+            hint: "El PDF parece escaneado (imagen). Conviértelo a PNG/JPG y mándalo como imagen.",
+          });
+        }
+
+        // Recorte defensivo: PDFs largos revientan la ventana de contexto
+        const MAX_CHARS = 60000;
+        const recortado = texto.length > MAX_CHARS;
+        const textoUsado = texto.slice(0, MAX_CHARS);
+
+        answer = await callModel({
+          provider: URUS_CHAT_PROVIDER,
+          model: URUS_CHAT_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content:
+                `ARCHIVO: ${filename} (${parsed.numpages} páginas${recortado ? ", recortado" : ""})\n\n` +
+                `=== CONTENIDO ===\n${textoUsado}\n=== FIN CONTENIDO ===\n\n${instruccion}`,
+            },
+          ],
+          temperature: 0.4,
+          max_tokens: 2500,
+        });
+        modoUsado = `pdf/${URUS_CHAT_PROVIDER}/${URUS_CHAT_MODEL}`;
+
+      } else {
+        return res.status(415).json({
+          ok: false,
+          error: "tipo_no_soportado",
+          hint: "Solo image/* y application/pdf",
+        });
+      }
+
+      // Guardar el análisis como conocimiento recuperable (no como conversación)
+      let memoria_id = null;
+      if (recordar) {
+        try {
+          memoria_id = await saveMemory(
+            `DOCUMENTO: ${filename}\nPregunta: ${instruccion}\nAnálisis: ${answer}`,
+            "document",
+            { filename, mime_type: mimeType, at: new Date().toISOString() }
+          );
+        } catch (e) {
+          console.warn("[URUS_CHAT] no se pudo guardar el análisis:", e.message);
+        }
+      }
+
+      return res.json({
+        ok: true,
+        answer,
+        filename,
+        modo: modoUsado,
+        memories_used: memories.length,
+        memoria_id,
+      });
+    } catch (e) {
+      console.error("URUS_ANALYZE_ERROR", e);
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ==================================================================
   // POST /v1/urus/chat  → conversar con memoria
   // Body: { message: "...", history: [{role, content}, ...] }
   // ==================================================================
@@ -233,7 +407,8 @@ module.exports = function urusChatRouter(pool) {
       if (!message) {
         return res.status(400).json({ ok: false, error: "message_required" });
       }
-// 1. En paralelo: conocimiento relevante + continuidad reciente
+
+      // 1. En paralelo: conocimiento relevante + continuidad reciente
       const [memories, recientes] = await Promise.all([
         searchMemory(message, 12),
         recentConversations(6),
@@ -246,7 +421,10 @@ module.exports = function urusChatRouter(pool) {
       const continuidadBlock = recientes.length
         ? recientes
             .map((c) => {
-              const fecha = new Date(c.created_at).toISOString().slice(0, 16).replace("T", " ");
+              const fecha = new Date(c.created_at)
+                .toISOString()
+                .slice(0, 16)
+                .replace("T", " ");
               return `[${fecha}]\n${String(c.content).slice(0, 700)}`;
             })
             .join("\n\n")
@@ -261,7 +439,6 @@ module.exports = function urusChatRouter(pool) {
         "\n\n=== CONTINUIDAD (últimos intercambios, del más viejo al más reciente) ===\n" +
         continuidadBlock +
         "\n=== FIN CONTINUIDAD ===";
-      
 
       const messages = [
         { role: "system", content: systemPrompt },
@@ -295,10 +472,42 @@ module.exports = function urusChatRouter(pool) {
         ok: true,
         answer,
         memories_used: memories.length,
+        continuidad_usada: recientes.length,
+        memories: memories.map((m) => ({
+          content: String(m.content).slice(0, 300),
+          type: m.type,
+        })),
         model_used: `${URUS_CHAT_PROVIDER}/${URUS_CHAT_MODEL}`,
       });
     } catch (e) {
       console.error("URUS_CHAT_ERROR", e);
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ==================================================================
+  // POST /v1/urus/voice  → texto a voz (OpenAI TTS)
+  // Nota: DeepSeek no genera audio. La voz siempre sale de OpenAI.
+  // ==================================================================
+  router.post("/voice", auth, async (req, res) => {
+    try {
+      const text = String(req.body?.text || "").trim().slice(0, 4000);
+      const voice = String(req.body?.voice || "onyx");
+      if (!text) return res.status(400).json({ ok: false, error: "text_required" });
+
+      const client = getOpenAIClient();
+      const mp3 = await client.audio.speech.create({
+        model: "tts-1-hd",
+        voice,
+        input: text,
+        speed: 1.0,
+      });
+
+      const buffer = Buffer.from(await mp3.arrayBuffer());
+      res.set({ "Content-Type": "audio/mpeg", "Content-Length": buffer.length });
+      return res.send(buffer);
+    } catch (e) {
+      console.error("URUS_VOICE_ERROR", e);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -309,15 +518,28 @@ module.exports = function urusChatRouter(pool) {
   router.get("/memory", auth, async (req, res) => {
     try {
       const limit = Math.min(parseInt(req.query.limit || "50", 10), 200);
-      const r = await pool.query(
-        `SELECT id, type, content, created_at,
-                (embedding IS NOT NULL) AS tiene_embedding
-         FROM jarvis_memory
-         WHERE source = $1
-         ORDER BY created_at DESC
-         LIMIT $2`,
-        [MEMORY_SOURCE, limit]
-      );
+      const tipo = req.query.type ? String(req.query.type) : null;
+
+      const r = tipo
+        ? await pool.query(
+            `SELECT id, type, content, created_at,
+                    (embedding IS NOT NULL) AS tiene_embedding
+             FROM jarvis_memory
+             WHERE source = $1 AND type = $2
+             ORDER BY created_at DESC
+             LIMIT $3`,
+            [MEMORY_SOURCE, tipo, limit]
+          )
+        : await pool.query(
+            `SELECT id, type, content, created_at,
+                    (embedding IS NOT NULL) AS tiene_embedding
+             FROM jarvis_memory
+             WHERE source = $1
+             ORDER BY created_at DESC
+             LIMIT $2`,
+            [MEMORY_SOURCE, limit]
+          );
+
       return res.json({ ok: true, total: r.rows.length, memorias: r.rows });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
@@ -335,11 +557,19 @@ module.exports = function urusChatRouter(pool) {
          FROM jarvis_memory WHERE source = $1`,
         [MEMORY_SOURCE]
       );
+      const porTipo = await pool.query(
+        `SELECT type, COUNT(*)::int AS n
+         FROM jarvis_memory WHERE source = $1
+         GROUP BY type ORDER BY n DESC`,
+        [MEMORY_SOURCE]
+      );
       return res.json({
         ok: true,
         chat_provider: URUS_CHAT_PROVIDER,
         chat_model: URUS_CHAT_MODEL,
+        vision_model: URUS_VISION_MODEL,
         memoria: count.rows[0],
+        por_tipo: porTipo.rows,
         gateway: gatewayStatus(),
       });
     } catch (e) {
