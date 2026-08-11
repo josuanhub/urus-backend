@@ -321,7 +321,7 @@ function stopAudio(){
   speaking=false;
 }
 function splitVoice(text,max){
-  max=max||7000;
+  max=max||8000;
   const parts=String(text).replace(/\s+/g,' ').match(/[^.!?…\n]+[.!?…]*\s*/g)||[String(text)];
   const out=[];let buf='';
   for(const p of parts){
