@@ -476,6 +476,8 @@ module.exports = function urusChatRouter(pool) {
         "\n\n=== CONTINUIDAD (últimos intercambios, del más viejo al más reciente) ===\n" +
         continuidadBlock +
         "\n=== FIN CONTINUIDAD ===";
+      +
+        "\n\nRECUERDA: responde según CÓMO HABLAS. Directo, frases cortas, sin relleno, sin frases de coach. La memoria es contexto, no es la pregunta.";
 
       const messages = [
         { role: "system", content: systemPrompt },
