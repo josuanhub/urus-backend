@@ -310,27 +310,63 @@ function md(s){
 }
 function plain(s){return s.replace(/```[\s\S]*?```/g,' bloque de código ').replace(/[*_`#>]/g,'').replace(/\n+/g,'. ').trim()}
 
-/* ═══ VOZ: HABLAR ═══ */
-let audioNow=null, btnNow=null;
+  
+/* === VOZ: HABLAR === */
+let audioNow=null, btnNow=null, voiceAbort=null, speaking=false;
 function stopAudio(){
-  if(audioNow){audioNow.pause();audioNow=null}
+  if(voiceAbort){voiceAbort.abort();voiceAbort=null}
+  if(audioNow){audioNow.pause();if(audioNow.src)URL.revokeObjectURL(audioNow.src);audioNow=null}
   if(window.speechSynthesis)speechSynthesis.cancel();
   if(btnNow){btnNow.classList.remove('playing');btnNow.textContent='🔊';btnNow=null}
+  speaking=false;
+}
+function splitVoice(text,max){
+  max=max||3500;
+  const parts=String(text).replace(/\s+/g,' ').match(/[^.!?…\n]+[.!?…]*\s*/g)||[String(text)];
+  const out=[];let buf='';
+  for(const p of parts){
+    if((buf+p).length>max&&buf){out.push(buf.trim());buf=p}else{buf+=p}
+  }
+  if(buf.trim())out.push(buf.trim());
+  return out;
+}
+async function fetchVoice(txt,signal){
+  const r=await fetch(BASE+'/v1/urus/voice',{method:'POST',headers:H,body:JSON.stringify({text:txt,voice:'onyx'}),signal});
+  if(!r.ok)throw new Error('voice');
+  return URL.createObjectURL(await r.blob());
+}
+function playUrl(url,signal){
+  return new Promise(function(resolve,reject){
+    audioNow=new Audio(url);
+    audioNow.onended=function(){URL.revokeObjectURL(url);resolve()};
+    audioNow.onerror=function(){URL.revokeObjectURL(url);reject(new Error('play'))};
+    signal.addEventListener('abort',function(){if(audioNow)audioNow.pause();resolve()},{once:true});
+    audioNow.play().catch(reject);
+  });
 }
 async function speak(text,btn){
-  if(btnNow===btn&&btn){stopAudio();return}
-  stopAudio();
+  if(speaking){const mismo=(btnNow===btn);stopAudio();if(mismo)return}
+  const clean=plain(text);
+  if(!clean)return;
+  speaking=true;
   btnNow=btn; if(btn){btn.classList.add('playing');btn.textContent='⏹'}
-  const clean=plain(text).slice(0,4000);
+  voiceAbort=new AbortController();
+  const signal=voiceAbort.signal;
   try{
-    const r=await fetch(BASE+'/v1/urus/voice',{method:'POST',headers:H,body:JSON.stringify({text:clean,voice:'nova'})});
-    if(!r.ok)throw new Error('voice');
-    const blob=await r.blob();
-    audioNow=new Audio(URL.createObjectURL(blob));
-    audioNow.onended=stopAudio;
-    audioNow.onerror=function(){stopAudio();fallbackSpeak(clean)};
-    await audioNow.play();
-  }catch(e){fallbackSpeak(clean)}
+    const tramos=splitVoice(clean);
+    let next=fetchVoice(tramos[0],signal);
+    for(let i=0;i<tramos.length;i++){
+      if(signal.aborted)break;
+      const url=await next;
+      next=(i+1<tramos.length)?fetchVoice(tramos[i+1],signal):null;
+      await playUrl(url,signal);
+    }
+    if(next)next.then(function(u){URL.revokeObjectURL(u)}).catch(function(){});
+  }catch(e){
+    if(e.name!=='AbortError')fallbackSpeak(clean);
+  }finally{
+    if(!signal.aborted)stopAudio();
+  }
 }
 function fallbackSpeak(t){
   if(!window.speechSynthesis){stopAudio();return}
@@ -342,6 +378,7 @@ function fallbackSpeak(t){
   speechSynthesis.speak(u);
 }
 
+  
 /* ═══ VOZ: ESCUCHAR (dictado continuo) ═══ */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null, listening=false, target=null, baseText='', finalBuf='';
