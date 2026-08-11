@@ -131,6 +131,19 @@
   .bars i{width:2px;background:var(--live);height:3px;border-radius:1px;transition:height .06s linear}
   .interim{color:var(--faint);font-style:italic}
 
+  /* ADJUNTOS */
+  .clip{background:none;border:1px solid var(--edge);border-radius:8px;color:var(--dim);cursor:pointer;padding:8px;transition:.15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .clip:hover{border-color:var(--amber-dim);color:var(--amber)}
+  .clip.set{border-color:var(--amber);color:var(--amber);background:var(--amber-soft)}
+  .clip svg{width:16px;height:16px;display:block}
+  #tray{display:none;margin-bottom:9px}
+  #tray.on{display:block}
+  .chip{display:inline-flex;align-items:center;gap:9px;background:var(--slate);border:1px solid var(--edge);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--dim);max-width:100%}
+  .chip b{color:var(--amber);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px}
+  .chip .drop{cursor:pointer;color:var(--faint);font-size:15px;line-height:1;padding:0 2px}
+  .chip .drop:hover{color:var(--live)}
+  .filetag{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;color:var(--amber-dim);border:1px solid var(--amber-soft);border-radius:6px;padding:5px 10px;margin-bottom:9px}
+
   /* MODAL */
   #veil{position:fixed;inset:0;background:rgba(4,5,7,.88);display:none;align-items:center;justify-content:center;padding:24px;z-index:50;backdrop-filter:blur(4px)}
   #veil.on{display:flex}
@@ -201,8 +214,15 @@
 
   <div id="dock">
     <div class="dock-col">
+      <div id="tray"></div>
       <div class="field" id="field">
-        <textarea id="entry" rows="1" placeholder="Escribe o pulsa el micrófono…"></textarea>
+        <textarea id="entry" rows="1" placeholder="Escribe, adjunta o pulsa el micrófono…"></textarea>
+        <input type="file" id="filePick" accept="image/*,application/pdf" style="display:none">
+        <button class="clip" id="clip" title="Adjuntar foto o PDF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
         <button class="mic" id="mic" title="Dictar (Ctrl+M)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
@@ -255,19 +275,59 @@ const blank=document.getElementById('blank'), entry=document.getElementById('ent
 const threadsEl=document.getElementById('threads'), field=document.getElementById('field');
 const micBtn=document.getElementById('mic'), vu=document.getElementById('vu'), bars=document.getElementById('bars');
 const hint=document.getElementById('hint'), dictBtn=document.getElementById('dictBtn');
+const clipBtn=document.getElementById('clip'), filePick=document.getElementById('filePick'), tray=document.getElementById('tray');
 const HINT_DEFAULT='Enter envía · Shift+Enter salta línea · Ctrl+M micrófono';
 
 let threads=[], active=null, kind='identity', speakOn=false;
+let pending=null; /* archivo adjunto pendiente */
 
-/* ═══ PERSISTENCIA (en memoria de la pestaña) ═══ */
-/* Nota: se mantiene mientras la pestaña esté abierta. La memoria real
-   (lo que URUS aprende de ti) vive en el servidor, no aquí. */
-function newThread(){active={id:Date.now(),title:'Sin título',turns:[]};threads.unshift(active);paint();render();entry.focus()}
-function delThread(id,ev){
+function uuid(){
+  if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();
+  return 'x-'+Date.now()+'-'+Math.random().toString(16).slice(2);
+}
+
+/* ═══ CONVERSACIONES PERMANENTES (servidor) ═══ */
+function newThread(){
+  active={id:uuid(),title:'Sin título',turns:[],nueva:true};
+  localStorage.setItem('urus_session',active.id);
+  if(!threads.some(function(t){return t.id===active.id}))threads.unshift(active);
+  paint();render();entry.focus();
+}
+async function loadThreads(){
+  try{
+    const r=await fetch(BASE+'/v1/urus/sessions',{headers:H});
+    const d=await r.json();
+    const server=(d.sesiones||[]).map(function(s){
+      return {id:s.session_id,title:s.titulo||'Sin título',turns:null,intercambios:s.intercambios};
+    });
+    const localNueva=threads.filter(function(t){
+      return t.nueva&&!server.some(function(s){return s.id===t.id});
+    });
+    threads=localNueva.concat(server);
+    paint();
+  }catch(e){}
+}
+async function openThread(t){
+  active=t; paint();
+  if(t.turns===null){
+    col.innerHTML='';blank.style.display='none';
+    try{
+      const r=await fetch(BASE+'/v1/urus/session/'+t.id,{headers:H});
+      const d=await r.json();
+      t.turns=(d.messages||[]).map(function(m){
+        return {role:(m.role==='user'?'op':'sys'),text:m.content||'',recall:[]};
+      });
+    }catch(e){t.turns=[]}
+  }
+  localStorage.setItem('urus_session',t.id);
+  render();
+}
+async function delThread(id,ev){
   ev.stopPropagation();
+  try{await fetch(BASE+'/v1/urus/session/'+id,{method:'DELETE',headers:H})}catch(e){}
   threads=threads.filter(function(t){return t.id!==id});
-  if(active&&active.id===id)active=threads[0]||null;
-  if(!active)newThread(); else {paint();render()}
+  if(active&&active.id===id){active=null;localStorage.removeItem('urus_session')}
+  if(threads.length&&!active)openThread(threads[0]); else if(!active)newThread(); else {paint();render()}
 }
 function paint(){
   threadsEl.innerHTML='';
@@ -282,15 +342,15 @@ function paint(){
     x.className='x'; x.textContent='×'; x.title='Eliminar';
     x.onclick=function(e){delThread(t.id,e)};
     d.appendChild(x);
-    d.onclick=function(){active=t;paint();render()};
+    d.onclick=function(){openThread(t)};
     threadsEl.appendChild(d);
   });
 }
 function render(){
   col.innerHTML='';
-  if(!active||!active.turns.length){blank.style.display='block';return}
+  if(!active||!active.turns||!active.turns.length){blank.style.display='block';return}
   blank.style.display='none';
-  active.turns.forEach(function(t){draw(t.role,t.text,t.recall)});
+  active.turns.forEach(function(t){draw(t.role,t.text,t.recall,t.file)});
   stream.scrollTop=stream.scrollHeight;
 }
 
@@ -310,7 +370,6 @@ function md(s){
 }
 function plain(s){return s.replace(/```[\s\S]*?```/g,' bloque de código ').replace(/[*_`#>]/g,'').replace(/\n+/g,'. ').trim()}
 
-  
 /* === VOZ: HABLAR === */
 let audioNow=null, btnNow=null, voiceAbort=null, speaking=false;
 function stopAudio(){
@@ -378,7 +437,6 @@ function fallbackSpeak(t){
   speechSynthesis.speak(u);
 }
 
-  
 /* ═══ VOZ: ESCUCHAR (dictado continuo) ═══ */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null, listening=false, target=null, baseText='', finalBuf='';
@@ -457,16 +515,59 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){if(listening)stopListening();stopAudio()}
 });
 
+/* ═══ ADJUNTAR FOTO / PDF ═══ */
+clipBtn.onclick=function(){filePick.click()};
+filePick.onchange=function(){
+  const f=filePick.files&&filePick.files[0];
+  filePick.value='';
+  if(!f)return;
+  if(f.size>18*1024*1024){showTray(null,'Archivo muy grande (máx 18 MB)');return}
+  const okTipo=f.type.indexOf('image/')===0||f.type==='application/pdf';
+  if(!okTipo){showTray(null,'Solo fotos o PDF');return}
+  const fr=new FileReader();
+  fr.onload=function(){
+    pending={name:f.name,mime:f.type,b64:String(fr.result).split(',')[1]};
+    showTray(pending,null);
+  };
+  fr.onerror=function(){showTray(null,'No se pudo leer el archivo')};
+  fr.readAsDataURL(f);
+};
+function showTray(p,err){
+  tray.innerHTML='';
+  if(err){
+    const c=document.createElement('div'); c.className='chip';
+    c.innerHTML='<span style="color:var(--live)">'+err+'</span>';
+    tray.appendChild(c); tray.classList.add('on');
+    setTimeout(function(){if(!pending){tray.classList.remove('on');tray.innerHTML=''}},2600);
+    return;
+  }
+  if(!p){tray.classList.remove('on');clipBtn.classList.remove('set');return}
+  const c=document.createElement('div'); c.className='chip';
+  const ico=document.createElement('span'); ico.textContent=(p.mime==='application/pdf'?'📄':'🖼');
+  const nm=document.createElement('b'); nm.textContent=p.name;
+  const dr=document.createElement('span'); dr.className='drop'; dr.textContent='×'; dr.title='Quitar';
+  dr.onclick=function(){pending=null;showTray(null,null)};
+  c.appendChild(ico); c.appendChild(nm); c.appendChild(dr);
+  tray.appendChild(c); tray.classList.add('on'); clipBtn.classList.add('set');
+}
+
 /* ═══ RENDER ═══ */
-function draw(role,text,recall){
+function draw(role,text,recall,file){
   const t=document.createElement('div');
   t.className='turn '+(role==='op'?'op':'sys');
   const w=document.createElement('div'); w.className='who';
   const dot=document.createElement('span'); dot.className='dot'; w.appendChild(dot);
   const label=document.createElement('span'); label.textContent=role==='op'?'Tú':'URUS'; w.appendChild(label);
   const b=document.createElement('div'); b.className='body';
-  if(text==='…')b.innerHTML='<span class="pulse"><i></i><i></i><i></i></span>';
-  else b.innerHTML=role==='op'?'<p>'+text.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</p>':md(text);
+  if(file){
+    const tag=document.createElement('div'); tag.className='filetag';
+    tag.textContent=(file.mime==='application/pdf'?'📄 ':'🖼 ')+file.name;
+    b.appendChild(tag);
+  }
+  const inner=document.createElement('div');
+  if(text==='…')inner.innerHTML='<span class="pulse"><i></i><i></i><i></i></span>';
+  else inner.innerHTML=role==='op'?'<p>'+text.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</p>':md(text);
+  b.appendChild(inner);
   if(role!=='op'&&text!=='…'){
     const sp=document.createElement('button'); sp.className='speak'; sp.textContent='🔊'; sp.title='Escuchar';
     sp.onclick=function(){speak(text,sp)}; w.appendChild(sp);
@@ -474,7 +575,7 @@ function draw(role,text,recall){
   t.appendChild(w); t.appendChild(b);
   if(recall&&recall.length)t.appendChild(recallBox(recall));
   col.appendChild(t);
-  return b;
+  return inner;
 }
 function recallBox(list){
   const r=document.createElement('div'); r.className='recall';
@@ -495,32 +596,55 @@ function recallBox(list){
 /* ═══ ENVIAR ═══ */
 async function send(){
   if(listening)stopListening();
-  const msg=entry.value.trim(); if(!msg)return;
+  const msg=entry.value.trim();
+  const file=pending;
+  if(!msg&&!file)return;
   if(!active)newThread();
-  if(active.turns.length===0){active.title=msg.slice(0,36)+(msg.length>36?'…':'');paint()}
+  if(!active.turns)active.turns=[];
+  if(active.turns.length===0){
+    const base=msg||(file?file.name:'Sin título');
+    active.title=base.slice(0,36)+(base.length>36?'…':'');
+    paint();
+  }
   blank.style.display='none';
-  active.turns.push({role:'op',text:msg});
-  draw('op',msg);
+  const shown=msg||(file?'Analiza este archivo.':'');
+  active.turns.push({role:'op',text:shown,file:file?{name:file.name,mime:file.mime}:null});
+  draw('op',shown,null,file?{name:file.name,mime:file.mime}:null);
   entry.value=''; entry.style.height='24px'; fire.disabled=true;
+  pending=null; showTray(null,null);
   const slot=draw('sys','…');
   stream.scrollTop=stream.scrollHeight;
   try{
-    const hist=active.turns.slice(-11,-1).map(function(t){return{role:t.role==='op'?'user':'assistant',content:t.text}});
-    const r=await fetch(BASE+'/v1/urus/chat',{method:'POST',headers:H,body:JSON.stringify({message:msg,history:hist})});
-    const d=await r.json();
+    let d;
+    if(file){
+      const r=await fetch(BASE+'/v1/urus/analyze',{method:'POST',headers:H,body:JSON.stringify({
+        file_base64:file.b64, mime_type:file.mime, filename:file.name,
+        message:msg, session_id:active.id
+      })});
+      d=await r.json();
+    }else{
+      const hist=active.turns.slice(-11,-1).map(function(t){return{role:t.role==='op'?'user':'assistant',content:t.text}});
+      const r=await fetch(BASE+'/v1/urus/chat',{method:'POST',headers:H,body:JSON.stringify({
+        message:msg, history:hist, session_id:active.id
+      })});
+      d=await r.json();
+    }
     if(d.ok){
+      if(d.session_id)active.id=d.session_id;
+      active.nueva=false;
+      localStorage.setItem('urus_session',active.id);
       slot.innerHTML=md(d.answer);
       const recall=Array.isArray(d.memories)?d.memories:[];
-      active.turns.push({role:'sys',text:d.answer,recall});
-      const turnEl=slot.parentElement;
+      active.turns.push({role:'sys',text:d.answer,recall:recall});
+      const turnEl=slot.parentElement.parentElement;
       const sp=document.createElement('button'); sp.className='speak'; sp.textContent='🔊'; sp.title='Escuchar';
       sp.onclick=function(){speak(d.answer,sp)};
       turnEl.querySelector('.who').appendChild(sp);
       if(recall.length)turnEl.appendChild(recallBox(recall));
       if(speakOn)speak(d.answer,sp);
-      loadStats();
+      loadStats(); loadThreads();
     }else{
-      slot.innerHTML='<p style="color:var(--live)">No se pudo responder: '+(d.error||'error desconocido')+'</p>';
+      slot.innerHTML='<p style="color:var(--live)">No se pudo responder: '+(d.error||'error desconocido')+(d.hint?' — '+d.hint:'')+'</p>';
     }
   }catch(e){
     slot.innerHTML='<p style="color:var(--live)">Sin conexión con el servidor. '+e.message+'</p>';
@@ -579,8 +703,19 @@ async function loadStats(){
     }
   }catch(e){ mEl.textContent='offline'; mEl.className='off' }
 }
-if(window.speechSynthesis)speechSynthesis.getVoices();
-loadStats(); newThread();
+
+/* ═══ ARRANQUE ═══ */
+async function boot(){
+  if(window.speechSynthesis)speechSynthesis.getVoices();
+  loadStats();
+  await loadThreads();
+  const last=localStorage.getItem('urus_session');
+  const found=last?threads.filter(function(t){return t.id===last})[0]:null;
+  if(found)openThread(found);
+  else if(threads.length)openThread(threads[0]);
+  else newThread();
+}
+boot();
 </script>
 </body>
 </html>
