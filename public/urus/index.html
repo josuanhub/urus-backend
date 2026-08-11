@@ -331,7 +331,7 @@ function splitVoice(text,max){
   return out;
 }
 async function fetchVoice(txt,signal){
-  const r=await fetch(BASE+'/v1/urus/voice',{method:'POST',headers:H,body:JSON.stringify({text:txt,voice:'onyx'}),signal});
+  const r=await fetch(BASE+'/v1/urus/voice',{method:'POST',headers:H,body:JSON.stringify({text:txt,voice:'nova'}),signal});
   if(!r.ok)throw new Error('voice');
   return URL.createObjectURL(await r.blob());
 }
