@@ -362,7 +362,7 @@ module.exports = function urusChatRouter(pool) {
         }
 
         // Recorte defensivo: PDFs largos revientan la ventana de contexto
-        const MAX_CHARS = 60000;
+        const MAX_CHARS = 90000;
         const recortado = texto.length > MAX_CHARS;
         const textoUsado = texto.slice(0, MAX_CHARS);
 
