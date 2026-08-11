@@ -625,7 +625,7 @@ module.exports = function urusChatRouter(pool) {
   // ==================================================================
   router.post("/voice", auth, async (req, res) => {
     try {
-      const text = String(req.body?.text || "").trim().slice(0, 4000);
+      const text = String(req.body?.text || "").trim().slice(0, 4096);
       const voice = String(req.body?.voice || "onyx");
       if (!text) return res.status(400).json({ ok: false, error: "text_required" });
 
