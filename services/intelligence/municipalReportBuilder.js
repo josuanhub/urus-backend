@@ -7,7 +7,14 @@
  */
 
 const OpenAI = require("openai").default;
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// DeepSeek — API compatible con OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY,
+  baseURL: process.env.DEEPSEEK_API_KEY
+    ? "https://api.deepseek.com/v1"
+    : "https://api.openai.com/v1",
+});
 
 // ─────────────────────────────────────────────────────────────
 // TABLA municipality_profiles
@@ -514,7 +521,9 @@ INSTRUCCIONES:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini",
+      model: process.env.DEEPSEEK_API_KEY
+        ? (process.env.URUS_DEFAULT_MODEL || "deepseek-chat")
+        : (process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini"),
       messages: [
         {
           role: "system",
