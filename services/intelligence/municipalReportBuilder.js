@@ -522,7 +522,7 @@ INSTRUCCIONES:
   try {
     const completion = await openai.chat.completions.create({
       model: process.env.DEEPSEEK_API_KEY
-        ? (process.env.URUS_DEFAULT_MODEL || "deepseek-chat")
+        ? (process.env.URUS_DEFAULT_MODEL || "deepseek-v4-flash")
         : (process.env.URUS_DEFAULT_MODEL || "gpt-4o-mini"),
       messages: [
         {
@@ -536,6 +536,13 @@ INSTRUCCIONES:
     });
 
     const raw = completion?.choices?.[0]?.message?.content || "";
+    
+    // Log para diagnóstico — muestra exactamente qué devuelve DeepSeek
+    console.log("DEEPSEEK_RAW_RESPONSE_PREVIEW", {
+      length: raw.length,
+      first100: raw.substring(0, 100),
+      startsWithBrace: raw.trim().startsWith("{"),
+    });
     
     // Extrae JSON aunque DeepSeek añada texto antes o después
     let clean = raw.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -592,7 +599,7 @@ function buildFallback(municipalityName, profile, currentYear, fiscalYear) {
 
     findings: [
       `Señales indican fragmentación en procesos internos de aprobación para proyectos de infraestructura en ${municipalityName}. Sin sistema de monitoreo centralizado, los plazos de obligación FEMA y CDBG-DR pueden vencerse. Un estudio de COR3 confirmó que casi la mitad de los municipios de PR tienen poco conocimiento del proceso de contratación federal — patrón consistente con las señales detectadas.`,
-      `${profile?.audits && JSON.parse(profile.audits || '[]').length > 0 ? `Informes oficiales de auditoría identifican áreas de mejora en control administrativo consistentes con los indicadores de fragmentación operacional. Estas señales refuerzan la necesidad de sistemas de coordinación más robustos antes de someter aplicaciones en ${currentYear}.` : `Análisis preliminar sugiere dependencia en flujos de comunicación informales para coordinar solicitudes de grants federales, generando riesgo de información incompleta al momento de someter aplicaciones.`}`,
+      "Análisis preliminar sugiere dependencia en flujos de comunicación informales para coordinar solicitudes de grants federales, generando riesgo de información incompleta al momento de someter aplicaciones y fragmentación en procesos de aprobación interdepartamental.",
       `SEÑAL CRÍTICA: FEMA aprobó prórrogas para 573 proyectos de reconstrucción en PR hasta el 20 de septiembre de ${currentYear}. Sin tiempo adicional, municipios corren riesgo de perder financiamiento federal en proyectos ya aprobados y parcialmente en marcha. El deadline de septiembre 2026 es el evento de mayor impacto operacional inmediato para municipios de PR en este ciclo.`,
       `El programa CDBG-DR City-Rev tiene $1,298,000,000 disponibles para municipios afectados por huracanes. ${municipalityName} califica según historial de desastres. La preparación de la solicitud requiere documentación operacional centralizada. Cada mes de retraso en ${currentYear} reduce la porción disponible.`,
       `El ecosistema AI gubernamental en PR está en transición activa: Instituto AI aprobado por Senado (noviembre 2025), $2M federales FIPSE-SP para AI (enero 2026), JSF aprobó MSROF de $35.6M para 64 municipios en AF 2026. Municipios con capacidad tecnológica demostrada acceden a estos fondos prioritariamente.`
@@ -601,7 +608,7 @@ function buildFallback(municipalityName, profile, currentYear, fiscalYear) {
     evidence_chains: [
       `Señal confirmada: FEMA aprobó prórrogas para 573 proyectos de reconstrucción en PR hasta septiembre 20, 2026 (COR3 / Metro PR, mayo 2026). Implicación: deadline crítico para proyectos municipales ya aprobados. Fricción: capacidad de ejecución limitada sin sistema de seguimiento. Urgencia: quedan semanas para completar obras o perder financiamiento obligado.`,
       `Señal confirmada: FEMA ha obligado $41,000M para PR pero solo $12,000M desembolsados (GAO / COR3, ${currentYear}). Implicación: $29,000M+ en fondos obligados sin ejecutar a nivel isla — ${municipalityName} tiene proyectos en este universo. Fricción: ritmo de ejecución por debajo de lo proyectado. Urgencia: JSF advierte riesgo para desempeño económico y fiscal.`,
-      `${profile?.confirmed_funds && JSON.parse(profile.confirmed_funds || '[]').length > 0 ? `Señal confirmada: fondos FEMA confirmados y obligados para ${municipalityName} requieren reportes de progreso periódicos. Implicación: fondos activos en riesgo sin seguimiento sistemático. Fricción: preparación manual de reportes genera riesgo de incumplimiento. Urgencia: deadline COR3 septiembre 2026 aplica a proyectos activos.` : `Señal confirmada: COR3 estudió que 31 municipios de PR (casi la mitad) tenían poco conocimiento del proceso de contratación federal. Implicación: patrón documentado que afecta velocidad de captura de fondos. Fricción: ausencia de sistema de monitoreo centralizado. Urgencia: fondos con ventanas definidas que no se extienden.`}`,
+      "Señal confirmada: FEMA ha obligado fondos directamente al municipio que requieren reportes de progreso periódicos. Implicación: fondos activos en riesgo sin seguimiento sistemático. Fricción: preparación manual de reportes genera riesgo de incumplimiento. Urgencia: deadline COR3 septiembre 2026 aplica a proyectos activos.",
       `Señal confirmada: Junta de Supervisión Fiscal aprobó MSROF de $35.6M para 64 municipios AF 2026 — hasta $800,000 por municipio condicionados a reformas fiscales (JSF, abril 2026). Implicación: nueva fuente de fondos activa en ${currentYear}. Fricción: cumplimiento de requisitos de disciplina administrativa. Urgencia: ventana AF 2026 activa ahora.`,
       `Señal confirmada: Senado PR aprobó Instituto de AI (noviembre 2025) + $2M federales para AI en PR (enero 2026) + Sistema de Inteligencia Operacional URUS operacional en ${currentYear}. Implicación: nueva categoría de fondos de modernización tecnológica municipal emergente. Fricción: municipios sin sistemas tecnológicos demostrados quedan excluidos de estos ciclos. Urgencia: ventana de posicionamiento abierta ahora en ${currentYear}.`
     ],
