@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URUS Intelligence — Análisis Municipal Puerto Rico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #c9a24d;
+  --gold-dim: #9a7a38;
+  --black: #0b0b0b;
+  --surface: #111218;
+  --surface-2: #16181f;
+  --surface-3: #1c1f28;
+  --border: rgba(255,255,255,0.07);
+  --border-gold: rgba(201,162,77,0.25);
+  --text: #e8e6e1;
+  --text-muted: #6b7280;
+  --text-dim: #374151;
+  --green: #22c55e;
+  --red: #ef4444;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--black);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* NAV */
+nav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(11,11,11,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 60px;
+}
+.nav-logo { display: flex; align-items: center; gap: 12px; }
+.nav-logo-text { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: white; }
+.nav-logo-text em { color: var(--gold); font-style: normal; }
+.nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+.nav-status { font-size: 11px; color: var(--text-muted); }
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.nav-tag {
+  font-size: 11px; font-weight: 500; letter-spacing: 1px;
+  color: var(--gold); text-transform: uppercase;
+  border: 1px solid var(--border-gold);
+  padding: 4px 12px; border-radius: 20px;
+}
+
+/* HERO */
+.hero {
+  padding: 100px 48px 60px;
+  max-width: 900px; margin: 0 auto;
+  text-align: center;
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 500; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--gold);
+  border: 1px solid var(--border-gold);
+  background: rgba(201,162,77,0.06);
+  padding: 6px 16px; border-radius: 20px;
+  margin-bottom: 32px;
+}
+.hero-title {
+  font-size: 56px; font-weight: 700;
+  line-height: 1.08; letter-spacing: -2px;
+  color: white; margin-bottom: 20px;
+}
+.hero-title span { color: var(--gold); }
+.hero-sub {
+  font-size: 17px; color: var(--text-muted);
+  line-height: 1.7; max-width: 580px;
+  margin: 0 auto 56px;
+}
+
+/* SEARCH BOX */
+.search-container {
+  max-width: 680px; margin: 0 auto;
+}
+.search-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 6px 6px 6px 24px;
+  display: flex; align-items: center; gap: 12px;
+  transition: border-color 0.2s;
+  margin-bottom: 14px;
+}
+.search-box:focus-within { border-color: var(--border-gold); }
+.search-icon { color: var(--text-muted); font-size: 18px; flex-shrink: 0; }
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none; outline: none;
+  font-size: 16px; font-weight: 400;
+  color: white;
+  font-family: 'Inter', sans-serif;
+  padding: 10px 0;
+}
+.search-input::placeholder { color: #4b5563; }
+.search-btn {
+  background: var(--gold);
+  color: var(--black);
+  border: none; border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  display: flex; align-items: center; gap: 8px;
+}
+.search-btn:hover { background: #d4aa55; }
+.search-btn:active { transform: scale(0.97); }
+.search-btn:disabled { background: #2d2d2d; color: #555; cursor: not-allowed; }
+.search-btn svg { width: 16px; height: 16px; }
+
+/* QUICK PICKS */
+.quick-picks {
+  display: flex; align-items: center;
+  gap: 8px; flex-wrap: wrap;
+  justify-content: center;
+}
+.quick-label { font-size: 12px; color: var(--text-dim); }
+.quick-pill {
+  background: transparent;
+  border: 1px solid #1f2937;
+  color: #6b7280; border-radius: 20px;
+  padding: 4px 14px; font-size: 12px;
+  cursor: pointer; transition: all 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+.quick-pill:hover { border-color: var(--border-gold); color: var(--gold); }
+
+/* PROCESS PANEL */
+.process-panel {
+  max-width: 680px; margin: 32px auto 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  display: none;
+}
+.process-panel.visible { display: block; }
+.process-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.process-title { font-size: 13px; font-weight: 600; color: white; }
+.process-muni { font-size: 12px; color: var(--gold); }
+.process-steps { padding: 8px 0; }
+.process-step {
+  display: flex; align-items: center;
+  gap: 14px; padding: 12px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px; color: #4b5563;
+  transition: color 0.3s;
+}
+.process-step:last-child { border-bottom: none; }
+.process-step.active { color: var(--text-muted); }
+.process-step.done { color: #6b7280; }
+.step-indicator {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid #1f2937;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; flex-shrink: 0;
+  transition: all 0.3s;
+}
+.process-step.active .step-indicator {
+  border-color: var(--gold);
+  background: rgba(201,162,77,0.1);
+}
+.process-step.active .step-indicator::after {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold);
+  animation: blink 1s infinite;
+}
+.process-step.done .step-indicator {
+  border-color: var(--green);
+  background: rgba(34,197,94,0.1);
+}
+.process-step.done .step-indicator::after {
+  content: '✓';
+  font-size: 11px; color: var(--green);
+  font-weight: 700;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* RESULT PANEL */
+.result-panel {
+  max-width: 680px; margin: 32px auto 0;
+  display: none;
+}
+.result-panel.visible { display: block; }
+
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.result-top {
+  padding: 28px 28px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 16px;
+}
+.result-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(34,197,94,0.1);
+  border: 1px solid rgba(34,197,94,0.2);
+  color: var(--green); border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  padding: 4px 12px; letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.result-name {
+  font-size: 22px; font-weight: 700;
+  color: white; letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+.result-meta { font-size: 12px; color: var(--text-muted); }
+.result-time { font-size: 11px; color: var(--text-dim); }
+
+.result-metrics {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  padding: 20px 28px; gap: 1px;
+  background: var(--border);
+}
+.result-metric {
+  background: var(--surface);
+  padding: 16px 20px;
+}
+.result-metric-label {
+  font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-dim); margin-bottom: 8px;
+}
+.result-metric-value {
+  font-size: 24px; font-weight: 700;
+  color: var(--gold); letter-spacing: -0.5px;
+}
+.result-metric-sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+.btn-pdf {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin: 0 28px 16px;
+  background: var(--gold);
+  color: var(--black);
+  border: none; border-radius: 10px;
+  padding: 16px;
+  font-size: 14px; font-weight: 700;
+  text-decoration: none;
+  transition: all 0.15s;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.btn-pdf:hover { background: #d4aa55; transform: translateY(-1px); }
+.btn-pdf svg { width: 18px; height: 18px; }
+
+.btn-reset {
+  display: block; width: calc(100% - 56px);
+  margin: 0 28px 24px;
+  background: transparent;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px; cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+.btn-reset:hover { border-color: #374151; color: var(--text-muted); }
+
+/* ERROR */
+.error-box {
+  max-width: 680px; margin: 20px auto 0;
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-left: 3px solid var(--red);
+  border-radius: 0 10px 10px 0;
+  padding: 14px 18px;
+  display: none;
+}
+.error-box.visible { display: block; }
+.error-title { font-size: 13px; font-weight: 600; color: var(--red); margin-bottom: 4px; }
+.error-text { font-size: 12px; color: #f87171; }
+
+/* DIVIDER */
+.divider {
+  max-width: 900px; margin: 80px auto 0;
+  border: none; border-top: 1px solid var(--border);
+}
+
+/* FEATURES */
+.features {
+  max-width: 900px; margin: 0 auto;
+  padding: 64px 48px 100px;
+}
+.features-title {
+  font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 2px;
+  color: var(--text-dim); margin-bottom: 40px;
+  text-align: center;
+}
+.features-grid {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 16px;
+  overflow: hidden;
+}
+.feature {
+  background: var(--surface);
+  padding: 32px 28px;
+}
+.feature-num {
+  font-size: 11px; font-weight: 600;
+  color: var(--gold); letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+.feature-title {
+  font-size: 15px; font-weight: 600;
+  color: white; margin-bottom: 10px;
+}
+.feature-text { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 24px 48px;
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+.footer-logo { font-size: 14px; font-weight: 600; color: #374151; }
+.footer-logo em { color: var(--gold); font-style: normal; }
+.footer-text { font-size: 12px; color: var(--text-dim); }
+
+/* RESPONSIVE */
+@media (max-width: 640px) {
+  nav { padding: 0 20px; }
+  .hero { padding: 60px 20px 40px; }
+  .hero-title { font-size: 34px; letter-spacing: -1px; }
+  .hero-sub { font-size: 15px; }
+  .search-container { padding: 0 20px; }
+  .features { padding: 48px 20px 60px; }
+  .features-grid { grid-template-columns: 1fr; }
+  .result-metrics { grid-template-columns: 1fr 1fr; }
+  footer { padding: 20px; flex-direction: column; gap: 8px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div>
+      <div class="nav-logo-text">URUS<em>.</em></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:4px">
+      <div class="nav-dot"></div>
+      <span class="nav-status">Sistema activo</span>
+    </div>
+  </div>
+  <div class="nav-right">
+    <span class="nav-tag">GovTech · Puerto Rico</span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+      <circle cx="5" cy="5" r="4" fill="#c9a24d" opacity="0.4"/>
+      <circle cx="5" cy="5" r="2" fill="#c9a24d"/>
+    </svg>
+    Inteligencia Operacional Municipal
+  </div>
+
+  <h1 class="hero-title">
+    Fondos federales que<br>
+    <span>Puerto Rico no está capturando</span>
+  </h1>
+
+  <p class="hero-sub">
+    El sistema monitorea señales de FEMA, COR3, HUD, PRDOH y prensa federal
+    en tiempo real y genera un análisis ejecutivo institucional para cualquier municipio de PR.
+  </p>
+
+  <!-- SEARCH -->
+  <div class="search-container">
+    <div class="search-box" id="searchBox">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input
+        type="text"
+        class="search-input"
+        id="municipioInput"
+        placeholder="Nombre del municipio — Arecibo, Ponce, Hatillo..."
+        autocomplete="off" spellcheck="false"
+      />
+      <button class="search-btn" id="btnGenerate" onclick="generateReport()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        Analizar
+      </button>
+    </div>
+
+    <div class="quick-picks">
+      <span class="quick-label">Acceso rápido —</span>
+      <button class="quick-pill" onclick="go('Arecibo')">Arecibo</button>
+      <button class="quick-pill" onclick="go('Ponce')">Ponce</button>
+      <button class="quick-pill" onclick="go('Mayagüez')">Mayagüez</button>
+      <button class="quick-pill" onclick="go('Hatillo')">Hatillo</button>
+      <button class="quick-pill" onclick="go('Barceloneta')">Barceloneta</button>
+      <button class="quick-pill" onclick="go('Camuy')">Camuy</button>
+    </div>
+
+    <!-- ERROR -->
+    <div class="error-box" id="errorBox">
+      <div class="error-title">Error en la generación</div>
+      <div class="error-text" id="errorText"></div>
+    </div>
+  </div>
+
+  <!-- PROCESS -->
+  <div class="process-panel" id="processPanel">
+    <div class="process-header">
+      <span class="process-title">Generando análisis</span>
+      <span class="process-muni" id="processMuni"></span>
+    </div>
+    <div class="process-steps">
+      <div class="process-step" id="ps1">
+        <div class="step-indicator"></div>
+        <span>Cargando perfil del municipio desde la base de datos</span>
+      </div>
+      <div class="process-step" id="ps2">
+        <div class="step-indicator"></div>
+        <span>Analizando señales de fondos federales activos — FEMA, COR3, HUD</span>
+      </div>
+      <div class="process-step" id="ps3">
+        <div class="step-indicator"></div>
+        <span>Generando narrativa ejecutiva con datos del día</span>
+      </div>
+      <div class="process-step" id="ps4">
+        <div class="step-indicator"></div>
+        <span>Compilando reporte ejecutivo de 15 páginas</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result-panel" id="resultPanel">
+    <div class="result-card">
+      <div class="result-top">
+        <div>
+          <div class="result-badge">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Análisis completado
+          </div>
+          <div class="result-name" id="resultName"></div>
+          <div class="result-meta" id="resultMeta"></div>
+        </div>
+        <div class="result-time" id="resultTime"></div>
+      </div>
+
+      <div class="result-metrics">
+        <div class="result-metric">
+          <div class="result-metric-label">Señales analizadas</div>
+          <div class="result-metric-value" id="mSignals">—</div>
+          <div class="result-metric-sub">motor de ingesta 24h</div>
+        </div>
+        <div class="result-metric">
+          <div class="result-metric-label">Oportunidades</div>
+          <div class="result-metric-value" id="mOpps">—</div>
+          <div class="result-metric-sub">fondos detectados</div>
+        </div>
+        <div class="result-metric">
+          <div class="result-metric-label">IA generativa</div>
+          <div class="result-metric-value" id="mAI">—</div>
+          <div class="result-metric-sub">narrativa ejecutiva</div>
+        </div>
+      </div>
+
+      <a class="btn-pdf" id="btnPDF" href="#" target="_blank">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Descargar reporte ejecutivo PDF
+      </a>
+      <button class="btn-reset" onclick="reset()">Analizar otro municipio</button>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- FEATURES -->
+<div class="features">
+  <div class="features-title">Capacidades del sistema</div>
+  <div class="features-grid">
+    <div class="feature">
+      <div class="feature-num">01</div>
+      <div class="feature-title">Inteligencia en tiempo real</div>
+      <div class="feature-text">El sistema ingesta señales de FEMA, COR3, HUD, PRDOH, Comisionado Residente y prensa federal cada 24 horas. Los reportes reflejan datos del día.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-num">02</div>
+      <div class="feature-title">Reporte ejecutivo institucional</div>
+      <div class="feature-text">15 páginas en español. Scorecard operacional, matriz de fondos federales, cadenas de evidencia verificadas y recomendaciones estratégicas con plazos reales.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-num">03</div>
+      <div class="feature-title">Cualquier municipio de PR</div>
+      <div class="feature-text">78 municipios elegibles. El sistema busca el perfil, analiza las señales del mercado y genera el análisis completo en menos de 30 segundos.</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">URUS<em>.</em> Operational Intelligence</div>
+  <div class="footer-text">GovTech · Puerto Rico · 2026 · urusverify.com</div>
+</footer>
+
+<script>
+const API = "https://www.urusverify.com";
+
+function go(name) {
+  document.getElementById("municipioInput").value = name;
+  generateReport();
+}
+
+function setStep(id, state) {
+  const el = document.getElementById(id);
+  el.className = "process-step " + state;
+}
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function generateReport() {
+  const input = document.getElementById("municipioInput");
+  const muni = input.value.trim();
+  if (!muni) {
+    const box = document.getElementById("searchBox");
+    box.style.borderColor = "rgba(239,68,68,0.5)";
+    setTimeout(() => box.style.borderColor = "", 1500);
+    input.focus(); return;
+  }
+
+  document.getElementById("errorBox").classList.remove("visible");
+  document.getElementById("resultPanel").classList.remove("visible");
+  document.getElementById("btnGenerate").disabled = true;
+  document.getElementById("btnGenerate").innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Generando...`;
+
+  document.getElementById("processMuni").textContent = muni;
+  document.getElementById("processPanel").classList.add("visible");
+
+  ["ps1","ps2","ps3","ps4"].forEach(id => setStep(id, ""));
+
+  setStep("ps1", "active");
+  await wait(700);
+  setStep("ps1", "done");
+  setStep("ps2", "active");
+  await wait(1000);
+  setStep("ps2", "done");
+  setStep("ps3", "active");
+
+  try {
+    const res = await fetch(`${API}/v1/reports/generate-municipal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ municipality_name: muni })
+    });
+    const data = await res.json();
+
+    setStep("ps3", "done");
+    setStep("ps4", "active");
+    await wait(500);
+    setStep("ps4", "done");
+
+    if (!data.ok) throw new Error(data.message || "Error generando reporte");
+
+    await wait(300);
+    document.getElementById("processPanel").classList.remove("visible");
+
+    const generated = new Date(data.meta.generated_at);
+    document.getElementById("resultName").textContent = `Municipio de ${data.municipality}`;
+    document.getElementById("resultMeta").textContent = `${data.meta.signals_used} señales · ${data.meta.opportunities_used} oportunidades · IA ${data.meta.ai_generated ? "activa" : "fallback"}`;
+    document.getElementById("resultTime").textContent = generated.toLocaleTimeString("es-PR", { hour: "2-digit", minute: "2-digit" });
+    document.getElementById("mSignals").textContent = data.meta.signals_used;
+    document.getElementById("mOpps").textContent = data.meta.opportunities_used;
+    document.getElementById("mAI").textContent = data.meta.ai_generated ? "Activa" : "Fallback";
+    document.getElementById("btnPDF").href = data.reportUrl;
+    document.getElementById("resultPanel").classList.add("visible");
+
+  } catch(err) {
+    ["ps3","ps4"].forEach(id => setStep(id, ""));
+    document.getElementById("processPanel").classList.remove("visible");
+    document.getElementById("errorBox").classList.add("visible");
+    document.getElementById("errorText").textContent = err.message || "Error de conexión con el servidor.";
+  }
+
+  document.getElementById("btnGenerate").disabled = false;
+  document.getElementById("btnGenerate").innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Analizar`;
+}
+
+function reset() {
+  document.getElementById("municipioInput").value = "";
+  document.getElementById("resultPanel").classList.remove("visible");
+  document.getElementById("processPanel").classList.remove("visible");
+  document.getElementById("errorBox").classList.remove("visible");
+  ["ps1","ps2","ps3","ps4"].forEach(id => setStep(id, ""));
+  document.getElementById("municipioInput").focus();
+}
+
+document.getElementById("municipioInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") generateReport();
+});
+</script>
+</body>
+</html>
