@@ -536,7 +536,17 @@ INSTRUCCIONES:
     });
 
     const raw = completion?.choices?.[0]?.message?.content || "";
-    const clean = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    // Extrae JSON aunque DeepSeek añada texto antes o después
+    let clean = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    // Busca el primer { y el último } para extraer solo el JSON
+    const jsonStart = clean.indexOf("{");
+    const jsonEnd = clean.lastIndexOf("}");
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      clean = clean.substring(jsonStart, jsonEnd + 1);
+    }
+    
     generatedData = JSON.parse(clean);
 
     console.log("MUNICIPAL_BUILDER_AI_SUCCESS", {
