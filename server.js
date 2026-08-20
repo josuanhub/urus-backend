@@ -13297,28 +13297,28 @@ if (process.env.SERPER_API_KEY) {
   try {
     console.log("🌐 Ejecutando búsqueda Serper...");
 
-    const searches = [
-  "Puerto Rico FEMA funding opportunities 2025 2026",
-  "Puerto Rico CDBG-DR grants municipios 2025",
-  "municipal infrastructure grants Puerto Rico",
-  "Puerto Rico resilience funding HMGP 2025",
-  "Puerto Rico flood mitigation grants FEMA",
-  "COR3 Puerto Rico asistencia publica 2025",
-  "Comisionado Residente fondos municipios Puerto Rico",
-  "Puerto Rico IIJA infrastructure law municipios fondos",
-  "Arecibo Puerto Rico fondos federales 2025",
-  "Arecibo alcalde Tito Ramirez presupuesto noticias",
-  "Municipio Arecibo proyectos infraestructura 2025",
-  "Arecibo Puerto Rico fondos FEMA obras puentes",
-  "Puerto Rico inteligencia artificial gobierno municipios 2025",
-  "Instituto AI Puerto Rico Engine-4 Senado",
-  "Puerto Rico AI Congress 2025 gobierno",
-  "GovTech Puerto Rico fondos federales tecnologia",
-  "municipios Puerto Rico fondos FEMA plazo vencer 2025",
-  "Puerto Rico perder fondos federales deadline municipios",
-  "Puerto Rico presupuesto municipal OGP 2024-2025",
-  "Puerto Rico CDBG-DR City-Rev municipios aplicacion",
-];
+     const searches = [
+      "Puerto Rico FEMA funding opportunities 2025 2026",
+      "Puerto Rico CDBG-DR grants municipios 2026",
+      "municipal infrastructure grants Puerto Rico 2026",
+      "Puerto Rico resilience funding HMGP 2026",
+      "Puerto Rico flood mitigation grants FEMA",
+      "COR3 Puerto Rico municipios reconstruccion fondos 2026",
+      "COR3 Puerto Rico prorrogas proyectos septiembre 2026",
+      "municipios Puerto Rico fondos FEMA perder plazo 2026",
+      "Comisionado Residente fondos municipios Puerto Rico 2026",
+      "Puerto Rico presupuesto municipal OGP 2025-2026",
+      "JSF MSROF municipios Puerto Rico fondos reforma 2026",
+      "Arecibo Puerto Rico fondos federales 2026",
+      "Arecibo alcalde Tito Ramirez presupuesto obras 2026",
+      "Municipio Arecibo proyectos infraestructura 2026",
+      "Puerto Rico inteligencia artificial gobierno municipios 2026",
+      "Instituto AI Puerto Rico Engine-4 Senado fondos",
+      "GovTech Puerto Rico fondos federales tecnologia municipal",
+      "municipios Puerto Rico fondos FEMA plazo vencer 2026",
+      "Puerto Rico perder fondos federales deadline municipios",
+      "Puerto Rico IIJA infrastructure funding municipalities 2026",
+    ];
 
     for (const query of searches) {
       const serperRes = await fetch("https://google.serper.dev/search", {
