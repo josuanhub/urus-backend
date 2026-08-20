@@ -13478,27 +13478,28 @@ console.log("✅ Serper query completada:", query);
     // ══════════════════════════════════
     // FUENTE 2 — RSS FEEDS
     // ══════════════════════════════════
-   const RSS_FEEDS = [
-  { url: "https://techcrunch.com/feed/", category: "TECHCRUNCH" },
-  { url: "https://venturebeat.com/feed/", category: "VENTUREBEAT" },
-  { url: "https://www.technologyreview.com/feed/", category: "MIT TECH REVIEW" },
-  { url: "https://www.route-fifty.com/feed/", category: "ROUTE_FIFTY_GOVTECH" },
-  { url: "https://www.govtech.com/rss.xml", category: "GOVTECH" },
-  { url: "https://www.metro.pr/feed/", category: "METRO_PR" },
-  { url: "https://www.elvocero.com/feed/", category: "EL_VOCERO_PR" },
-  { url: "https://periodismoinvestigativo.com/feed/", category: "CPI_PR" },
-  { url: "https://www.primerahora.com/arc/outboundfeeds/rss/", category: "PRIMERA_HORA_PR" },
-  { url: "https://www.elnuevodia.com/arc/outboundfeeds/rss/", category: "EL_NUEVO_DIA_PR" },
-  { url: "https://caribbeanbusiness.com/feed/", category: "CARIBBEAN_BUSINESS" },
-  { url: "https://senado.pr.gov/rss.xml", category: "SENADO_PR" },
-  { url: "https://www.ocpr.gov.pr/feed/", category: "CONTRALOR_PR" },
-  { url: "https://news.google.com/rss/search?q=artificial+intelligence+government&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE_NEWS_AI_GOV" },
-  { url: "https://news.google.com/rss/search?q=Puerto+Rico+fondos+FEMA+municipios&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_PR_FEMA" },
-  { url: "https://news.google.com/rss/search?q=Arecibo+Puerto+Rico+fondos+presupuesto&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_ARECIBO" },
-  { url: "https://news.google.com/rss/search?q=Puerto+Rico+inteligencia+artificial+gobierno&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_PR_AI" },
-  { url: "https://news.google.com/rss/search?q=Puerto+Rico+infrastructure+federal+funding+2025&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE_NEWS_PR_FUNDING" },
-  { url: "https://news.google.com/rss/search?q=Comisionado+Residente+Puerto+Rico+fondos&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_COMISIONADO" },
-];
+      const RSS_FEEDS = [
+      // Tech internacional — funcionan
+      { url: "https://techcrunch.com/feed/", category: "TECHCRUNCH" },
+      { url: "https://venturebeat.com/feed/", category: "VENTUREBEAT" },
+      { url: "https://www.technologyreview.com/feed/", category: "MIT_TECH_REVIEW" },
+      // GovTech
+      { url: "https://www.route-fifty.com/rss/all.xml", category: "ROUTE_FIFTY_GOVTECH" },
+      { url: "https://www.governing.com/rss/all.xml", category: "GOVERNING_MUNICIPAL" },
+      // Prensa PR — URLs verificadas
+      { url: "https://periodismoinvestigativo.com/feed", category: "CPI_PR" },
+      { url: "https://caribbeanbusiness.com/feed", category: "CARIBBEAN_BUSINESS" },
+      { url: "https://noticel.com/rss.xml", category: "NOTICEL_PR" },
+      // Google News PR — por tema
+      { url: "https://news.google.com/rss/search?q=Puerto+Rico+FEMA+fondos+municipios+2026&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_PR_FEMA" },
+      { url: "https://news.google.com/rss/search?q=COR3+Puerto+Rico+municipios+reconstruccion+2026&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_COR3" },
+      { url: "https://news.google.com/rss/search?q=Arecibo+Puerto+Rico+fondos+presupuesto+2026&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_ARECIBO" },
+      { url: "https://news.google.com/rss/search?q=Puerto+Rico+inteligencia+artificial+gobierno+2026&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_PR_AI" },
+      { url: "https://news.google.com/rss/search?q=Puerto+Rico+federal+funding+municipalities+2026&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE_NEWS_PR_FUNDING" },
+      { url: "https://news.google.com/rss/search?q=municipios+Puerto+Rico+perder+fondos+FEMA+plazo&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_PR_DEADLINES" },
+      { url: "https://news.google.com/rss/search?q=artificial+intelligence+government+grants+2026&hl=en-US&gl=US&ceid=US:en", category: "GOOGLE_NEWS_AI_GOV" },
+      { url: "https://news.google.com/rss/search?q=Comisionado+Residente+Puerto+Rico+fondos+2026&hl=es-419&gl=PR&ceid=PR:es-419", category: "GOOGLE_NEWS_COMISIONADO" },
+    ];
 
     const AI_KEYWORDS = [
   "artificial intelligence", "inteligencia artificial", "AI", "machine learning",
