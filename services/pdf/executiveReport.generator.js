@@ -5,7 +5,7 @@ const puppeteer = require("puppeteer");
 async function generateExecutiveReport(data) {
 
   const {
-    municipality_name = "Municipio de Arecibo",
+    municipality_name = "Municipio",
     executive_summary = "",
     findings = [],
     evidence_chains = [],
@@ -21,18 +21,25 @@ async function generateExecutiveReport(data) {
     map_fema_exposure = "ALTO",
     map_funding_readiness = "MODERADO",
     map_infrastructure_risk = "ACTIVO",
-    population = "85,539",
+    population = "No disponible",
     total_federal_available = "$6.2M – $11.4M",
     prepared_for = "Oficina del Alcalde",
-    mayor_name = "Carlos \"Tito\" Ramírez Irizarry (PPD)",
-    budget_official = "$52.7M",
-    budget_year = "2023-2024",
-    budget_source = "OGP — Resolución Núm. 75, junio 2023",
-    budget_crim_extra = "$5.2M",
+    mayor_name = "Alcalde",
+    budget_official = "No disponible",
+    budget_year = "2025-2026",
+    budget_source = "OGP — Presupuesto Municipal",
+    budget_crim_extra = "N/A",
     capital_leak_low = "$440,000",
     capital_leak_high = "$740,000",
     cost_per_month_low = "$36,000",
     cost_per_month_high = "$61,000",
+    funding_programs = [],
+    audit_note_title = null,
+    audit_note_text = null,
+    map_exposure_text = "",
+    funding_matrix_note = "",
+    sources_budget = "OGP — Presupuesto Municipal",
+    sources_crim = null,
   } = data;
 
   const reportsDir = path.join(__dirname, "../../generated_reports");
@@ -66,39 +73,40 @@ async function generateExecutiveReport(data) {
   }
 
   const defaultFindings = findings.length > 0 ? findings : [
-    "Señales indican fragmentación en los procesos internos de aprobación para proyectos de infraestructura, lo cual puede reducir la velocidad de ejecución requerida por los programas federales FEMA-PA y CDBG-DR. Los plazos de obligación de fondos son estrictos y los retrasos administrativos han resultado históricamente en pérdida de elegibilidad para municipios comparables en Puerto Rico.",
-    "Análisis preliminar sugiere que el municipio mantiene dependencia en flujos de comunicación informales para coordinar solicitudes de grants federales. Esta fragmentación genera riesgo de información incompleta al momento de someter aplicaciones, afectando directamente la tasa de conversión de fondos disponibles en aprobaciones concretas.",
-    "Indicadores públicos confirman que FEMA obligó más de $717,000 directamente al Municipio de Arecibo para obras permanentes en la Avenida Víctor Rojas bajo la Sección 406 del Stafford Act. La gestión activa de estos fondos exige reportes de progreso periódicos cuya preparación manual consume recursos operacionales y representa riesgo de incumplimiento de plazos.",
-    "Oportunidad crítica identificada: el programa City-Rev de CDBG-DR tiene $1,298,000,000 disponibles a nivel isla para municipios afectados por los Huracanes Irma y María. Arecibo califica directamente por su historial de daños documentados. La preparación de la solicitud requiere documentación operacional centralizada que actualmente puede no estar disponible en el formato requerido por HUD/PRDOH.",
-    "El programa HMGP (Hazard Mitigation Grant Program) requiere un Plan de Mitigación de Riesgos aprobado y vigente por FEMA como condición de elegibilidad. Sin este documento actualizado, el municipio queda excluido de una categoría completa de financiamiento federal. El programa CDBG-MIT asignó $1,000,000,000 a Puerto Rico específicamente para este tipo de proyectos."
+    "Señales indican fragmentación en los procesos internos de aprobación para proyectos de infraestructura, lo cual puede reducir la velocidad de ejecución requerida por los programas federales FEMA-PA y CDBG-DR activos en el ciclo fiscal 2025-2026. Los plazos de obligación de fondos son estrictos y los retrasos administrativos han resultado históricamente en pérdida de elegibilidad para municipios de Puerto Rico.",
+    "Análisis preliminar sugiere dependencia en flujos de comunicación informales para coordinar solicitudes de grants federales. Esta fragmentación genera riesgo de información incompleta al momento de someter aplicaciones, afectando directamente la tasa de conversión de fondos disponibles en aprobaciones concretas.",
+    "URUS detectó señal crítica: FEMA aprobó prórrogas para 573 proyectos de reconstrucción en municipios de Puerto Rico hasta el 20 de septiembre de 2026. Sin sistema de seguimiento centralizado, municipios corren riesgo de perder financiamiento federal en proyectos ya aprobados y parcialmente en marcha. Este deadline es el evento operacional de mayor impacto inmediato.",
+    "El programa CDBG-DR City-Rev tiene $1,298,000,000 disponibles a nivel isla para municipios afectados por los Huracanes Irma y María. La preparación de la solicitud requiere documentación operacional centralizada que actualmente puede no estar disponible en el formato requerido por HUD/PRDOH.",
+    "El ecosistema de inteligencia artificial gubernamental en Puerto Rico está en transición activa. El Senado aprobó el Instituto de AI (noviembre 2025) y hay $2M federales disponibles para AI municipal (enero 2026). La Junta de Supervisión Fiscal aprobó $35.6M MSROF para 64 municipios en AF 2026. Municipios con capacidad tecnológica demostrada acceden a estos fondos prioritariamente."
   ];
 
   const defaultEvidenceChains = evidence_chains.length > 0 ? evidence_chains : [
-    "Señal confirmada: FEMA obligó $717,000+ al Municipio de Arecibo para obras permanentes en Avenida Víctor Rojas bajo el Programa de Asistencia Pública (Sección 406 del Stafford Act). Implicación operacional: el municipio tiene capacidad probada de recepción de fondos federales. Fricción identificada: la gestión manual de reportes de progreso genera riesgo activo de incumplimiento de plazos FEMA. Fuente: FEMA Press Release, febrero 2020.",
-    "Señal confirmada: el Departamento de Energía de EE.UU. celebró en Arecibo el procesamiento de la aplicación número 1,000 del Programa Acceso Solar a través de CODEVyS (enero 2025). Implicación: Arecibo tiene infraestructura de resiliencia energética activa con apoyo conjunto DOE/FEMA/HUD. Oportunidad: el PR-ERF tiene $1,000,000,000 disponibles y programas adicionales de resiliencia para los que el municipio puede calificar con preparación adecuada.",
-    "Señal confirmada: la Gobernadora González-Colón anunció más de $1,100,000,000 en fondos FEMA para infraestructura crítica en Puerto Rico, citando explícitamente al Municipio de Arecibo entre los beneficiarios (febrero 2025). Urgencia operacional: estos fondos tienen ventanas de ejecución definidas. La ausencia de un sistema de monitoreo operacional puede resultar en subutilización o pérdida de elegibilidad por incumplimiento de plazos de obligación.",
-    "Señal confirmada: el Comisionado Residente anunció $32.9 millones en fondos FEMA para proyectos de reconstrucción en municipios de PR, incluyendo reparaciones de puentes en Arecibo y Cayey (abril 2025). Fricción detectada: estos fondos tienen plazos de ejecución estrictos bajo el nuevo requisito del DHS de consulta previa para proyectos sobre $100,000. Sin sistema de monitoreo, el municipio opera reactivamente en lugar de proactivamente. Fuente: Comisionado Residente, press release abril 2025.",
-    "Señal confirmada: el Senado de Puerto Rico aprobó la creación del Instituto de Desarrollo e Innovación en Inteligencia Artificial de Puerto Rico (noviembre 2025), con fondos federales y colaboración de DDEC, UPR e Invest PR. Implicación estratégica: los próximos ciclos de fondos de modernización municipal priorizarán municipios con capacidad tecnológica demostrada. Municipios sin sistemas de inteligencia operacional quedan fuera de esta categoría de financiamiento emergente."
+    `Señal confirmada: FEMA aprobó prórrogas para 573 proyectos de reconstrucción en municipios de Puerto Rico hasta el 20 de septiembre de 2026 (COR3 / Metro PR, mayo 2026). Implicación operacional: deadline crítico para proyectos municipales activos. Fricción: capacidad de ejecución limitada sin sistema de seguimiento centralizado. Urgencia: quedan semanas para completar obras o perder financiamiento ya obligado.`,
+    `Señal confirmada: FEMA ha obligado $41,000,000,000 para Puerto Rico pero solo $12,000,000,000 han sido desembolsados (GAO / COR3, 2026). Implicación: $29,000M+ en fondos obligados sin ejecutar a nivel isla. Fricción: ritmo de ejecución municipal por debajo de lo proyectado. Urgencia: la JSF advierte riesgo para el desempeño económico y fiscal de los municipios.`,
+    `Señal confirmada: Comisionado Residente anunció $32.9M en fondos FEMA para municipios de PR incluyendo proyectos de infraestructura en el norte de la isla (abril 2025). Implicación: fondos activos disponibles con plazos de ejecución definidos. Fricción: nuevo requisito DHS de consulta previa para obras sobre $100,000 (vigente junio 2025) aumenta complejidad operacional. Urgencia: fondos con ventanas que no se extienden indefinidamente.`,
+    `Señal confirmada: Junta de Supervisión Fiscal aprobó MSROF de $35.6M para 64 municipios AF 2026 — hasta $800,000 por municipio condicionados a reformas fiscales (JSF, abril 2026). Implicación: nueva fuente de fondos activa en 2026. Fricción: cumplimiento de requisitos de disciplina administrativa. Urgencia: ventana AF 2026 activa ahora.`,
+    `Señal confirmada: Senado PR aprobó Instituto de AI (noviembre 2025) + $2M federales FIPSE-SP para AI en PR (enero 2026). Implicación: nueva categoría de fondos de modernización tecnológica municipal emergente. Fricción: municipios sin sistemas operacionales demostrados quedan excluidos. Urgencia: ventana de posicionamiento abierta en 2026.`
   ];
 
   const defaultRecommendations = strategic_recommendations.length > 0 ? strategic_recommendations : [
-    "Centralizar el monitoreo de todos los fondos federales activos (FEMA-PA, CDBG-DR, HMGP, PR-ERF) en un sistema único de seguimiento con alertas automáticas de plazos de obligación, reportes de progreso y dashboards de estado en tiempo real. Esta acción tiene el mayor impacto inmediato en la reducción de riesgo de pérdida de fondos ya asignados.",
-    "Actualizar y mantener vigente el Plan de Mitigación de Riesgos aprobado por FEMA. Este documento es condición habilitante para acceder al programa HMGP Global Match Strategy, que tiene $1,000,000,000 disponibles a nivel isla. Sin este plan actualizado, el municipio queda automáticamente excluido del programa independientemente de la elegibilidad de los proyectos propuestos.",
-    "Iniciar proceso de solicitud formal al programa City-Rev CDBG-DR antes del cierre de la ventana de aplicación. El programa tiene $1,298,000,000 disponibles para municipios afectados por Irma y María. Arecibo califica. Cada mes de retraso reduce la porción disponible a medida que otros municipios presentan sus solicitudes.",
-    "Implementar un sistema de coordinación operacional interdepartamental que conecte las oficinas de planificación, finanzas, obras públicas y el equipo de gestión de grants en tiempo real, eliminando los silos de comunicación que reducen la velocidad de ejecución y generan la fuga de capital operacional estimada en $440,000–$740,000 anuales.",
-    "Posicionar al municipio como nodo piloto de inteligencia operacional en Puerto Rico, aprovechando el ecosistema emergente del Instituto de AI del Senado, Engine-4 Foundation y los programas federales de modernización tecnológica municipal. Esta estrategia abre acceso a una nueva categoría de fondos federales de innovación gubernamental."
+    `URGENTE — Deadline septiembre 20, 2026: Activar seguimiento inmediato de todos los proyectos COR3 activos del municipio. Verificar cronogramas actualizados, documentación de progreso y estado de cada proyecto. Sin acción antes de esa fecha, proyectos con fondos ya obligados pueden perder financiamiento federal.`,
+    "Centralizar el monitoreo de fondos federales activos (FEMA-PA, CDBG-DR, HMGP, PR-ERF, MSROF) en sistema único de seguimiento con control de plazos en tiempo real. Esta acción tiene el mayor impacto inmediato en la reducción de riesgo de pérdida de fondos ya asignados al municipio.",
+    "Actualizar Plan de Mitigación de Riesgos FEMA — condición habilitante para HMGP Global Match Strategy ($1,000M disponibles a nivel isla). Sin este plan vigente, el municipio queda automáticamente excluido del programa mayor de mitigación federal.",
+    "Iniciar proceso de solicitud formal al programa City-Rev CDBG-DR. El programa tiene $1,298,000,000 disponibles para municipios afectados por Irma y María. Cada mes de retraso reduce la porción disponible. Preparar documentación técnica de infraestructura y plan de visión comunitaria.",
+    "Posicionar al municipio para acceder al MSROF ($35.6M para 64 municipios AF 2026) y fondos del Instituto de AI PR — modernización tecnológica municipal 2026. Esta categoría de fondos prioriza municipios con capacidad tecnológica demostrada."
   ];
 
   const defaultFundingAnalysis = funding_analysis ||
-    `Análisis preliminar de señales federales indica que el Municipio de Arecibo tiene exposición activa a múltiples fuentes de financiamiento federal durante el ciclo fiscal 2025-2026. Los programas identificados incluyen FEMA Public Assistance (Sección 406 del Stafford Act), CDBG-DR City-Rev Program, HMGP Global Match Strategy y el PR Energy Resilience Fund del DOE. FEMA ha obligado fondos directamente a Arecibo de forma confirmada, y el Comisionado Residente anunció $32.9 millones en fondos FEMA para municipios de PR incluyendo puentes en Arecibo (abril 2025). La estimación de fondos potencialmente accesibles oscila entre ${total_federal_available}, condicionada al cumplimiento de requisitos operacionales de cada programa y a la capacidad de ejecución demostrada.`;
+    `Análisis de señales federales activas indica que el Municipio de ${municipality_name} tiene exposición a múltiples fuentes de financiamiento federal durante el ciclo fiscal 2025-2026. Los programas identificados incluyen FEMA Public Assistance (Sección 406 del Stafford Act), CDBG-DR City-Rev Program ($1,298M disponibles a nivel isla), HMGP Global Match Strategy ($1,000M disponibles) y el PR Energy Resilience Fund del DOE. FEMA aprobó prórrogas para 573 proyectos de reconstrucción en PR hasta el 20 de septiembre de 2026 — deadline crítico para proyectos municipales activos. La estimación de fondos potencialmente accesibles oscila entre ${total_federal_available}, condicionada al cumplimiento de requisitos operacionales de cada programa y a la capacidad de ejecución demostrada.`;
 
-  const fundingPrograms = [
-    { programa: "FEMA Public Assistance — Sección 406", agencia: "FEMA / COR3", monto: "$717K+ confirmados", prioridad: "CRÍTICA", estado: "Activo y obligado" },
-    { programa: "Fondos FEMA — Puentes y carreteras Arecibo", agencia: "FEMA / Comisionado Residente", monto: "Incluido en $32.9M PR", prioridad: "CRÍTICA", estado: "Anunciado abr 2025" },
+  // funding_programs viene del municipalReportBuilder — datos reales del municipio
+  const fundingPrograms = funding_programs.length > 0 ? funding_programs : [
+    { programa: "FEMA Public Assistance — Sección 406", agencia: "FEMA / COR3", monto: "Fondos activos — confirmar con COR3", prioridad: "CRÍTICA", estado: "Activo" },
     { programa: "City-Rev Program — CDBG-DR", agencia: "HUD / PRDOH", monto: "$500K – $3M estimado", prioridad: "ALTA", estado: "Ventana abierta" },
-    { programa: "HMGP Global Match Strategy — CDBG-MIT", agencia: "FEMA / PRDOH", monto: "$250K – $2M estimado", prioridad: "ALTA", estado: "Requiere plan FEMA vigente" },
+    { programa: "HMGP Global Match Strategy", agencia: "FEMA / PRDOH", monto: "$250K – $2M estimado", prioridad: "ALTA", estado: "Requiere plan FEMA vigente" },
     { programa: "PR Energy Resilience Fund (PR-ERF)", agencia: "DOE / FEMA / HUD", monto: "$200K – $800K estimado", prioridad: "MEDIA", estado: "Activo — CODEVyS operando" },
-    { programa: "Fondos modernización AI municipal", agencia: "Instituto AI PR / Federal", monto: "Por definir — 2026", prioridad: "MEDIA", estado: "Emergente — ventana 2026" },
+    { programa: "MSROF — JSF", agencia: "Junta de Supervisión Fiscal", monto: "Hasta $800,000", prioridad: "ALTA", estado: "AF 2026 activo" },
+    { programa: "Fondos AI municipal 2026", agencia: "Instituto AI PR / Federal", monto: "Por definir — 2026", prioridad: "MEDIA", estado: "Emergente — ventana 2026" },
   ];
 
   const html = `<!DOCTYPE html>
@@ -365,7 +373,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
         a fondos federales de resiliencia, pero las ineficiencias de coordinación interna pueden
         reducir la velocidad de ejecución y la tasa de conversión de grants disponibles.
         Los programas federales activos tienen ventanas de aplicación y plazos que no se extienden indefinidamente.
-        Cada mes sin sistema de monitoreo representa un costo estimado de ${cost_per_month_low}–${cost_per_month_high}.
+        La fuga de capital operacional estimada asciende a ${capital_leak_low}–${capital_leak_high} anuales, sujeta a validación con datos internos del municipio.
       </div>
     </div>
     <div class="side-panel">
@@ -383,8 +391,8 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
         <div class="side-stat-value">${federal_exposure}</div>
       </div>
       <div class="side-stat">
-        <div class="side-stat-label">Costo mensual sin sistema</div>
-        <div class="side-stat-value" style="font-size:14px;color:#dc2626">${cost_per_month_low}–${cost_per_month_high}</div>
+        <div class="side-stat-label">Fuga de capital estimada</div>
+        <div class="side-stat-value" style="font-size:14px;color:#dc2626">${capital_leak_low}–${capital_leak_high}/año</div>
       </div>
     </div>
   </div>
@@ -420,10 +428,10 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
       • PRDOH — Programas activos: CDBG-DR City-Rev, HMGP Global Match, Non-Federal Match<br>
       • Departamento de Energía de EE.UU. — PR-ERF y Programa Acceso Solar CODEVyS<br>
       • OGP — Presupuestos municipales y circulares fiscales<br>
-      • Oficina del Contralor PR — Informe OC-25-22 del Municipio de Arecibo (sept 2024)<br>
+      • Oficina del Contralor PR — Informes de auditoría municipal disponibles públicamente<br>
       • Senado de Puerto Rico — Legislación sobre Instituto de AI (nov 2025)<br>
       • Metro PR, Primera Hora, El Vocero, El Nuevo Día, CPI — Señales de prensa regional<br>
-      • AAFAF — Comunicaciones CRIM y AAFAF sobre ingresos municipales (jul 2024)
+      • AAFAF — Comunicaciones sobre ingresos y certificaciones fiscales municipales
     </div>
   </div>
 
@@ -450,42 +458,51 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
   <div class="fiscal-big">${budget_official}</div>
   <div class="fiscal-sub">
     Presupuesto aprobado — Año Fiscal ${budget_year} · Fuente: ${budget_source}<br>
-    Ingresos adicionales CRIM recibidos julio 2024: +${budget_crim_extra} (primer municipio PR con cuentas al día — AAFAF)
+    ${budget_crim_extra && budget_crim_extra !== "N/A" ? "Posición de caja adicional: +" + budget_crim_extra : ""}
   </div>
 
-  <div class="budget-bar">
-    <div class="budget-bar-header"><span class="budget-bar-name">Nómina y empleados</span><span class="budget-bar-vals">42% · $22.1M</span></div>
-    <div class="budget-bar-track"><div class="budget-bar-fill" style="width:42%;background:#111827;"></div></div>
+  <div id="budget-bars-container">
+    <!-- Las barras se calculan dinámicamente desde budget_official -->
   </div>
-  <div class="budget-bar">
-    <div class="budget-bar-header"><span class="budget-bar-name">Servicios públicos ciudadanos</span><span class="budget-bar-vals">18% · $9.5M</span></div>
-    <div class="budget-bar-track"><div class="budget-bar-fill" style="width:18%;background:#378ADD;"></div></div>
-  </div>
-  <div class="budget-bar">
-    <div class="budget-bar-header"><span class="budget-bar-name">Infraestructura y obras permanentes</span><span class="budget-bar-vals">15% · $7.9M</span></div>
-    <div class="budget-bar-track"><div class="budget-bar-fill" style="width:15%;background:#c9a24d;"></div></div>
-  </div>
-  <div class="budget-bar">
-    <div class="budget-bar-header"><span class="budget-bar-name">Administración y operaciones</span><span class="budget-bar-vals">12% · $6.3M</span></div>
-    <div class="budget-bar-track"><div class="budget-bar-fill" style="width:12%;background:#7F77DD;"></div></div>
-  </div>
-  <div class="budget-bar">
-    <div class="budget-bar-header"><span class="budget-bar-name">Servicios sociales y comunitarios</span><span class="budget-bar-vals">8% · $4.2M</span></div>
-    <div class="budget-bar-track"><div class="budget-bar-fill" style="width:8%;background:#1D9E75;"></div></div>
-  </div>
-  <div class="budget-bar">
-    <div class="budget-bar-header"><span class="budget-bar-name">Reserva y contingencias</span><span class="budget-bar-vals">5% · $2.6M</span></div>
-    <div class="budget-bar-track"><div class="budget-bar-fill" style="width:5%;background:#888780;"></div></div>
-  </div>
+  <script>
+    (function() {
+      const rawBudget = "${budget_official}";
+      const numStr = rawBudget.replace(/[^0-9.]/g, '');
+      const isM = rawBudget.includes('M') || rawBudget.includes('m');
+      const total = parseFloat(numStr) * (isM ? 1000000 : 1);
+      const categories = [
+        { name: "Nómina y empleados", pct: 42, color: "#111827" },
+        { name: "Servicios públicos ciudadanos", pct: 18, color: "#378ADD" },
+        { name: "Infraestructura y obras permanentes", pct: 15, color: "#c9a24d" },
+        { name: "Administración y operaciones", pct: 12, color: "#7F77DD" },
+        { name: "Servicios sociales y comunitarios", pct: 8, color: "#1D9E75" },
+        { name: "Reserva y contingencias", pct: 5, color: "#888780" }
+      ];
+      const container = document.getElementById('budget-bars-container');
+      categories.forEach(cat => {
+        const amount = (total * cat.pct / 100);
+        const amountStr = amount >= 1000000
+          ? '$' + (amount/1000000).toFixed(1) + 'M'
+          : '$' + Math.round(amount/1000) + 'K';
+        container.innerHTML += \`
+          <div class="budget-bar">
+            <div class="budget-bar-header">
+              <span class="budget-bar-name">\${cat.name}</span>
+              <span class="budget-bar-vals">\${cat.pct}% · \${amountStr}</span>
+            </div>
+            <div class="budget-bar-track">
+              <div class="budget-bar-fill" style="width:\${cat.pct}%;background:\${cat.color};"></div>
+            </div>
+          </div>\`;
+      });
+    })();
+  </script>
 
+  \${audit_note_title ? \`
   <div class="audit-callout">
-    <div class="audit-callout-title">Nota — Informe Contralor OC-25-22 (septiembre 2024)</div>
-    <div class="audit-callout-text">
-      La Oficina del Contralor de Puerto Rico emitió una opinión cualificada sobre las operaciones fiscales
-      del Municipio de Arecibo, señalando áreas de mejora en control administrativo y gestión de personal.
-      Este contexto refuerza la necesidad de sistemas de coordinación operacional más robustos.
-    </div>
-  </div>
+    <div class="audit-callout-title">\${audit_note_title}</div>
+    <div class="audit-callout-text">\${audit_note_text}</div>
+  </div>\` : ""}
 
   <div class="fiscal-context">
     <div class="fiscal-context-text">
@@ -536,7 +553,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
         <span class="fuga-pct fuga-yellow">8–14%</span>
       </div>
       <div class="fuga-amount">$60,000 – $100,000 en riesgo activo</div>
-      <div class="fuga-desc">$717,000+ en fondos FEMA ya obligados en Arecibo requieren reportes de progreso periódicos. La preparación manual genera riesgo de incumplimiento y posible devolución de fondos.</div>
+      <div class="fuga-desc">Los fondos FEMA obligados al municipio requieren reportes de progreso periódicos. La preparación manual de estos reportes genera riesgo de incumplimiento y posible devolución de fondos ya asignados.</div>
     </div>
 
     <div class="fuga-item">
@@ -604,13 +621,13 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
   </div>
 
   <div class="ai-warning">
-    <div class="ai-warning-title">Señal Estratégica para Arecibo</div>
+    <div class="ai-warning-title">Señal Estratégica para \${municipality_name}</div>
     <div class="ai-warning-text">
       Los próximos ciclos de fondos federales de modernización municipal priorizarán municipios con
       capacidad tecnológica operacional demostrada. El ecosistema de AI en Puerto Rico está definiendo
-      quiénes serán los municipios líderes de la próxima década. Arecibo tiene una ventana de oportunidad
+      quiénes serán los municipios líderes de la próxima década. \${municipality_name} tiene una ventana de oportunidad
       para posicionarse como nodo pionero de inteligencia operacional municipal en Puerto Rico — aprovechando
-      su historia científica (Observatorio de Arecibo) como narrativa de innovación y su posición estratégica
+      su posición estratégica en el territorio
       como cabecera del distrito norte de la isla.
     </div>
   </div>
@@ -654,7 +671,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
       </div>
     </div>
     <div class="score-bar"><div class="score-fill" style="width:${infrastructure_stability}%;background:${scoreColor(infrastructure_stability)};"></div></div>
-    <div class="score-explanation">El 28% de brecha indica documentación incompleta o proyectos de rehabilitación pendientes que pueden afectar la elegibilidad en FEMA-PA y CDBG-DR. El nuevo requisito DHS de consulta previa para obras sobre $100,000 (vigente desde junio 2025) aumenta la complejidad operacional para proyectos como el rompeolas de Arecibo.</div>
+    <div class="score-explanation">El 28% de brecha indica documentación incompleta o proyectos de rehabilitación pendientes que pueden afectar la elegibilidad en FEMA-PA y CDBG-DR. El nuevo requisito DHS de consulta previa para obras sobre $100,000 (vigente desde junio 2025) aumenta la complejidad operacional para todos los proyectos activos.</div>
   </div>
 
   <div class="score-section">
@@ -666,7 +683,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
       </div>
     </div>
     <div class="score-bar"><div class="score-fill" style="width:${funding_readiness}%;background:${scoreColor(funding_readiness)};"></div></div>
-    <div class="score-explanation">Nivel favorable. El municipio tiene historial confirmado de recepción de fondos FEMA activos, fue el primer municipio en PR con cuentas al día (AAFAF, julio 2024), y tiene perfil elegible en CDBG-DR, HMGP y PR-ERF. El 16% de brecha corresponde a documentación desactualizada y ausencia de tracking centralizado de aplicaciones.</div>
+    <div class="score-explanation">Nivel favorable. El municipio tiene perfil elegible en programas FEMA-PA, CDBG-DR, HMGP y PR-ERF activos en el ciclo 2025-2026. El 16% de brecha corresponde a documentación desactualizada y ausencia de tracking centralizado de aplicaciones federales.</div>
   </div>
 
   <div class="score-section">
@@ -678,7 +695,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
       </div>
     </div>
     <div class="score-bar"><div class="score-fill" style="width:${operational_risk}%;background:${scoreColor(operational_risk)};"></div></div>
-    <div class="score-explanation">Señales de fragmentación en procesos de aprobación interdepartamental y capacidad limitada de generar reportes de progreso requeridos por FEMA y HUD. El Informe del Contralor OC-25-22 (sept 2024) identificó áreas de mejora en control administrativo que son consistentes con este indicador.</div>
+    <div class="score-explanation">Señales de fragmentación en procesos de aprobación interdepartamental y capacidad limitada de generar reportes de progreso requeridos por FEMA y HUD. Este patrón es consistente con los indicadores de coordinación operacional detectados por el sistema URUS en municipios de PR con perfil similar.</div>
   </div>
 
   <div class="score-section">
@@ -709,7 +726,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
   </div>
 
   <div class="funding-highlight">
-    <div class="funding-highlight-label">Total estimado de fondos accesibles — Municipio de Arecibo</div>
+    <div class="funding-highlight-label">Total estimado de fondos accesibles — \${municipality_name}</div>
     <div class="funding-highlight-amount">${total_federal_available}</div>
     <div class="funding-highlight-note">
       Condicionado a preparación operacional, documentación actualizada y cumplimiento de requisitos por programa.
@@ -746,14 +763,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
 
   <div class="nota-box">
     <h3>Nota sobre los estimados de fondos</h3>
-    <p>
-      FEMA confirmó y obligó $717,000+ directamente a Arecibo para obras permanentes (2020). El Comisionado
-      Residente anunció $32.9M en fondos FEMA para municipios de PR incluyendo Arecibo (abril 2025).
-      El programa CDBG-DR City-Rev tiene $1,298,000,000 a nivel isla; el HMGP tiene $1,000,000,000 disponibles.
-      La Gobernadora González-Colón citó explícitamente a Arecibo en la distribución de $1,100,000,000
-      en fondos FEMA (febrero 2025). La porción accesible por municipio depende de la competitividad
-      de la solicitud y de la capacidad de ejecución demostrada.
-    </p>
+    <p>\${funding_matrix_note || "Los montos son estimados preliminares basados en asignaciones históricas a municipios comparables de Puerto Rico y criterios de elegibilidad oficiales. La captura efectiva depende de la capacidad operacional del municipio y la competitividad de cada solicitud."}</p>
   </div>
 </section>
 
@@ -787,12 +797,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
 
   <div class="legal-box" style="margin-top:20px;">
     <p style="font-size:13px;color:#6b7280;line-height:1.75;">
-      <strong style="color:#111827;">Historial de exposición — Arecibo:</strong>
-      Huracán María (septiembre 2017) · Período sísmico (2020 — afectación indirecta) ·
-      Huracán Fiona (septiembre 2022) · Tormenta Ernesto (agosto 2024).
-      Este historial mantiene al municipio activamente elegible en múltiples programas federales.
-      El nuevo requisito DHS (junio 2025) de consulta previa para obras sobre $100,000 agrega
-      complejidad operacional que requiere monitoreo activo.
+      \${map_exposure_text || "El historial de desastres naturales del municipio lo mantiene elegible en programas FEMA-PA, CDBG-DR y HMGP. El nuevo requisito DHS (junio 2025) de consulta previa para obras sobre $100,000 agrega complejidad operacional que requiere monitoreo activo."}
     </p>
   </div>
 </section>
@@ -840,7 +845,7 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
       <div class="bar-pct2" style="color:${scoreColor(funding_readiness)};">${funding_readiness}%</div>
     </div>
     <div class="bar-track2"><div class="bar-fill2" style="width:${funding_readiness}%;background:#c9a24d;"></div></div>
-    <div class="bar-note2">Nivel favorable. Historial confirmado: primer municipio PR con cuentas al día (AAFAF, jul 2024), $5.2M CRIM adicionales recibidos, fondos FEMA activos y obligados. El 16% de brecha es superable con preparación operacional focalizada.</div>
+    <div class="bar-note2">Nivel favorable. El municipio tiene perfil elegible en fondos federales activos con historial de recepción confirmado. El 16% de brecha es superable con preparación operacional focalizada en documentación y seguimiento de plazos.</div>
   </div>
 
   <div class="bar-widget">
@@ -893,9 +898,9 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
       <tr><td>FEMA.gov / COR3 PR</td><td style="font-weight:400;color:#6b7280;">Fondos federales</td><td style="font-size:12px;color:#6b7280;">Obligaciones PA, HMGP, plazos de ejecución</td></tr>
       <tr><td>Comisionado Residente PR</td><td style="font-weight:400;color:#6b7280;">Fondos municipales</td><td style="font-size:12px;color:#6b7280;">Anuncios de fondos FEMA para municipios (abr 2025)</td></tr>
       <tr><td>PRDOH</td><td style="font-weight:400;color:#6b7280;">CDBG-DR / HMGP</td><td style="font-size:12px;color:#6b7280;">City-Rev, Global Match, Non-Federal Match</td></tr>
-      <tr><td>OGP — Presupuestos Municipales</td><td style="font-weight:400;color:#6b7280;">Presupuesto oficial</td><td style="font-size:12px;color:#6b7280;">Resolución Núm. 75, AF 2023-2024, $52.7M</td></tr>
-      <tr><td>AAFAF</td><td style="font-weight:400;color:#6b7280;">Ingresos CRIM</td><td style="font-size:12px;color:#6b7280;">$5.2M ingresos adicionales Arecibo, jul 2024</td></tr>
-      <tr><td>Oficina del Contralor PR</td><td style="font-weight:400;color:#6b7280;">Auditoría</td><td style="font-size:12px;color:#6b7280;">Informe OC-25-22 Municipio de Arecibo, sept 2024</td></tr>
+      <tr><td>OGP — Presupuestos Municipales</td><td style="font-weight:400;color:#6b7280;">Presupuesto oficial</td><td style="font-size:12px;color:#6b7280;">\${sources_budget}</td></tr>
+      \${sources_crim ? \`<tr><td>AAFAF</td><td style="font-weight:400;color:#6b7280;">Ingresos adicionales</td><td style="font-size:12px;color:#6b7280;">\${sources_crim}</td></tr>\` : ""}
+      \${audit_note_title ? \`<tr><td>Oficina del Contralor PR</td><td style="font-weight:400;color:#6b7280;">Auditoría oficial</td><td style="font-size:12px;color:#6b7280;">\${audit_note_title}</td></tr>\` : ""}
       <tr><td>Senado de Puerto Rico</td><td style="font-weight:400;color:#6b7280;">Legislación AI</td><td style="font-size:12px;color:#6b7280;">Instituto de AI PR, nov 2025</td></tr>
       <tr><td>Prensa regional PR</td><td style="font-weight:400;color:#6b7280;">Señales operacionales</td><td style="font-size:12px;color:#6b7280;">Metro PR, Primera Hora, El Vocero, CPI, El Nuevo Día</td></tr>
       <tr><td>DOE — FIPSE-SP</td><td style="font-weight:400;color:#6b7280;">Fondos AI federal</td><td style="font-size:12px;color:#6b7280;">$2M para AI en PR, ene 2026</td></tr>
@@ -916,59 +921,62 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
 </section>
 
 
+
+
 <!-- ══════════════════════════════════════════ -->
-<!-- PROPUESTA DE PILOTO                        -->
+<!-- CONSULTORÍA DE INTELIGENCIA OPERACIONAL    -->
 <!-- ══════════════════════════════════════════ -->
 <section class="page">
-  <div class="section-meta">Sección 14 de 15 · Propuesta de Piloto Ejecutivo</div>
-  <h1>Propuesta de Piloto Ejecutivo</h1>
+  <div class="section-meta">Sección 13 de 15 · Consultoría de Inteligencia Operacional</div>
+  <h1>Consultoría de Inteligencia Operacional</h1>
 
   <div class="summary-text" style="margin-bottom:28px;">
-    Basado en los indicadores operacionales identificados, URUS recomienda un piloto ejecutivo
-    limitado para validar los hallazgos con datos reales del municipio y establecer la línea
-    base operacional. El objetivo es transformar las señales preliminares en inteligencia
-    validada y accionable antes de que venzan las ventanas de aplicación federales activas.
+    URUS opera como capa de inteligencia estratégica para municipios de Puerto Rico.
+    El modelo de trabajo es consultoría directa — no software, no suscripción, no piloto.
+    Un consultor de inteligencia operacional trabaja junto al equipo del municipio para
+    identificar, documentar y capturar fondos federales activos antes de que venzan los plazos.
   </div>
 
   <div class="pilot-option">
-    <div class="pilot-duration">
-      <div class="pilot-days">14</div>
-      <div class="pilot-days-label">Días</div>
+    <div class="pilot-duration" style="background:#111827;border-color:#c9a24d33;">
+      <div class="pilot-days" style="color:#c9a24d;">I</div>
+      <div class="pilot-days-label">Fase</div>
     </div>
     <div class="pilot-content">
-      <h3>Validación de Inteligencia Ejecutiva</h3>
-      <p>Validación de hallazgos con datos internos del municipio. Entrega de reporte actualizado con datos reales. Identificación de las 3 oportunidades de fondos con mayor probabilidad de captura inmediata. Presentación ejecutiva al alcalde y equipo directivo. Sin compromiso de continuidad.</p>
-    </div>
-  </div>
-
-  <div class="pilot-option">
-    <div class="pilot-duration">
-      <div class="pilot-days">30</div>
-      <div class="pilot-days-label">Días</div>
-    </div>
-    <div class="pilot-content">
-      <h3>Monitoreo Operacional con Dashboard</h3>
-      <p>Dashboard de inteligencia operacional en tiempo real. Monitoreo activo de señales de fondos federales. Alertas automáticas de plazos de obligación FEMA. Reportes semanales de inteligencia ejecutiva. Apoyo en preparación de documentación para aplicaciones activas identificadas.</p>
+      <h3>Diagnóstico y Validación</h3>
+      <p>Validación de los hallazgos de este informe con datos reales del municipio. Revisión del estado actual de proyectos COR3 activos con deadline septiembre 2026. Identificación de las 3 oportunidades de fondos con mayor probabilidad de captura en los próximos 90 días. Entrega de reporte ejecutivo actualizado con datos internos confirmados.</p>
     </div>
   </div>
 
   <div class="pilot-option">
-    <div class="pilot-duration">
-      <div class="pilot-days">60</div>
-      <div class="pilot-days-label">Días</div>
+    <div class="pilot-duration" style="background:#111827;border-color:#c9a24d33;">
+      <div class="pilot-days" style="color:#c9a24d;">II</div>
+      <div class="pilot-days-label">Fase</div>
     </div>
     <div class="pilot-content">
-      <h3>Ciclo Estratégico de Inteligencia de Fondos</h3>
-      <p>Ciclo completo: monitoreo continuo, scoring actualizado, análisis de elegibilidad, apoyo en preparación de solicitudes, reportes ejecutivos mensuales y expansión a múltiples fuentes de fondos federales. Evaluación de ROI demostrable y propuesta de retainer mensual con métricas de impacto.</p>
+      <h3>Ejecución y Captura</h3>
+      <p>Preparación de documentación completa para aplicaciones a programas identificados. Coordinación directa con agencias federales — FEMA, HUD, COR3, PRDOH. Seguimiento de plazos de obligación activos con sistema de monitoreo en tiempo real. Reportes ejecutivos mensuales al alcalde y equipo directivo.</p>
+    </div>
+  </div>
+
+  <div class="pilot-option">
+    <div class="pilot-duration" style="background:#111827;border-color:#c9a24d33;">
+      <div class="pilot-days" style="color:#c9a24d;">III</div>
+      <div class="pilot-days-label">Fase</div>
+    </div>
+    <div class="pilot-content">
+      <h3>Inteligencia Continua</h3>
+      <p>Monitoreo continuo de señales de fondos federales. Análisis de elegibilidad para nuevos programas. Expansión a múltiples fuentes — FEMA, CDBG-DR, HMGP, PR-ERF, Instituto AI PR. Posicionamiento del municipio como referencia de inteligencia operacional en Puerto Rico.</p>
     </div>
   </div>
 
   <div class="pilot-cta">
-    <div class="pilot-cta-title">Próximo Paso Recomendado</div>
+    <div class="pilot-cta-title">Próximo Paso</div>
     <div class="pilot-cta-body">
-      Agendar una sesión de revisión ejecutiva para validar los hallazgos de este informe,
-      identificar las prioridades operacionales del municipio y determinar la viabilidad
-      de un piloto de 30 días. Esta reunión no requiere compromiso previo de ningún tipo.
+      Una sesión de trabajo de 45 minutos con el equipo del municipio es suficiente para
+      determinar las 3 oportunidades prioritarias, revisar el estado actual de los proyectos
+      COR3 con deadline septiembre 2026 y definir el alcance de la consultoría.
+      Sin compromiso previo de ningún tipo.
     </div>
   </div>
 </section>
@@ -979,12 +987,12 @@ td:first-child { font-weight: 600; color: #111827; font-size: 12px; }
 <!-- ══════════════════════════════════════════ -->
 <section class="page cover">
   <div class="gold-line"></div>
-  <div class="cover-cta-title">Fase Operacional Recomendada: Piloto de 30 Días</div>
+  <div class="cover-cta-title">Consultoría de Inteligencia Operacional</div>
   <div class="cover-cta-body">
-    Una revisión ejecutiva determinará si procede la validación operacional,
-    el despliegue del piloto o la expansión del monitoreo estratégico de fondos federales.
-    Cada mes sin sistema de inteligencia operacional representa un costo estimado de
-    ${cost_per_month_low}–${cost_per_month_high}.
+    Este informe representa la primera capa de análisis — generado con datos públicos
+    y señales del mercado. La segunda capa, con datos reales del municipio, produce
+    inteligencia validada y accionable. Esa es la consultoría: transformar lo que
+    aquí se detecta en fondos federales capturados antes de que venzan los plazos.
   </div>
   <div class="cover-cta-block">
     URUS Operational Intelligence System<br>
