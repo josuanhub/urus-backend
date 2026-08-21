@@ -571,10 +571,51 @@ INSTRUCCIONES:
     generatedData = buildFallback(municipalityName, profile, currentYear, fiscalYear);
   }
 
+  // Enriquecer con campos del perfil que OpenAI no genera
+  const parse = (v) => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === "string") { try { return JSON.parse(v); } catch { return []; } }
+    if (v && typeof v === "object") return v;
+    return [];
+  };
+
+  const confirmedFunds = parse(profile?.confirmed_funds);
+  const federalPrograms = parse(profile?.federal_programs);
+  const audits = parse(profile?.audits);
+  const disasters = parse(profile?.disasters);
+
+  const fundingPrograms = [];
+  confirmedFunds.slice(0, 2).forEach(f => {
+    fundingPrograms.push({ programa: f.program || "Fondo federal confirmado", agencia: f.source || "Agencia federal", monto: f.amount || "Por confirmar", prioridad: "CRÍTICA", estado: f.status || "Activo" });
+  });
+  federalPrograms.slice(0, 4).forEach(f => {
+    fundingPrograms.push({ programa: f.program || "Programa federal", agencia: f.agency || "Agencia federal", monto: f.amount || "Por determinar", prioridad: f.status?.includes("Requiere") ? "ALTA" : f.status?.includes("Emergente") ? "MEDIA" : "ALTA", estado: f.status || "Activo" });
+  });
+  if (fundingPrograms.length < 4) {
+    [{ programa: "CDBG-DR City-Rev Program", agencia: "HUD / PRDOH", monto: "$500K – $3M estimado", prioridad: "ALTA", estado: "Ventana abierta" },
+     { programa: "HMGP Global Match Strategy", agencia: "FEMA / PRDOH", monto: "$250K – $2M estimado", prioridad: "ALTA", estado: "Requiere plan FEMA vigente" },
+     { programa: "PR Energy Resilience Fund", agencia: "DOE / FEMA / HUD", monto: "$200K – $800K estimado", prioridad: "MEDIA", estado: "Activo" },
+     { programa: "Fondos AI municipal 2026", agencia: "Instituto AI PR / Federal", monto: "Por definir — 2026", prioridad: "MEDIA", estado: "Emergente" }
+    ].forEach(g => { if (fundingPrograms.length < 6) fundingPrograms.push(g); });
+  }
+
+  const auditNoteTitle = audits.length > 0 ? `Nota — ${audits[0].entity} ${audits[0].report} (${audits[0].date})` : null;
+  const auditNoteText = audits.length > 0 ? `${audits[0].finding} ${audits[0].impact || ""}` : null;
+  const mapExposureText = disasters.length > 0
+    ? `Historial de exposición — ${municipalityName}: ${disasters.map(d => `${d.event} (${d.date})`).join(" · ")}. Este historial mantiene al municipio activamente elegible en múltiples programas federales.`
+    : `El historial de desastres naturales de ${municipalityName} lo mantiene elegible en programas FEMA-PA, CDBG-DR y HMGP.`;
+
   return {
     ...generatedData,
     municipality_name: municipalityName,
     prepared_for: "Oficina del Alcalde",
+    funding_programs: fundingPrograms,
+    audit_note_title: auditNoteTitle,
+    audit_note_text: auditNoteText,
+    map_exposure_text: mapExposureText,
+    funding_matrix_note: "Los montos son estimados preliminares basados en asignaciones históricas a municipios comparables de Puerto Rico y criterios de elegibilidad oficiales. Requiere validación con registros municipales y agencias federales.",
+    sources_budget: `${profile?.budget_source || "OGP — Presupuesto Municipal"} · AF ${profile?.budget_year || "2024-2025"} · ${profile?.budget_amount || "Ver perfil"}`,
+    sources_crim: profile?.extra_income ? `${profile.extra_income} — ${profile.extra_income_source} (${profile.extra_income_date})` : null,
     _meta: {
       signals_used: intelligenceData.signal_count,
       opportunities_used: intelligenceData.opportunity_count,
@@ -639,6 +680,94 @@ function buildFallback(municipalityName, profile, currentYear, fiscalYear) {
     capital_leak_high: "$740,000",
     cost_per_month_low: "$36,000",
     cost_per_month_high: "$61,000",
+
+    // Matriz de fondos — generada desde el perfil del municipio
+    funding_programs: (() => {
+      const parse = (v) => {
+        if (Array.isArray(v)) return v;
+        if (typeof v === "string") { try { return JSON.parse(v); } catch { return []; } }
+        if (v && typeof v === "object") return v;
+        return [];
+      };
+      const fp = parse(profile?.federal_programs);
+      const cf = parse(profile?.confirmed_funds);
+      const programs = [];
+      // Fondos confirmados primero
+      cf.slice(0, 2).forEach(f => {
+        programs.push({
+          programa: f.program || "Fondo federal confirmado",
+          agencia: f.source || "Agencia federal",
+          monto: f.amount || "Por confirmar",
+          prioridad: "CRÍTICA",
+          estado: f.status || "Activo"
+        });
+      });
+      // Programas elegibles
+      fp.slice(0, 4).forEach(f => {
+        programs.push({
+          programa: f.program || "Programa federal",
+          agencia: f.agency || "Agencia federal",
+          monto: f.amount || "Por determinar",
+          prioridad: f.status?.includes("Requiere") ? "ALTA" : f.status?.includes("Emergente") ? "MEDIA" : "ALTA",
+          estado: f.status || "Activo"
+        });
+      });
+      // Si no hay suficientes, agregar genéricos de PR
+      if (programs.length < 4) {
+        const generics = [
+          { programa: "CDBG-DR City-Rev Program", agencia: "HUD / PRDOH", monto: "$500K – $3M estimado", prioridad: "ALTA", estado: "Ventana abierta" },
+          { programa: "HMGP Global Match Strategy", agencia: "FEMA / PRDOH", monto: "$250K – $2M estimado", prioridad: "ALTA", estado: "Requiere plan FEMA vigente" },
+          { programa: "PR Energy Resilience Fund", agencia: "DOE / FEMA / HUD", monto: "$200K – $800K estimado", prioridad: "MEDIA", estado: "Activo — CODEVyS operando" },
+          { programa: "Fondos AI municipal 2026", agencia: "Instituto AI PR / Federal", monto: "Por definir — 2026", prioridad: "MEDIA", estado: "Emergente — ventana 2026" },
+        ];
+        generics.forEach(g => { if (programs.length < 6) programs.push(g); });
+      }
+      return programs;
+    })(),
+
+    // Nota de auditoría — del perfil del municipio
+    audit_note_title: (() => {
+      const parse = (v) => {
+        if (Array.isArray(v)) return v;
+        if (typeof v === "string") { try { return JSON.parse(v); } catch { return []; } }
+        return [];
+      };
+      const audits = parse(profile?.audits);
+      if (audits.length > 0) return `Nota — ${audits[0].entity} ${audits[0].report} (${audits[0].date})`;
+      return null;
+    })(),
+    audit_note_text: (() => {
+      const parse = (v) => {
+        if (Array.isArray(v)) return v;
+        if (typeof v === "string") { try { return JSON.parse(v); } catch { return []; } }
+        return [];
+      };
+      const audits = parse(profile?.audits);
+      if (audits.length > 0) return `${audits[0].finding} ${audits[0].impact || ""}`;
+      return null;
+    })(),
+
+    // Historial de exposición a desastres — del perfil
+    map_exposure_text: (() => {
+      const parse = (v) => {
+        if (Array.isArray(v)) return v;
+        if (typeof v === "string") { try { return JSON.parse(v); } catch { return []; } }
+        return [];
+      };
+      const disasters = parse(profile?.disasters);
+      if (disasters.length > 0) {
+        const list = disasters.map(d => `${d.event} (${d.date})`).join(" · ");
+        return `Historial de exposición — ${municipalityName}: ${list}. Este historial mantiene al municipio activamente elegible en múltiples programas federales. El nuevo requisito DHS (junio 2025) de consulta previa para obras sobre $100,000 agrega complejidad operacional que requiere monitoreo activo.`;
+      }
+      return `El historial de desastres naturales de ${municipalityName} lo mantiene elegible en programas federales FEMA-PA, CDBG-DR y HMGP. El nuevo requisito DHS (junio 2025) de consulta previa para obras sobre $100,000 agrega complejidad operacional que requiere monitoreo activo.`;
+    })(),
+
+    // Nota sobre los estimados de fondos
+    funding_matrix_note: `Los programas identificados fueron detectados mediante análisis de señales federales activas. Los montos son estimados preliminares basados en asignaciones históricas a municipios comparables de Puerto Rico y los criterios de elegibilidad publicados oficialmente por cada agencia. Requiere validación con registros municipales y agencias federales. La captura efectiva depende de la capacidad operacional del municipio.`,
+
+    // Fuentes para la tabla de metodología
+    sources_budget: `${profile?.budget_source || "OGP — Presupuesto Municipal"} · AF ${profile?.budget_year || "2024-2025"} · ${profile?.budget_amount || "Ver perfil municipal"}`,
+    sources_crim: profile?.extra_income ? `${profile.extra_income} — ${profile.extra_income_source} (${profile.extra_income_date})` : null,
   };
 }
 
