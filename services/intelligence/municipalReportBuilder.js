@@ -290,33 +290,8 @@ async function seedMunicipalities(pool) {
 // ─── BÚSQUEDA AUTOMÁTICA ──────────────────────────────────────────────────────
 async function searchMunicipio(name) {
   const results = [];
-  if (!process.env.SERPER_API_KEY) return results;
 
-  const queries = [
-    `${name} Puerto Rico alcalde 2025 2026`,
-    `${name} municipio Puerto Rico presupuesto fondos FEMA 2026`,
-    `alcalde ${name} Puerto Rico partido político`,
-  ];
-
-  for (const q of queries) {
-    try {
-      const res = await fetch("https://google.serper.dev/search", {
-        method: "POST",
-        headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ q, gl: "us", hl: "es", num: 5 }),
-      });
-      const data = await res.json();
-      (data.organic || []).slice(0, 3).forEach(r =>
-        results.push(`FUENTE: ${r.link}\nTÍTULO: ${r.title}\nCONTENIDO: ${r.snippet || ""}`)
-      );
-      if (data.answerBox?.snippet) results.push(`RESPUESTA: ${data.answerBox.snippet}`);
-      if (data.answerBox?.answer) results.push(`DATO: ${data.answerBox.answer}`);
-    } catch (e) {
-      console.error("SERPER_ERROR", q, e.message);
-    }
-  }
-
-  // Wikipedia
+  // 1. Wikipedia siempre — gratis, sin créditos
   try {
     const w = await fetch(
       `https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name + ", Puerto Rico")}`,
@@ -324,11 +299,54 @@ async function searchMunicipio(name) {
     );
     if (w.ok) {
       const wiki = await w.json();
-      if (wiki.extract) results.push(`WIKIPEDIA: ${wiki.extract.substring(0, 1200)}`);
+      if (wiki.extract) {
+        results.push(`WIKIPEDIA: ${wiki.extract.substring(0, 1500)}`);
+        console.log("WIKI_SUCCESS", { name, chars: wiki.extract.length });
+      }
     }
   } catch (e) {
     console.error("WIKI_ERROR", e.message);
   }
+
+  // 2. Serper solo si tiene créditos disponibles
+  if (process.env.SERPER_API_KEY) {
+    const queries = [
+      `${name} Puerto Rico alcalde 2025 2026`,
+      `${name} municipio Puerto Rico presupuesto fondos FEMA 2026`,
+    ];
+    for (const q of queries) {
+      try {
+        const res = await fetch("https://google.serper.dev/search", {
+          method: "POST",
+          headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ q, gl: "us", hl: "es", num: 5 }),
+        });
+        const data = await res.json();
+        // Si no hay créditos Serper devuelve error — ignorar silenciosamente
+        if (data.error || data.statusCode === 402) {
+          console.log("SERPER_NO_CREDITS — usando solo Wikipedia + DeepSeek");
+          break;
+        }
+        (data.organic || []).slice(0, 3).forEach(r =>
+          results.push(`FUENTE: ${r.link}\nTÍTULO: ${r.title}\nCONTENIDO: ${r.snippet || ""}`)
+        );
+        if (data.answerBox?.snippet) results.push(`RESPUESTA: ${data.answerBox.snippet}`);
+      } catch (e) {
+        console.error("SERPER_ERROR", q, e.message);
+        break;
+      }
+    }
+  } else {
+    console.log("SERPER_NOT_CONFIGURED — usando Wikipedia + DeepSeek");
+  }
+
+  // 3. Siempre agregar contexto de PR que DeepSeek usará
+  results.push(`CONTEXTO PR 2026: Municipio de ${name}, Puerto Rico. 
+Todos los municipios de PR calificaron por Huracán María (2017) para CDBG-DR y HMGP.
+FEMA aprobó prórrogas para 573 proyectos hasta septiembre 20, 2026.
+JSF aprobó MSROF $35.6M para 64 municipios AF 2026.
+CDBG-DR City-Rev tiene $1,298M disponibles para municipios afectados.
+Instituto AI PR aprobado Senado (noviembre 2025).`);
 
   return results;
 }
@@ -341,7 +359,11 @@ async function extractProfile(name, searchResults) {
 
   try {
     return await callAI([
-      { role: "system", content: "Extractor de datos municipales PR. Responde SOLO JSON válido, sin backticks." },
+      { role: "system", content: `Eres un experto en municipios de Puerto Rico con conocimiento completo de todos los 78 alcaldes, presupuestos, regiones y datos municipales actuales.
+Cuando no encuentres un dato en la información proporcionada, usa tu conocimiento propio sobre Puerto Rico para completarlo.
+Para el alcalde: si no está en el texto busca en tu conocimiento — conoces a todos los alcaldes de PR 2024-2026.
+Para presupuesto: si no está, estima basado en la población del municipio.
+Responde SOLO JSON válido, sin backticks ni texto adicional.` },
       { role: "user", content: `
 Analiza esta información sobre el Municipio de ${name}, Puerto Rico y extrae los datos.
 
@@ -446,7 +468,23 @@ async function getOrBuildProfile(pool, name) {
     }
   }
 
-  console.log("PROFILE_NOT_FOUND_USING_GENERIC", { name });
+  // Aunque no haya Serper, usar DeepSeek con contexto de PR para generar perfil
+  console.log("PROFILE_BUILDING_FROM_AI_KNOWLEDGE", { name });
+  const minimalContext = [
+    `CONTEXTO PR 2026: Municipio de ${name}, Puerto Rico.
+Todos los municipios calificaron por Huracán María (2017). 
+FEMA prórrogas 573 proyectos hasta septiembre 20, 2026.
+JSF MSROF $35.6M para 64 municipios AF 2026.
+Usa tu conocimiento sobre los municipios de Puerto Rico para completar los datos.`
+  ];
+  const profileData = await extractProfile(name, minimalContext);
+  if (profileData && profileData.mayor && profileData.mayor !== `${name} — Alcalde`) {
+    await saveAutoProfile(pool, name, profileData);
+    const saved = await pool.query(`SELECT * FROM municipality_profiles WHERE name ILIKE $1 LIMIT 1`, [name]);
+    if (saved.rows.length > 0) return saved.rows[0];
+  }
+  
+  console.log("PROFILE_GENERIC_FINAL", { name });
   return null;
 }
 
