@@ -364,38 +364,16 @@ Cuando no encuentres un dato en la información proporcionada, usa tu conocimien
 Para el alcalde: si no está en el texto busca en tu conocimiento — conoces a todos los alcaldes de PR 2024-2026.
 Para presupuesto: si no está, estima basado en la población del municipio.
 Responde SOLO JSON válido, sin backticks ni texto adicional.` },
-      { role: "user", content: `
-Analiza esta información sobre el Municipio de ${name}, Puerto Rico y extrae los datos.
+      { role: "user", content: `Genera el perfil del Municipio de ${name}, Puerto Rico usando la información disponible y tu conocimiento.
 
-INFORMACIÓN ENCONTRADA:
+INFORMACIÓN DISPONIBLE:
 ${ctx}
 
-CONTEXTO PR ${yr}: Todos los municipios calificaron por Huracán María (2017) para CDBG-DR y HMGP.
-FEMA aprobó prórrogas para 573 proyectos hasta septiembre 20, 2026.
-JSF aprobó MSROF $35.6M para 64 municipios AF 2026.
+IMPORTANTE: Usa tu conocimiento sobre Puerto Rico para completar datos que no estén en el texto.
+Conoces a todos los alcaldes de PR, sus partidos, regiones y contexto municipal.
 
-Responde SOLO con este JSON:
-{
-  "mayor": "nombre completo (Partido)",
-  "population": "número",
-  "region": "Norte|Sur|Este|Oeste|Centro|Centro-Este|Centro-Norte|Centro-Sur|Noreste|Noroeste|Sureste|Suroeste|Metropolitana",
-  "budget_amount": "$XM",
-  "budget_year": "XXXX-XXXX",
-  "budget_source": "fuente",
-  "confirmed_funds": [{"program":"","amount":"","description":"","status":"","source":"","date":""}],
-  "disasters": [
-    {"event":"Huracán María","date":"septiembre 2017","impact":"Daños — elegible FEMA-PA, CDBG-DR, HMGP"},
-    {"event":"Huracán Fiona","date":"septiembre 2022","impact":"Daños — elegible FEMA"}
-  ],
-  "federal_programs": [
-    {"program":"CDBG-DR City-Rev","agency":"HUD/PRDOH","amount":"$500K–$3M estimado","status":"Ventana abierta","note":"Califica por Irma y María"},
-    {"program":"HMGP Global Match Strategy","agency":"FEMA/PRDOH","amount":"$250K–$2M estimado","status":"Requiere Plan Mitigación FEMA vigente","note":"$1,000M isla"},
-    {"program":"PR Energy Resilience Fund","agency":"DOE/FEMA/HUD","amount":"$200K–$800K estimado","status":"Activo","note":""},
-    {"program":"MSROF — JSF","agency":"JSF","amount":"Hasta $800,000","status":"Condicionado AF 2026","note":""}
-  ],
-  "strategic_notes": "2-3 oraciones específicas sobre qué hace único a ${name} — geografía, industria, política, ventajas para fondos federales."
-}
-      `.trim() }
+Responde ÚNICAMENTE con este JSON (sin texto antes ni después, sin backticks):
+{"mayor":"nombre del alcalde actual con partido en paréntesis","population":"población aproximada","region":"región de PR","budget_amount":"presupuesto en formato $XM","budget_year":"2024-2025","budget_source":"OGP — Presupuesto Municipal","confirmed_funds":[],"disasters":[{"event":"Huracán María","date":"septiembre 2017","impact":"Daños — elegible FEMA-PA, CDBG-DR, HMGP"},{"event":"Huracán Fiona","date":"septiembre 2022","impact":"Daños — elegible FEMA"}],"federal_programs":[{"program":"CDBG-DR City-Rev","agency":"HUD/PRDOH","amount":"$500K–$3M estimado","status":"Ventana abierta","note":"Califica por Irma y María"},{"program":"HMGP Global Match Strategy","agency":"FEMA/PRDOH","amount":"$250K–$2M estimado","status":"Requiere Plan Mitigación FEMA vigente","note":"$1,000M isla"},{"program":"PR Energy Resilience Fund","agency":"DOE/FEMA/HUD","amount":"$200K–$800K estimado","status":"Activo","note":""},{"program":"MSROF — JSF","agency":"JSF","amount":"Hasta $800,000","status":"Condicionado AF 2026","note":""}],"strategic_notes":"contexto estratégico específico de ${name}"}` }
     ], 1500, 0.1);
   } catch (e) {
     console.error("EXTRACT_ERROR", e.message);
@@ -615,7 +593,36 @@ SOLO JSON válido.` },
     console.log("AI_SUCCESS", { name, model: MODEL });
   } catch (e) {
     console.error("AI_ERROR", e.message);
-    generated = buildFallback(name, profile, funds, disast, progs, audits, yr);
+    // Intentar una vez más con prompt más simple
+    try {
+      const retry = await openai.chat.completions.create({
+        model: MODEL,
+        messages: [
+          { role: "system", content: "Eres URUS, sistema de inteligencia municipal de PR. Responde SOLO JSON válido." },
+          { role: "user", content: `Genera un análisis ejecutivo para el Municipio de ${name}, Puerto Rico.
+Alcalde: ${profile?.mayor || "alcalde del municipio"}
+Presupuesto: ${profile?.budget_amount || "presupuesto municipal"}
+Región: ${profile?.region || "Puerto Rico"}
+
+Responde ÚNICAMENTE con este JSON (sin texto extra):
+{"executive_summary":"4 oraciones sobre ${name} mencionando al alcalde ${profile?.mayor||""} y presupuesto ${profile?.budget_amount||""} y deadline COR3 septiembre 2026","funding_analysis":"4 oraciones sobre fondos federales disponibles para ${name} en 2026","findings":["Fragmentación operacional en ${name} con presupuesto ${profile?.budget_amount||"municipal"} afecta captura de fondos federales activos en 2026","Capacidad fiscal de ${name} y experiencia administrativa en gestión de programas FEMA y CDBG-DR","FEMA aprobó prórrogas para 573 proyectos en PR hasta septiembre 20 2026 — deadline crítico para proyectos de ${name}","CDBG-DR City-Rev $1,298M isla y HMGP $1,000M isla disponibles para ${name} que califica por Huracán María 2017","Instituto AI PR nov 2025 y MSROF $35.6M para 64 municipios AF 2026 — oportunidad para ${name}"],"evidence_chains":["FEMA prórrogas 573 proyectos PR hasta septiembre 20 2026. Implicación para ${name}: deadline crítico. Urgencia: semanas restantes","CDBG-DR $1,298M isla — ${name} califica por Huracán María 2017. Oportunidad $500K–$3M. Urgencia: ventana activa 2026","HMGP $1,000M isla requiere Plan Mitigación FEMA vigente. Sin este plan ${name} queda excluido automáticamente","JSF MSROF $35.6M para 64 municipios AF 2026 — nueva fuente activa para ${name}","Instituto AI PR + $2M FIPSE-SP federal 2026 — fondos modernización municipal disponibles para ${name}"],"strategic_recommendations":["URGENTE septiembre 20 2026: activar seguimiento proyectos COR3 de ${name} — deadline crítico esta semana","Iniciar solicitud CDBG-DR City-Rev para ${name} — $1,298M isla disponibles califica por María 2017","Actualizar Plan Mitigación FEMA para ${name} — habilitante para HMGP $1,000M isla","Implementar coordinación operacional en ${name} para requisito DHS jun 2025 obras sobre $100K","Posicionar ${name} para MSROF y fondos AI municipal 2026"],"infrastructure_stability":72,"funding_readiness":70,"operational_risk":60,"coordination_capacity":41,"total_federal_available":"$4.5M – $8.2M","fema_alignment":"MODERADO","infrastructure_stress":"MODERADO","federal_exposure":"MODERADO"}` }
+        ],
+        temperature: 0.2,
+        max_tokens: 2500,
+      });
+      const raw2 = retry?.choices?.[0]?.message?.content || "";
+      const s2 = raw2.indexOf("{");
+      const e2 = raw2.lastIndexOf("}");
+      if (s2 !== -1 && e2 !== -1) {
+        generated = JSON.parse(raw2.substring(s2, e2 + 1));
+        console.log("AI_RETRY_SUCCESS", { name });
+      } else {
+        generated = buildFallback(name, profile, funds, disast, progs, audits, yr);
+      }
+    } catch (e2) {
+      console.error("AI_RETRY_ERROR", e2.message);
+      generated = buildFallback(name, profile, funds, disast, progs, audits, yr);
+    }
   }
 
   // Campos que SIEMPRE vienen del perfil — nunca de DeepSeek
