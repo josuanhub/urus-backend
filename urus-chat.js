@@ -537,15 +537,7 @@ module.exports = function urusChatRouter(pool) {
         });
       }
       
-      // 3. El modelo razona (cerebro intercambiable)
-      const answer = await callModel({
-        provider: URUS_CHAT_PROVIDER,
-        model: URUS_CHAT_MODEL,
-        messages,
-        temperature: 0.6,
-        max_tokens: 2500,
-      });
-
+     
       // 4. Guardar el intercambio en memoria (no bloquea la respuesta)
       setImmediate(async () => {
         try {
