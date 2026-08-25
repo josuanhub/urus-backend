@@ -3,6 +3,7 @@
  * ------------------------------------------------------------------
  * Cerebro: DeepSeek (intercambiable vía urus-gateway.js)
  * Visión:  OpenAI gpt-4o (DeepSeek no ve imágenes)
+ * Web:     Tavily (resultados con contenido ya extraído)
  * Memoria: jarvis_memory con source='urus' (aislada de studio/jarvis)
  * Embeddings: OpenAI text-embedding-3-small (1536 dims, igual que tu tabla)
  *
@@ -11,9 +12,9 @@
  *   POST   /v1/urus/learn         → enseñarle información sobre ti
  *   POST   /v1/urus/analyze       → analizar imagen o PDF
  *   POST   /v1/urus/voice         → texto a voz
- *   GET    /v1/urus/sessions      → lista de chats guardados        ← NUEVO
- *   GET    /v1/urus/session/:id   → historial completo de un chat   ← NUEVO
- *   DELETE /v1/urus/session/:id   → borrar un chat                  ← NUEVO
+ *   GET    /v1/urus/sessions      → lista de chats guardados
+ *   GET    /v1/urus/session/:id   → historial completo de un chat
+ *   DELETE /v1/urus/session/:id   → borrar un chat
  *   GET    /v1/urus/memory        → ver qué recuerda
  *   GET    /v1/urus/status        → diagnóstico (qué cerebro está activo)
  *
@@ -24,6 +25,7 @@
  *
  * REQUISITO para PDFs:  npm i pdf-parse
  * REQUISITO para subir archivos: en server.js, express.json({ limit: "25mb" })
+ * REQUISITO para internet: ENV TAVILY_API_KEY
  */
 
 const express = require("express");
@@ -40,6 +42,14 @@ const URUS_CHAT_MODEL = process.env.URUS_CHAT_MODEL || "deepseek-chat";
 
 // Modelo de visión (DeepSeek no procesa imágenes)
 const URUS_VISION_MODEL = process.env.URUS_VISION_MODEL || "gpt-4o";
+
+// Búsqueda web (Tavily) — sin key, URUS simplemente no busca
+const TAVILY_API_KEY = process.env.TAVILY_API_KEY || "";
+const TAVILY_MAX_RESULTS = Math.min(parseInt(process.env.TAVILY_MAX_RESULTS || "5", 10), 10);
+
+// Busca en TODOS los mensajes, igual que tu needsSearch = true.
+// Pon URUS_WEB_ALWAYS=false en Railway si algún día quieres apagarlo.
+const URUS_WEB_ALWAYS = String(process.env.URUS_WEB_ALWAYS || "true").toLowerCase() !== "false";
 
 // ------------------------------------------------------------------
 // Identidad de URUS — el system prompt base
@@ -430,25 +440,90 @@ module.exports = function urusChatRouter(pool) {
   // Body: { message: "...", session_id: "opcional", history: [...] }
   // Si no mandas session_id, se crea uno nuevo y te lo devuelve.
   // ==================================================================
-    // Búsqueda en DuckDuckGo (gratis, sin API key)
-  async function searchDuckDuckGo(query) {
+
+  // Búsqueda web real (Tavily). Devuelve { ok, texto, fuentes[] }
+  // Nunca lanza: si falla, devuelve ok:false y un texto que el modelo entiende.
+  async function buscarWeb(query) {
+    const q = String(query || "").trim().slice(0, 380);
+
+    if (!TAVILY_API_KEY) {
+      return {
+        ok: false,
+        texto: "BÚSQUEDA NO DISPONIBLE: falta TAVILY_API_KEY en el servidor.",
+        fuentes: [],
+      };
+    }
+    if (!q) {
+      return { ok: false, texto: "BÚSQUEDA NO DISPONIBLE: consulta vacía.", fuentes: [] };
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+
     try {
-      const url = new URL("https://duckduckgo.com/");
-      url.searchParams.set("q", String(query).slice(0, 200));
-      url.searchParams.set("format", "json");
-      url.searchParams.set("no_html", "1");
-      const r = await fetch(url.toString(), { headers: { "User-Agent": "URUS/1.0" } });
-      if (!r.ok) throw new Error("ddg");
+      const r = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${TAVILY_API_KEY}`,
+        },
+        body: JSON.stringify({
+          query: q,
+          search_depth: "basic",
+          max_results: TAVILY_MAX_RESULTS,
+          include_answer: true,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!r.ok) {
+        const detalle = await r.text().catch(() => "");
+        console.warn("[URUS_CHAT] Tavily HTTP", r.status, detalle.slice(0, 300));
+        return {
+          ok: false,
+          texto: `BÚSQUEDA FALLÓ (HTTP ${r.status}). No tienes información de internet para esta respuesta.`,
+          fuentes: [],
+        };
+      }
+
       const data = await r.json();
-      const results = (data.Results || []).slice(0, 5).map((item) => ({ title: item.Title || "", url: item.FirstURL || "", snippet: item.Text || "" })).filter((r) => r.title && r.snippet);
-      if (results.length === 0) return "No se encontraron resultados.";
-      return results.map((r, i) => `${i + 1}. ${r.title}\nURL: ${r.url}\n${r.snippet}`).join("\n\n");
+      const results = Array.isArray(data.results) ? data.results : [];
+
+      if (results.length === 0) {
+        return {
+          ok: false,
+          texto: "BÚSQUEDA SIN RESULTADOS. No tienes información de internet para esta respuesta.",
+          fuentes: [],
+        };
+      }
+
+      const bloques = results.map((item, i) => {
+        const titulo = String(item.title || "sin título").trim();
+        const url = String(item.url || "").trim();
+        const cuerpo = String(item.content || "").replace(/\s+/g, " ").trim().slice(0, 1200);
+        return `[${i + 1}] ${titulo}\nURL: ${url}\n${cuerpo}`;
+      });
+
+      const resumen = data.answer ? `RESUMEN: ${String(data.answer).trim()}\n\n` : "";
+
+      return {
+        ok: true,
+        texto: resumen + bloques.join("\n\n"),
+        fuentes: results.map((x) => ({ title: x.title || "", url: x.url || "" })),
+      };
     } catch (e) {
-      return "No se pudo buscar en internet.";
+      const motivo = e.name === "AbortError" ? "timeout de 12s" : e.message;
+      console.warn("[URUS_CHAT] Tavily falló:", motivo);
+      return {
+        ok: false,
+        texto: `BÚSQUEDA FALLÓ (${motivo}). No tienes información de internet para esta respuesta.`,
+        fuentes: [],
+      };
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
-  
   router.post("/chat", auth, async (req, res) => {
     try {
       const message = String(req.body?.message || "").trim();
@@ -495,49 +570,30 @@ module.exports = function urusChatRouter(pool) {
         "\n\n=== CONTINUIDAD (últimos intercambios, del más viejo al más reciente) ===\n" +
         continuidadBlock +
         "\n=== FIN CONTINUIDAD ===";
-      +
-        "\n\nRECUERDA: responde según CÓMO HABLAS. Directo, frases cortas, sin relleno, sin frases de coach. La memoria es contexto, no es la pregunta.";
+
+      // 3. Internet. Igual que antes: busca en cada mensaje.
+      //    Puedes apagarlo por request con { "web": false }.
+      const necesitaWeb = req.body?.web === false ? false : URUS_WEB_ALWAYS;
+      const web = necesitaWeb ? await buscarWeb(message) : null;
+
+      const systemFinal = web
+        ? systemPrompt + "\n\nTienes acceso a información de internet:\n" + web.texto
+        : systemPrompt;
 
       const messages = [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: systemFinal },
         ...history.map((h) => ({ role: h.role, content: h.content })),
         { role: "user", content: message },
       ];
 
-           // Detectar si necesita buscar en internet
-     const needsSearch = true;
-      let answer;
-      
-      if (needsSearch) {
-        const searchResults = await searchDuckDuckGo(message);
-        const messagesWithSearch = [
-          { role: "system", content: systemPrompt + "\n\nTienes acceso a información de internet:\n" + searchResults },
-          ...history.map((h) => ({ role: h.role, content: h.content })),
-          { role: "user", content: message },
-        ];
-        answer = await callModel({
-          provider: URUS_CHAT_PROVIDER,
-          model: URUS_CHAT_MODEL,
-          messages: messagesWithSearch,
-          temperature: 0.6,
-          max_tokens: 2500,
-        });
-      } else {
-        const messages = [
-          { role: "system", content: systemPrompt },
-          ...history.map((h) => ({ role: h.role, content: h.content })),
-          { role: "user", content: message },
-        ];
-        answer = await callModel({
-          provider: URUS_CHAT_PROVIDER,
-          model: URUS_CHAT_MODEL,
-          messages,
-          temperature: 0.6,
-          max_tokens: 2500,
-        });
-      }
-      
-     
+      const answer = await callModel({
+        provider: URUS_CHAT_PROVIDER,
+        model: URUS_CHAT_MODEL,
+        messages,
+        temperature: 0.6,
+        max_tokens: 2500,
+      });
+
       // 4. Guardar el intercambio en memoria (no bloquea la respuesta)
       setImmediate(async () => {
         try {
@@ -569,6 +625,9 @@ module.exports = function urusChatRouter(pool) {
           type: m.type,
         })),
         model_used: `${URUS_CHAT_PROVIDER}/${URUS_CHAT_MODEL}`,
+        web_buscado: !!necesitaWeb,
+        web_ok: web ? web.ok : null,
+        fuentes: web ? web.fuentes : [],
       });
     } catch (e) {
       console.error("URUS_CHAT_ERROR", e);
@@ -753,6 +812,7 @@ module.exports = function urusChatRouter(pool) {
         chat_provider: URUS_CHAT_PROVIDER,
         chat_model: URUS_CHAT_MODEL,
         vision_model: URUS_VISION_MODEL,
+        web_search: TAVILY_API_KEY ? "tavily" : "off",
         memoria: count.rows[0],
         por_tipo: porTipo.rows,
         sesiones: sesiones.rows[0].n,
