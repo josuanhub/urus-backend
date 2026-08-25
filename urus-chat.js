@@ -430,6 +430,25 @@ module.exports = function urusChatRouter(pool) {
   // Body: { message: "...", session_id: "opcional", history: [...] }
   // Si no mandas session_id, se crea uno nuevo y te lo devuelve.
   // ==================================================================
+    // Búsqueda en DuckDuckGo (gratis, sin API key)
+  async function searchDuckDuckGo(query) {
+    try {
+      const url = new URL("https://duckduckgo.com/");
+      url.searchParams.set("q", String(query).slice(0, 200));
+      url.searchParams.set("format", "json");
+      url.searchParams.set("no_html", "1");
+      const r = await fetch(url.toString(), { headers: { "User-Agent": "URUS/1.0" } });
+      if (!r.ok) throw new Error("ddg");
+      const data = await r.json();
+      const results = (data.Results || []).slice(0, 5).map((item) => ({ title: item.Title || "", url: item.FirstURL || "", snippet: item.Text || "" })).filter((r) => r.title && r.snippet);
+      if (results.length === 0) return "No se encontraron resultados.";
+      return results.map((r, i) => `${i + 1}. ${r.title}\nURL: ${r.url}\n${r.snippet}`).join("\n\n");
+    } catch (e) {
+      return "No se pudo buscar en internet.";
+    }
+  }
+
+  
   router.post("/chat", auth, async (req, res) => {
     try {
       const message = String(req.body?.message || "").trim();
