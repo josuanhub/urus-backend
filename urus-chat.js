@@ -504,6 +504,27 @@ module.exports = function urusChatRouter(pool) {
         { role: "user", content: message },
       ];
 
+      // Detectar si necesita buscar en internet
+      const needsSearch = /noticias|hoy|actual|precio|bitcoin|mercado|evento|partido|gana|resultado|bolsa|crypto|dólar|euro|última|reciente|news/i.test(message);
+      let answer;
+      
+      if (needsSearch) {
+        const searchResults = await searchDuckDuckGo(message);
+        const messagesWithSearch = [
+          { role: "system", content: systemPrompt + "\n\nTienes acceso a información de internet:\n" + searchResults },
+          ...history.map((h) => ({ role: h.role, content: h.content })),
+          { role: "user", content: message },
+        ];
+        answer = await callModel({
+          provider: URUS_CHAT_PROVIDER,
+          model: URUS_CHAT_MODEL,
+          messages: messagesWithSearch,
+          temperature: 0.6,
+          max_tokens: 2500,
+        });
+      } else {
+        answer = await callModel({
+      
       // 3. El modelo razona (cerebro intercambiable)
       const answer = await callModel({
         provider: URUS_CHAT_PROVIDER,
