@@ -505,7 +505,7 @@ module.exports = function urusChatRouter(pool) {
       ];
 
            // Detectar si necesita buscar en internet
-      const needsSearch = /noticias|hoy|actual|precio|bitcoin|mercado|evento|partido|gana|resultado|bolsa|crypto|dólar|euro|última|reciente|news/i.test(message);
+     const needsSearch = true;
       let answer;
       
       if (needsSearch) {
