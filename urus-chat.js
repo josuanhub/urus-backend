@@ -504,7 +504,7 @@ module.exports = function urusChatRouter(pool) {
         { role: "user", content: message },
       ];
 
-      // Detectar si necesita buscar en internet
+           // Detectar si necesita buscar en internet
       const needsSearch = /noticias|hoy|actual|precio|bitcoin|mercado|evento|partido|gana|resultado|bolsa|crypto|dólar|euro|última|reciente|news/i.test(message);
       let answer;
       
@@ -523,7 +523,19 @@ module.exports = function urusChatRouter(pool) {
           max_tokens: 2500,
         });
       } else {
+        const messages = [
+          { role: "system", content: systemPrompt },
+          ...history.map((h) => ({ role: h.role, content: h.content })),
+          { role: "user", content: message },
+        ];
         answer = await callModel({
+          provider: URUS_CHAT_PROVIDER,
+          model: URUS_CHAT_MODEL,
+          messages,
+          temperature: 0.6,
+          max_tokens: 2500,
+        });
+      }
       
       // 3. El modelo razona (cerebro intercambiable)
       const answer = await callModel({
