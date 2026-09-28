@@ -441,7 +441,7 @@ module.exports = function urusChatRouter(pool) {
   // Si no mandas session_id, se crea uno nuevo y te lo devuelve.
   // ==================================================================
 
-  // Búsqueda web real (Tavily). Devuelve { ok, texto, fuentes[] }
+    // Búsqueda web real (Tavily). Devuelve { ok, texto, fuentes[] }
   // Nunca lanza: si falla, devuelve ok:false y un texto que el modelo entiende.
   async function buscarWeb(query) {
     const q = String(query || "").trim().slice(0, 380);
@@ -469,9 +469,11 @@ module.exports = function urusChatRouter(pool) {
         },
         body: JSON.stringify({
           query: q,
-          search_depth: "basic",
+          search_depth: "advanced",
           max_results: TAVILY_MAX_RESULTS,
           include_answer: true,
+          include_raw_content: true,
+          topic: "news",
         }),
         signal: controller.signal,
       });
