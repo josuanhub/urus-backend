@@ -1,9 +1,9 @@
 /**
- * URUS AGENTS — Orquestación de 5 agentes en paralelo
+ * URUS AGENTS — 5 agentes en paralelo (sin OpenAI, con Tavily gratis)
  */
 
 const express = require("express");
-const { callModel, gatewayStatus } = require("./urus-gateway");
+const { callModel } = require("./urus-gateway");
 
 const STUDIO_PASSWORD = process.env.STUDIO_PASSWORD || "urus2026";
 const URUS_CHAT_PROVIDER = process.env.URUS_CHAT_PROVIDER || "deepseek";
@@ -18,25 +18,25 @@ const AGENT_PROMPTS = {
 Sé directo. Sin relleno. Máximo 200 palabras.`,
 
   RESEARCHER: `Eres RESEARCHER. Tu rol es:
-1. Buscar la información que SE NECESITA
+1. Buscar la información que SE NECESITA (no todo)
 2. Traer solo lo relevante
-3. Citar fuentes oficiales
+3. Citar fuentes oficiales cuando sea posible
 Responde con hechos verificables. Máximo 300 palabras.`,
 
   VERIFIER: `Eres VERIFIER. Tu rol es:
 1. Detectar números contradictorios
 2. Verificar fechas (¿vencidas? ¿próximas?)
-3. Marcar inconsistencias
+3. Marcar inconsistencias o huecos en la información
 Sé meticuloso. Máximo 200 palabras.`,
 
   ANALYZER: `Eres ANALYZER. Tu rol es:
-1. Conectar ideas entre memoria y lo nuevo
+1. Conectar ideas entre lo que sabe de memoria y lo nuevo
 2. Detectar patrones recurrentes
 3. Marcar cambios importantes
 Piensa sistémico. Máximo 250 palabras.`,
 
   SIMULATOR: `Eres SIMULATOR. Tu rol es:
-1. Proyectar 3 escenarios (mejor, medio, peor)
+1. Proyectar 3 escenarios posibles (mejor, medio, peor)
 2. Estimar probabilidad de cada uno
 3. Marcar puntos de inflexión
 Sé realista. Máximo 250 palabras.`,
@@ -198,6 +198,7 @@ Confianza: ${synthesis.confidence}%`;
       ok: true,
       agents: Object.keys(AGENT_PROMPTS),
       model: URUS_CHAT_MODEL,
+      web_search: TAVILY_API_KEY ? "enabled" : "disabled",
     });
   });
 
