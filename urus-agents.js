@@ -48,17 +48,7 @@ Sé realista. Máximo 250 palabras.`,
 3. Proponer mitigaciones específicas
 Sé meticuloso. Máximo 250 palabras.`,
 
-  TIMELINE_PLANNER: `Eres TIMELINE_PLANNER. Tu rol es:
-1. Crear calendario con hitos críticos
-2. Identificar dependencias
-3. Marcar cuellos de botella
-Sé detallado con fechas. Máximo 250 palabras.`,
 
-  BUDGET_OPTIMIZER: `Eres BUDGET_OPTIMIZER. Tu rol es:
-1. Analizar presupuesto y flujo de dinero
-2. Detectar fugas de recursos
-3. Proponer optimizaciones
-Sé preciso con números. Máximo 250 palabras.`,
 
 module.exports = function urusAgentsRouter(pool) {
   const router = express.Router();
