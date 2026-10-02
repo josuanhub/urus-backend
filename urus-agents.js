@@ -209,5 +209,22 @@ Confianza: ${synthesis.confidence}%`;
     });
   });
 
+  router.post("/agents/run-single", auth, async (req, res) => {
+    try {
+      const agentName = String(req.body?.agent || "").trim().toUpperCase();
+      const query = String(req.body?.query || "").trim();
+      const context = String(req.body?.context || "").trim();
+
+      if (!agentName || !query) {
+        return res.status(400).json({ ok: false, error: "agent and query required" });
+      }
+
+      const result = await runAgent(agentName, query, context);
+      return res.json(result);
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+  
   return router;
 };
