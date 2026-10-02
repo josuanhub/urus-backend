@@ -734,63 +734,32 @@ async function boot(){
   else newThread();
 }
 
-  /* ═══ AGENTES ═══ */
+ /* ═══ AGENTES ═══ */
 let agentsMode=false;
 document.getElementById('agents').onclick=function(){
   agentsMode=!agentsMode;
   this.classList.toggle('active',agentsMode);
 };
 
-async function sendAgents(message){
+async function sendAgentsSimple(message){
+  fire.disabled=true;
+  
   const slot=document.createElement('div');
   slot.className='turn sys';
-  slot.innerHTML='<div class="who"><span class="dot"></span> <span>🔬 ANÁLISIS</span></div><div class="body" id="agentsSlot"></div>';
+  slot.innerHTML='<div class="who"><span class="dot"></span> <span>🔬 ANÁLISIS PROFUNDO</span></div><div class="body" id="agentsSlot"><p>⏳ Activando 8 agentes en paralelo...</p></div>';
   col.appendChild(slot);
-  
-  const agentsSlot=document.getElementById('agentsSlot');
-  agentsSlot.innerHTML='<div class="agents-panel"><div class="agents-header">Activando 8 agentes en paralelo...</div><div class="agents-grid" id="agentsList"></div></div>';
-  
-  const agentsList=[
-    {name:'STRATEGIST',icon:'📊',desc:'Estrategia'},
-    {name:'RESEARCHER',icon:'🔍',desc:'Investigación'},
-    {name:'VERIFIER',icon:'✓',desc:'Verificación'},
-    {name:'ANALYZER',icon:'🧩',desc:'Análisis'},
-    {name:'SIMULATOR',icon:'📈',desc:'Simulación'},
-    {name:'RISK_ASSESSOR',icon:'⚠️',desc:'Riesgos'},
-    {name:'TIMELINE_PLANNER',icon:'📅',desc:'Timeline'},
-    {name:'BUDGET_OPTIMIZER',icon:'💰',desc:'Presupuesto'}
-  ];
-  
-  const grid=document.getElementById('agentsList');
-  agentsList.forEach(function(a){
-    const card=document.createElement('div');
-    card.className='agent-card loading';
-    card.innerHTML='<div class="agent-name">'+a.icon+' '+a.name+'</div><div class="agent-status">⏳ '+a.desc+'...</div><div class="agent-result"></div>';
-    grid.appendChild(card);
-  });
-  
   stream.scrollTop=stream.scrollHeight;
   
-  const results=await Promise.all(agentsList.map(async function(a,idx){
-    try{
-      const r=await fetch(BASE+'/v1/urus/agents/run-single',{method:'POST',headers:H,body:JSON.stringify({agent:a.name,query:message,context:'Operador de proyectos'})});
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      const d=await r.json();
-      const card=grid.children[idx];
-      card.classList.remove('loading');
-      card.classList.add('ready');
-      card.querySelector('.agent-status').innerHTML='✅ '+a.desc;
-      card.querySelector('.agent-result').textContent=d.analysis||'Sin resultado';
-      return{ok:true,agent:a.name};
-    }catch(e){
-      const card=grid.children[idx];
-      card.classList.remove('loading');
-      card.classList.add('error');
-      card.querySelector('.agent-status').innerHTML='❌ Error';
-      card.querySelector('.agent-result').textContent=e.message;
-      return{ok:false,agent:a.name,error:e.message};
-    }
-  }));
+  try{
+    const r=await fetch(BASE+'/v1/urus/agents',{method:'POST',headers:H,body:JSON.stringify({query:message,context:'Operador de proyectos'})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    
+    document.getElementById('agentsSlot').innerHTML='<p>'+d.synthesis.replace(/\n/g,'<br>')+'</p>';
+  }catch(e){
+    document.getElementById('agentsSlot').innerHTML='<p style="color:var(--live)">Error: '+e.message+'</p>';
+  }
+  fire.disabled=false;
 }
 
 const originalSend=window.send;
@@ -798,7 +767,7 @@ window.send=async function(){
   const msg=entry.value.trim();
   if(!msg)return;
   if(agentsMode){
-    await sendAgents(msg);
+    await sendAgentsSimple(msg);
     agentsMode=false;
     document.getElementById('agents').classList.remove('active');
   }else{
