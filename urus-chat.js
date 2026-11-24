@@ -541,12 +541,14 @@ module.exports = function urusChatRouter(pool) {
         : crypto.randomUUID();
       const esNueva = !req.body?.session_id;
 
-      // 1. En paralelo: conocimiento relevante + continuidad de ESTE chat
-      const [memories, recientes] = await Promise.all([
+          const [memories, delChat] = await Promise.all([
         searchMemory(message, 12),
         recentConversations(6, sessionId),
       ]);
-
+      // Chat nuevo o casi vacío: completar con los últimos intercambios de otros chats
+      const usaGlobal = delChat.length < 3;
+      const recientes = usaGlobal ? await recentConversations(6, null) : delChat;
+      
       const memoryBlock = memories.length
         ? memories.map((m) => `- [${m.type || "nota"}] ${m.content}`).join("\n")
         : "(Sin memoria guardada todavía sobre este tema.)";
