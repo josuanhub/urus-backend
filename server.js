@@ -8942,13 +8942,13 @@ ${JSON.stringify(project.proposal || {}, null, 2)}
 INSTRUCCIONES DE DISEÑO — sigue este proceso de pensamiento antes de responder:
 1. IDENTIFICA EL NEGOCIO REAL: no generes un "CRM genérico". Lee la transcripción y entiende exactamente qué vende esta empresa, cómo opera, quiénes son sus actores (dueño, empleados, clientes, proveedores), y cuál es su flujo de trabajo diario real, palabra por palabra de lo que dijeron.
 
-2. DISEÑA LOS MÓDULOS COMO UN SISTEMA OPERATIVO COMPLETO: piensa en todas las áreas que una empresa de este tipo necesita digitalizar — ventas, inventario o servicios, clientes, operaciones, finanzas/cobros, comunicación con clientes, reportes y métricas del dueño. No te limites a 2-3 módulos genéricos; incluye TODOS los módulos relevantes a este negocio específico, sin importar si parecen ambiciosos.
+2. DISEÑA LOS MÓDULOS SEGÚN EL OBJETIVO: especifica solo las pantallas y capacidades necesarias para completar el flujo solicitado. Incluye al menos una pantalla cuando el proyecto tenga interfaz. No agregues ventas, inventario, CRM, importación, configuración o dashboards a menos que el alcance los justifique.
 
 3. PARA CADA MÓDULO, DEFINE EL FLUJO DE USUARIO COMPLETO: qué ve el usuario primero, qué decisiones toma, qué pasa cuando hace click en cada botón principal, qué validaciones existen, qué estados tiene cada entidad.
 
-4. PIENSA EN INTEGRACIONES REALES: si el negocio usa WhatsApp, el sistema debe tener pantalla de mensajes vía Twilio. Si maneja pagos, pantalla de cobros. Si maneja inventario físico, control de stock con alertas.
+4. DECLARA SOLO INTEGRACIONES REQUERIDAS. Usa una lista vacía cuando no haya integraciones en el alcance.
 
-5. DISEÑA EL DASHBOARD COMO RESUMEN EJECUTIVO: KPIs específicos del negocio según lo que dijo el dueño en la transcripción.
+5. DEFINE LA PRIMERA PANTALLA según el flujo principal. Incluye indicadores solo cuando el usuario los necesite.
 
 REGLA FUNDAMENTAL: Este sistema puede ser cualquier tipo de software. No tiene que ser un CRM. Puede ser un agente autónomo, scraper, portal, lo que sea. Lee la transcripción y diseña exactamente lo que describe.
 
@@ -9000,8 +9000,7 @@ Incluye obligatoriamente al final:
 - Stack: React + Tailwind, diseño oscuro profesional con paleta de colores apropiada para esta industria
 - Backend URL: https://www.urusverify.com — todos los fetch usan header x-factory-key: factory2026 y Content-Type: application/json
 - CRÍTICO: todos los endpoints usan URL completa https://www.urusverify.com/v1/client/${project.id}/api/{tabla} — nunca rutas cortas
-- Página dedicada "Importar datos" en sidebar con drag and drop que acepta .xlsx .xls .csv .pdf .png .jpg y hace POST a https://www.urusverify.com/v1/factory/project/${project.id}/upload-data con header x-factory-key: factory2026 sin Content-Type, muestra resultado por hoja procesada
-- Dashboard principal limpio, solo KPIs específicos del negocio sin elementos de carga
+- Describe importación, indicadores y pantallas administrativas únicamente si aparecen en el alcance aprobado.
 
 Devuelve solo el texto del lovable_prompt, sin JSON ni comillas externas.`;
 
@@ -10524,7 +10523,7 @@ async function builderAgent(project_id, masterSpec, project) {
 
 async function generatePageFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) {
   const files = {};
-  const filesToGenerate = buildFileList(masterSpec, tables);
+  const filesToGenerate = buildFileList(masterSpec);
 
   for (const fileSpec of filesToGenerate) {
     console.log(`[BuilderAgent] Generando ${fileSpec.path}...`);
@@ -10535,7 +10534,7 @@ async function generatePageFiles(masterSpec, project, project_id, apiBase, uploa
     while (intentos < 3) {
       try {
         let candidate = await generateFactoryText(
-          buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) + previousError,
+          buildFilePrompt(fileSpec, masterSpec, project, apiBase, uploadUrl, palette, tables, filesToGenerate) + previousError,
           8000
         );
         candidate = candidate.replace(/^```(jsx?|javascript|tsx?|typescript)?\n?/m, '').replace(/\n?```\s*$/m, '').trim();
@@ -10572,59 +10571,62 @@ async function generatePageFiles(masterSpec, project, project_id, apiBase, uploa
 
   return files;
 }
-function buildFileList(masterSpec, tables) {
+function buildFileList(masterSpec) {
   const list = [];
   list.push({ path: 'src/App.jsx', name: 'App', type: 'router', description: 'Router principal' });
   list.push({ path: 'src/components/Sidebar.jsx', name: 'Sidebar', type: 'component', description: 'Navegación lateral colapsable' });
   list.push({ path: 'src/components/Toast.jsx', name: 'Toast', type: 'component', description: 'Notificaciones globales' });
   list.push({ path: 'src/components/LoadingSkeleton.jsx', name: 'LoadingSkeleton', type: 'component', description: 'Skeleton loader' });
 
-  const modules = masterSpec.modules || [];
-  for (const mod of modules) {
-    const screens = mod.screens || [];
-    for (const screen of screens) {
-      const componentName = screen.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).slice(0, 5).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
-      if (!componentName) continue;
-      list.push({ path: `src/pages/${componentName}.jsx`, name: componentName, type: 'page', moduleName: mod.name, description: screen, endpoints: mod.endpoints || [] });
+  for (const mod of masterSpec.modules || []) {
+    for (const screen of mod.screens || []) {
+      const words = screen.normalize('NFD').replace(/\p{M}/gu, '').match(/[A-Za-z0-9]+/g) || [];
+      const title = words.slice(0, 5).map(word => word[0].toUpperCase() + word.slice(1)).join('');
+      const componentName = 'Page' + (title || 'Screen');
+      let name = componentName;
+      let suffix = 2;
+      while (list.some(file => file.path === `src/pages/${name}.jsx`)) name = componentName + suffix++;
+      list.push({ path: `src/pages/${name}.jsx`, name, type: 'page', moduleName: mod.name,
+        description: screen, endpoints: mod.endpoints || [] });
     }
   }
-  if (modules.length === 0) {
-    list.push({ path: 'src/pages/Dashboard.jsx', name: 'Dashboard', type: 'page', description: 'Dashboard principal con KPIs' });
-    list.push({ path: 'src/pages/ImportarDatos.jsx', name: 'ImportarDatos', type: 'page', description: 'Importar datos via drag & drop' });
-    list.push({ path: 'src/pages/Configuracion.jsx', name: 'Configuracion', type: 'page', description: 'Configuración del sistema' });
+  if (!list.some(file => file.type === 'page')) {
+    throw new Error('La especificación de Factory no contiene pantallas para construir.');
   }
   return list;
 }
-function buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) {
-  const baseContext = `SISTEMA: "${masterSpec.system_name}" para "${project.company}" (${project.industry})\nPALETA: ${palette}\nBACKEND API: ${apiBase}/{tabla} — header x-factory-key: ${factoryKey}\nTABLAS DISPONIBLES: ${tables.join(', ')}\nUPLOAD URL: ${uploadUrl} (sin Content-Type, header x-factory-key: ${factoryKey})`;
-  const styleRules = `REGLAS DE ESTILO:\n- Diseño oscuro profesional, fondo #0A0A0F\n- Tailwind puro, sin librerías UI externas\n- React 18 + hooks funcionales, sin TypeScript\n- Lucide React para íconos\n- Responsive mobile-first\n- Nunca uses localStorage\n- Fetch con URL completa y header x-factory-key: ${factoryKey}`;
+function buildFilePrompt(fileSpec, masterSpec, project, apiBase, uploadUrl, palette, tables, files) {
+  const pages = files.filter(file => file.type === 'page').map(file => ({
+    component: file.name, file: file.path, label: file.description
+  }));
+  const context = `Proyecto: ${masterSpec.system_name} · ${project.company}
+Objetivo: ${masterSpec.description || ''}
+Stack: React 18, React Router y Tailwind. Paleta: ${palette}.
+Pantallas autorizadas (usa exactamente estos nombres de archivo y componentes): ${JSON.stringify(pages)}
+API de datos: ${apiBase}/{tabla}. Tablas disponibles: ${JSON.stringify(tables)}.
+Usa fetchApi de src/hooks/useApi.js para las tablas. Su parámetro endpoint es relativo a la API de datos.
+Genera únicamente ${fileSpec.path} y devuelve solo JSX. Usa export default para el componente.
+Importa desde los archivos declarados y las dependencias del proyecto. Evita funcionalidades que no se pidieron.`;
 
   if (fileSpec.type === 'router') {
-    return `${baseContext}\n\nGenera src/App.jsx completo.\n\nMÓDULOS:\n${masterSpec.modules?.map(m => `- ${m.name}: ${(m.screens || []).join(', ')}`).join('\n') || 'Dashboard, Importar Datos, Configuración'}\n\nDEBE INCLUIR: import React/useState, Routes/Route/Navigate de react-router-dom, Sidebar, import de cada página desde ./pages/, layout flex con Sidebar colapsable a la izquierda, Route por pantalla, Navigate por defecto.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+    return context + '\nMonta Routes y Route para todas las pantallas, Sidebar y ToastProvider. La ruta inicial muestra la primera pantalla. Coordina los destinos con Sidebar usando el nombre exacto del componente en minúsculas como segmento de ruta.';
   }
   if (fileSpec.name === 'Sidebar') {
-    const navItems = masterSpec.modules?.map(m => `- ${m.name}: ${(m.screens || []).join(', ')}`).join('\n') || '';
-    return `${baseContext}\n\nGenera src/components/Sidebar.jsx completo.\n\nITEMS:\n${navItems}\n\nDEBE INCLUIR: prop collapsed+onToggle, logo "${masterSpec.system_name}" arriba, useLocation para item activo, Link de react-router-dom, ícono lucide-react por sección, nombre empresa "${project.company}" abajo, transición suave.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+    return context + '\nGenera navegación con Link y props collapsed y onToggle. Para cada pantalla usa el nombre exacto del componente en minúsculas como segmento de ruta.';
   }
   if (fileSpec.name === 'Toast') {
-    return `${baseContext}\n\nGenera src/components/Toast.jsx completo.\n\nDEBE INCLUIR: Context API ToastContext + useToast hook exportado, ToastProvider, tipos success/error/info/warning, auto-dismiss 4s, posición inferior derecha, animación entrada/salida, máximo 3 toasts.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+    return context + '\nExporta ToastProvider y useToast, además del componente por defecto. Incluye estados de éxito y error.';
   }
   if (fileSpec.name === 'LoadingSkeleton') {
-    return `${baseContext}\n\nGenera src/components/LoadingSkeleton.jsx.\n\nDEBE INCLUIR: props rows(5) cols(3) type('table'|'cards'|'list'), animate-pulse de Tailwind, variantes para cada type.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+    return context + '\nGenera un indicador de carga accesible y reutilizable.';
   }
 
-  const isImport = fileSpec.name === 'ImportarDatos' || fileSpec.description?.toLowerCase().includes('import');
-  const isDashboard = fileSpec.name === 'Dashboard' || fileSpec.description?.toLowerCase().includes('dashboard') || fileSpec.description?.toLowerCase().includes('kpi');
-
-  if (isImport) {
-    return `${baseContext}\n\nGenera src/pages/${fileSpec.name}.jsx — "${fileSpec.description}".\n\nDEBE INCLUIR: drag&drop zone + input file fallback, acepta .xlsx .xls .csv .pdf .png .jpg, upload a POST ${uploadUrl} con FormData key "file" y header x-factory-key (sin Content-Type), mostrar nombre/tamaño/ícono, barra de progreso, resultado filas_insertadas/tabla/errores, estados idle→dragging→uploading→success|error, botón Limpiar.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
-  }
-  if (isDashboard) {
-    return `${baseContext}\n\nGenera src/pages/${fileSpec.name}.jsx — "${fileSpec.description}".\n\nDEBE INCLUIR: cards KPI con número+label+tendencia (fetch a ${apiBase}/{tabla} contando registros de ${tables.slice(0,3).join(', ')}), alertas críticas si hay estado='urgente', tabla actividad reciente (10 últimos), skeleton loader, useEffect+fetch al montar, manejo de error, grid responsive 4 cols desktop / 2 mobile.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
-  }
-
-  const relevantTable = tables.find(t => fileSpec.description?.toLowerCase().includes(t.replace(/_/g, ' '))) || tables[0];
-  return `${baseContext}\n\nGenera src/pages/${fileSpec.name}.jsx — Módulo: ${fileSpec.moduleName || fileSpec.name} — "${fileSpec.description}".\n\nTABLA: ${relevantTable || 'primera disponible'}\nENDPOINT: ${apiBase}/${relevantTable || '{tabla}'}\n\nDEBE INCLUIR: listado en tabla con búsqueda/filtros, botón Nuevo abre modal/panel, formulario crear/editar con validación básica, editar/eliminar por fila con confirmación, skeleton loader, toast éxito/error en CRUD, paginación simple si hay +20 registros, estado vacío con CTA.\n\n${styleRules}\n\nDevuelve SOLO el código JSX.`;
+  const task = `\nPantalla: ${fileSpec.description}. Módulo: ${fileSpec.moduleName}. Endpoints declarados: ${JSON.stringify(fileSpec.endpoints)}.
+Implementa el flujo que describe la pantalla. Usa las tablas y rutas declaradas cuando apliquen. Si falta un endpoint, indica esa dependencia en la interfaz. Incluye estados de carga, error y vacío según corresponda.`;
+  const importInstructions = /\b(?:importar|importaci[oó]n)\b/i.test(fileSpec.description)
+    ? `\nPara la importación solicitada, envía FormData con el campo file a ${uploadUrl}. Usa el mecanismo de acceso existente, definido por el proyecto.`
+    : '';
+  return context + task + importInstructions;
 }
 
 function slugifyCompany(text) {
