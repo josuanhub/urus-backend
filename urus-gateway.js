@@ -128,6 +128,7 @@ async function callModel({
   top_p = 1,
   max_tokens = 4000,
   raw = false,
+  thinking,
 } = {}) {
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new Error("URUS_GATEWAY: 'messages' es requerido y debe ser un array no vacío");
@@ -150,6 +151,7 @@ async function callModel({
         messages,
         temperature,
         top_p,
+        ...(provider === "deepseek" ? { max_tokens, ...(thinking ? { thinking } : {}) } : {}),
       });
 
       if (raw) return completion;

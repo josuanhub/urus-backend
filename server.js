@@ -23,6 +23,7 @@
  */
 
 const express = require("express");
+const { generateFactoryText } = require("./services/factory-model");
 const path = require('path');
 const cors = require("cors");
 const fetch = require("node-fetch");
@@ -7870,6 +7871,27 @@ app.post('/v1/studio/tts', studioAuth, async (req, res) => {
   }
 });
 
+app.post('/v1/studio/plan', studioAuth, async (req, res) => {
+  const instruction = req.body?.instruction;
+  if (typeof instruction !== 'string' || !instruction.trim() || instruction.length > 12000) {
+    return res.status(400).json({ ok: false, error: 'Escribe una idea de hasta 12,000 caracteres.' });
+  }
+
+  try {
+    const { planStudioTask } = require('./services/studio-orchestrator');
+    const result = await planStudioTask(instruction.trim(), async (systemPrompt, userPrompt) => {
+      const response = await callAnthropicDirect(systemPrompt, userPrompt, 1600);
+      const plan = response.content.filter(part => part.type === 'text').map(part => part.text).join('\n').trim();
+      if (!plan) throw new Error('Studio recibió un plan vacío');
+      return plan;
+    });
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    console.error('[Studio Plan]', error.message);
+    return res.status(500).json({ ok: false, error: 'Studio no pudo preparar el plan.' });
+  }
+});
+
 app.post('/api/studio/chat', studioAuth, async (req, res) => {
   try {
     const { messages, project } = req.body;
@@ -8128,18 +8150,12 @@ Extrae y devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
   "preguntas_faltantes": ["solo si hay gaps críticos de información"]
 }`;
 
-   const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
 
     let message;
     let intentos = 0;
     while (intentos < 3) {
       try {
-        message = await client.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 4000,
-          messages: [{ role: 'user', content: prompt }]
-        });
+        message = await generateFactoryText(prompt, 4000);
         break;
       } catch (retryErr) {
         if (retryErr.status === 429 && intentos < 2) {
@@ -8152,7 +8168,7 @@ Extrae y devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
       }
     }
 
-    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+    const raw = message.replace(/```json|```/g, '').trim();
     const analysis = JSON.parse(raw);
 
     await pool.query(
@@ -8210,18 +8226,12 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
   "usuarios_incluidos": número,
   "integraciones": ["lista"]
 }`;
-const Anthropic = require('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
 
     let message;
     let intentos = 0;
     while (intentos < 3) {
       try {
-        message = await anthropic.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 4000,
-          messages: [{ role: 'user', content: prompt }]
-        });
+        message = await generateFactoryText(prompt, 4000);
         break;
       } catch (retryErr) {
         if (retryErr.status === 429 && intentos < 2) {
@@ -8234,7 +8244,7 @@ const Anthropic = require('@anthropic-ai/sdk');
       }
     }
 
-    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+    const raw = message.replace(/```json|```/g, '').trim();
     const proposal = JSON.parse(raw);
 
     await pool.query(
@@ -8378,16 +8388,10 @@ Devuelve ÚNICAMENTE este JSON, sin markdown ni texto extra:
   }
 }`;
 
-    const Anthropic2 = require('@anthropic-ai/sdk');
-    const client2 = new Anthropic2({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
 
-    const message = await client2.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 3000,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    const message = await generateFactoryText(prompt, 3000);
 
-    const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+    const raw = message.replace(/```json|```/g, '').trim();
     const diagnosticoMaestro = JSON.parse(raw);
 
     await pool.query(
@@ -8913,8 +8917,6 @@ async function databaseArchitectAgent(project_id, masterSpec, project) {
 // ============================================================
 
 async function masterPlannerAgent(project) {
-  const Anthropic = require('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
 
   const transcriptCompleto = (project.transcript || '').slice(0, 4000);
 
@@ -8960,12 +8962,8 @@ Devuelve ÚNICAMENTE este JSON sin markdown ni texto extra:
 let intentos1 = 0;
 while (intentos1 < 3) {
   try {
-    const msg1 = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 8000,
-      messages: [{ role: 'user', content: prompt1 }]
-    });
-    const raw1 = msg1.content[0].text.replace(/```json|```/g, '').trim();
+    const msg1 = await generateFactoryText(prompt1, 8000);
+    const raw1 = msg1.replace(/```json|```/g, '').trim();
     estructura = JSON.parse(raw1);
     break;
   } catch (e) {
@@ -8975,15 +8973,7 @@ while (intentos1 < 3) {
       await new Promise(r => setTimeout(r, 90000));
     } else {
       console.error('[MasterPlanner] Error llamada 1:', e.message);
-      estructura = {
-        system_name: `Sistema ${project.company}`,
-        description: 'Sistema generado por URUS Factory',
-        modules: [],
-        database_schema: { tables: [] },
-        integrations: ['whatsapp-twilio'],
-        tech_stack: { frontend: 'React + Tailwind', backend: 'Node.js + Express', database: 'PostgreSQL', hosting: 'Railway + Lovable' }
-      };
-      break;
+      throw e;
     }
   }
 }
@@ -9013,12 +9003,8 @@ Devuelve solo el texto del lovable_prompt, sin JSON ni comillas externas.`;
 
   let lovablePrompt;
   try {
-    const msg2 = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 12000,
-      messages: [{ role: 'user', content: prompt2 }]
-    });
-    lovablePrompt = msg2.content[0].text.trim();
+    const msg2 = await generateFactoryText(prompt2, 12000);
+    lovablePrompt = msg2.trim();
   } catch (e) {
     console.error('[MasterPlanner] Error llamada 2:', e.message);
     lovablePrompt = `Construye sistema completo ${estructura.system_name} para ${project.company}. Stack React + Tailwind, diseño oscuro. Backend https://www.urusverify.com, header x-factory-key: factory2026. Endpoints https://www.urusverify.com/v1/client/${project.id}/api/{tabla}. Importar datos en sidebar POST https://www.urusverify.com/v1/factory/project/${project.id}/upload-data sin Content-Type. Dashboard solo KPIs.`;
@@ -9362,8 +9348,6 @@ rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
 // Usa Claude para decidir a qué tabla pertenecen los datos y cómo
 // mapear cada columna del archivo a cada campo de esa tabla.
 async function mapColumnsWithAI(fileColumns, sampleRows, tables, forcedTableName) {
-  const Anthropic = require('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
 
   const tablesDescription = tables.map(t => ({
     name: t.name,
@@ -9391,13 +9375,9 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin markdown:
   "column_map": { "campo_de_la_tabla": "columna_del_archivo", "otro_campo": "otra_columna" }
 }`;
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1000,
-    messages: [{ role: 'user', content: prompt }]
-  });
+  const message = await generateFactoryText(prompt, 1000);
 
-  const raw = message.content[0].text.replace(/```json|```/g, '').trim();
+  const raw = message.replace(/```json|```/g, '').trim();
   return JSON.parse(raw);
 }
 
@@ -9807,12 +9787,13 @@ app.post('/v1/factory/project/:id/integrations/whatsapp-twilio/configurar-dueno'
 // UTILIDADES COMPARTIDAS
 // ─────────────────────────────────────────────────────────────
 
-async function githubReadFile(filename = 'server.js') {
+async function githubReadFile(filename = 'server.js', branch) {
+  const refQuery = branch ? `?ref=${encodeURIComponent(branch)}` : '';
   const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
   const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
 
   const res = await fetch(
-`https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/${filename}`,
+`https://api.github.com/repos/${GITHUB_USERNAME}/urus-backend/contents/${filename}${refQuery}`,
     {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -9829,7 +9810,7 @@ async function githubReadFile(filename = 'server.js') {
   return { content, sha: data.sha };
 }
 
-async function githubWriteFile(filename = 'server.js', newContent, sha, commitMessage) {
+async function githubWriteFile(filename = 'server.js', newContent, sha, commitMessage, branch) {
   const GITHUB_TOKEN    = process.env.GITHUB_TOKEN;
   const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
 
@@ -9845,7 +9826,8 @@ async function githubWriteFile(filename = 'server.js', newContent, sha, commitMe
       body: JSON.stringify({
         message: commitMessage,
         content: Buffer.from(newContent).toString('base64'),
-        sha
+        sha,
+        branch
       })
     }
   );
@@ -10112,9 +10094,18 @@ async function selfEditOrchestrator(instruction, previewOnly = false, targetFile
 
   const startTime = Date.now();
 
-  // PASO 1 — Leer archivo
-  const { content: fileContent, sha } = await githubReadFile(targetFile);
-  const previousSha = sha;
+  const branch = process.env.STUDIO_EDIT_BRANCH?.trim();
+
+  if (!previewOnly && !/^studio\/[a-z0-9][a-z0-9-]*$/.test(branch || '')) {
+    return {
+      ok: false,
+      stage: 'staging_branch',
+      error: 'Configura STUDIO_EDIT_BRANCH con una rama existente como studio/pruebas.'
+    };
+  }
+
+  // Read from the same branch that will receive the edit.
+  const { content: fileContent, sha } = await githubReadFile(targetFile, branch);
   console.log(`[Orchestrator] Archivo leído: ${fileContent.split('\n').length} líneas`);
 
  // PASO 2 — AST NAVIGATOR (determinista)
@@ -10148,26 +10139,17 @@ const before = lines.slice(0, navigation.startIdx || 0).join('\n');
 const after = lines.slice((navigation.endIdx || 0) + 1).join('\n');
   const fullFile = [before, modifiedSection, after].filter(Boolean).join('\n');
 
- const syntaxCheck = { valid: true, issues: [] };
+  const syntaxCheck = targetFile.endsWith('.js')
+    ? validarSintaxisReal(fullFile)
+    : { valid: true, issues: [] };
 
   if (!syntaxCheck.valid) {
-    console.log('[Orchestrator] Sintaxis inválida, auto-corrigiendo...');
-    // Intentar corrección automática
-    const fixMsg = await precisionEditorAgent(
-      `Corrige estos errores de sintaxis JavaScript sin cambiar la lógica: ${syntaxCheck.issues.join(', ')}`,
-      { ...navigation, content: modifiedSection, operation: 'replace', context: 'corrección de sintaxis' },
-      fileContent
-    );
-    const fixedFull = [before, fixMsg, after].filter(Boolean).join('\n');
-    const fixedSyntax = { valid: true, issues: [] };
-    if (!fixedSyntax.valid) {
-      return {
-        ok: false,
-        stage: 'syntax_validator',
-        error: `Sintaxis inválida después de auto-corrección: ${fixedSyntax.issues.join(', ')}`,
-        issues: fixedSyntax.issues
-      };
-    }
+    return {
+      ok: false,
+      stage: 'syntax_validator',
+      error: 'La edición genera JavaScript inválido. No se hizo commit.',
+      issues: syntaxCheck.issues
+    };
   }
 
   // PASO 5 — Verificación de tamaño
@@ -10205,26 +10187,7 @@ const after = lines.slice((navigation.endIdx || 0) + 1).join('\n');
 
   // PASO 6 — Commit
   const commitMsg = `feat(studio-ai): ${instruction.slice(0, 72)}`;
-  const commitResult = await githubWriteFile(targetFile, fullFile, sha, commitMsg);
-  const newSha = commitResult?.content?.sha || sha;
-
-  console.log(`[Orchestrator] ✅ Commit en ${elapsed}s`);
-  setImmediate(() => buildAndPersistIndex('server.js', fullFile).catch(e => console.error('[AutoReindex]', e.message)));
-
-  // Health Monitor en background
-  setImmediate(async () => {
-    try {
-      await new Promise(r => setTimeout(r, 3 * 60 * 1000));
-      const healthRes = await fetch('https://www.urusverify.com/health');
-      if (!healthRes.ok) {
-        console.log('[HealthMonitor] ❌ Servidor crashó — GitHub Actions hará rollback');
-      } else {
-        console.log('[HealthMonitor] ✅ Servidor saludable');
-      }
-    } catch(e) {
-      console.log('[HealthMonitor] ❌ Servidor no responde — GitHub Actions hará rollback');
-    }
-  });
+  await githubWriteFile(targetFile, fullFile, sha, commitMsg, branch);
 
   return {
     ok: true,
@@ -10238,7 +10201,8 @@ const after = lines.slice((navigation.endIdx || 0) + 1).join('\n');
     syntax: { valid: syntaxCheck.valid },
     commit: commitMsg,
     elapsed_seconds: elapsed,
-    message: 'Cambio aplicado. GitHub Actions monitorea el deploy automáticamente.'
+    branch,
+    message: `Cambio guardado en ${branch}, listo para revisión.`
   };
 }
 
@@ -10471,8 +10435,6 @@ app.get('/health', (req, res) => {
 
 async function builderAgent(project_id, masterSpec, project) {
   console.log(`[BuilderAgent] Iniciando para proyecto ${project_id}`);
-  const Anthropic = require('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey: process.env.STUDIO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY });
   const backendBase = 'https://www.urusverify.com';
   const apiBase = `${backendBase}/v1/client/${project_id}/api`;
   const uploadUrl = `${backendBase}/v1/factory/project/${project_id}/upload-data`;
@@ -10480,30 +10442,19 @@ async function builderAgent(project_id, masterSpec, project) {
   const tables = masterSpec.database_schema?.tables?.map(t => t.name) || [];
   const palette = '#6C63FF, #00D4AA, #0A0A0F, #1A1A2E';
 
-  console.log(`[BuilderAgent] Llamada 1 — archivos de configuración...`);
-  const slug = slugifyCompany(project.company);
-  const configPrompt = `Eres un arquitecto frontend senior. Genera archivos de configuración base para React + Vite + Tailwind.\n\nPROYECTO: "${masterSpec.system_name}" para "${project.company}"\nPALETA: ${palette}\nAPI BASE: ${apiBase}\nFACTORY KEY: ${factoryKey}\nTABLAS: ${tables.join(', ')}\n\nDevuelve ÚNICAMENTE este JSON sin markdown:\n{\n  "package.json": "contenido",\n  "index.html": "contenido",\n  "tailwind.config.js": "contenido",\n  "vite.config.js": "contenido",\n  "src/main.jsx": "contenido",\n  "src/hooks/useApi.js": "contenido"\n}\n\nREGLAS:\n- package.json: name "${slug}-system", react 18, react-dom 18, react-router-dom 6, lucide-react, vite 5\n- index.html: Google Fonts Inter, div#root, script src="/src/main.jsx"\n- tailwind.config.js: content ["./index.html","./src/**/*.{js,jsx}"], colores primary/accent/surface/base\n- vite.config.js: @vitejs/plugin-react, port 5173\n- src/main.jsx: BrowserRouter wrapping App\n- src/hooks/useApi.js: fetchApi(endpoint, options) con headers x-factory-key y Content-Type automáticos`;
-
-  let configFiles = {};
-  let intentosConfig = 0;
-  while (intentosConfig < 3) {
-    try {
-      const msg = await client.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 8000, messages: [{ role: 'user', content: configPrompt }] });
-      const raw = msg.content[0].text.replace(/```json|```/g, '').trim();
-      configFiles = JSON.parse(raw);
-      console.log(`[BuilderAgent] Configs OK: ${Object.keys(configFiles).length} archivos`);
-      break;
-    } catch (e) {
-      if (e.status === 429 && intentosConfig < 2) { intentosConfig++; console.log(`[BuilderAgent] Rate limit configs, esperando 90s...`); await new Promise(r => setTimeout(r, 90000)); }
-      else { configFiles = buildFallbackConfigs(project, masterSpec, project_id, apiBase, factoryKey, palette); break; }
-    }
-  }
+  const configFiles = buildFallbackConfigs(project, masterSpec, project_id, apiBase, factoryKey, palette);
+  configFiles['postcss.config.cjs'] = 'module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };';
   configFiles['src/index.css'] = '@tailwind base;\n@tailwind components;\n@tailwind utilities;\n\n* { box-sizing: border-box; }\nbody { font-family: \'Inter\', sans-serif; background: #0A0A0F; color: #F5F5F5; margin: 0; }';
   await new Promise(r => setTimeout(r, 15000));
 
-  const pageFiles = await generatePageFiles(client, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables);
+  const pageFiles = await generatePageFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables);
   const allFiles = { ...configFiles, ...pageFiles };
   console.log(`[BuilderAgent] Total archivos: ${Object.keys(allFiles).length}`);
+
+  for (const [filePath, fileContent] of Object.entries(allFiles)) {
+    const validation = validateGeneratedFile(filePath, fileContent);
+    if (!validation.valid) throw new Error(`Archivo inválido: ${filePath}: ${validation.error}`);
+  }
 
   const repoName = `urus-${slugifyCompany(project.company)}-${project_id.slice(0, 8)}`;
   console.log(`[BuilderAgent] Creando repo: ${repoName}`);
@@ -10521,28 +10472,6 @@ async function builderAgent(project_id, masterSpec, project) {
   }
   const repoFullName = `${GITHUB_USERNAME}/${repoName}`;
   console.log(`[BuilderAgent] Repo listo: ${repoFullName}`);
-
-  const configErrors = [];
-  for (const [filePath, fileContent] of Object.entries(allFiles)) {
-    const validation = validateGeneratedFile(filePath, fileContent);
-    if (!validation.valid) {
-      if (filePath.endsWith('.jsx')) {
-        const componentName = filePath.split('/').pop().replace(/\.jsx$/, '');
-        allFiles[filePath] = buildFallbackComponent(componentName);
-        console.log(`[BuilderAgent] Archivo ${filePath} no válido, reemplazado por fallback component "${componentName}"`);
-      } else {
-        configErrors.push({ filePath, error: validation.error });
-      }
-    }
-  }
-  if (configErrors.length > 0) {
-    const errorDetails = configErrors.map(e => `  - ${e.filePath}: ${e.error}`).join('\n');
-    await sendWhatsAppTextTwilio(
-      '+19395851479',
-      `[BuilderAgent] Error de validación en proyecto ${project_id}.\nArchivos de configuración inválidos antes de subir a GitHub:\n${errorDetails}`
-    );
-    throw new Error(`Configuración inválida antes de subir a GitHub en proyecto ${project_id}. Archivos con error: ${configErrors.map(e => e.filePath).join(', ')}`);
-  }
 
   let uploadedCount = 0;
   const failedFiles = [];
@@ -10564,10 +10493,11 @@ async function builderAgent(project_id, masterSpec, project) {
     } catch (err) { failedFiles.push(filePath); }
   }
   console.log(`[BuilderAgent] Subida: ${uploadedCount} ok, ${failedFiles.length} fallidos`);
+  if (failedFiles.length) throw new Error('Factory no pudo subir: ' + failedFiles.join(', '));
   return { repoFullName, repoUrl: `https://github.com/${repoFullName}`, filesUploaded: uploadedCount, filesFailed: failedFiles, status: 'done' };
 }
 
-async function generatePageFiles(client, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) {
+async function generatePageFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) {
   const files = {};
   const filesToGenerate = buildFileList(masterSpec, tables);
 
@@ -10575,25 +10505,24 @@ async function generatePageFiles(client, masterSpec, project, project_id, apiBas
     console.log(`[BuilderAgent] Generando ${fileSpec.path}...`);
     let intentos = 0;
     let success = false;
+    let previousError = "";
 
     while (intentos < 3) {
       try {
-        const msg = await client.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 16000,
-          messages: [{ role: 'user', content: buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) }]
-        });
-
-        let candidate = msg.content[0].text.trim();
+        let candidate = await generateFactoryText(
+          buildFilePrompt(fileSpec, masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables) + previousError,
+          8000
+        );
         candidate = candidate.replace(/^```(jsx?|javascript|tsx?|typescript)?\n?/m, '').replace(/\n?```\s*$/m, '').trim();
 
         const validation = validateGeneratedFile(fileSpec.path, candidate);
-        if (validation.valid) {
+        if (candidate && validation.valid) {
           files[fileSpec.path] = candidate;
           console.log(`[BuilderAgent] ✅ ${fileSpec.path} generado exitosamente (${candidate.length} chars)`);
           success = true;
           break;
         } else {
+          previousError = "\nCorrige este error de la generación anterior: " + validation.error;
           intentos++;
           console.log(`[BuilderAgent] ⚠️ ${fileSpec.path} validación fallida (intento ${intentos}): ${validation.error}`);
         }
@@ -10610,8 +10539,7 @@ async function generatePageFiles(client, masterSpec, project, project_id, apiBas
     }
 
     if (!success) {
-      files[fileSpec.path] = buildFallbackComponent(fileSpec.name);
-      console.log(`[BuilderAgent] ⚠️ ${fileSpec.path} usó fallback tras 3 intentos fallidos`);
+      throw new Error('Factory no pudo generar un archivo válido: ' + fileSpec.path + previousError);
     }
 
     await new Promise(r => setTimeout(r, 8000));

@@ -1236,6 +1236,54 @@ if (text.startsWith('/reindex')) {
       return;
     }
     
+    if (text.toLowerCase() === 'hazlo') {
+      const task = pendingStudioEdit;
+      try {
+        if (!task || task.project !== currentProject) {
+          addMessage('assistant', 'Primero prepara un plan en este proyecto con /plan y describe el cambio.');
+          return;
+        }
+        pendingStudioEdit = null;
+        await handleSelfEdit(task.instruction, false, task.file);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+      return;
+    }
+
+    if (text.startsWith('/plan ')) {
+      pendingStudioEdit = null;
+      const project = currentProject;
+      const instruction = text.slice(6).trim();
+      try {
+        const response = await fetch('/v1/studio/plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+          body: JSON.stringify({ instruction })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo generar el plan.');
+        const evidence = data.evidence.map(item => item.file + ':' + item.line + ' · ' + item.symbol);
+        const target = data.evidence[0];
+        if (data.plan && target && currentProject === project) {
+          const scopedInstruction = 'En ' + target.symbol + ': ' + instruction;
+          pendingStudioEdit = { project, file: target.file, instruction: scopedInstruction };
+        }
+        addMessage('assistant', data.plan
+          ? data.plan + '\n\n**Referencias del código**\n' + evidence.join('\n') +
+            (pendingStudioEdit ? '\n\n**Primera edición propuesta:** ' + target.file + ' · ' + target.symbol +
+              '\nEscribe **hazlo** para que Studio intente ese cambio en la rama de revisión.' : '')
+          : 'Revisé ' + data.filesScanned + ' archivos y no encontré referencias claras. Describe la pantalla o función que quieres cambiar.');
+      } catch (error) {
+        addMessage('assistant', 'Error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+      return;
+    }
+
     // ── COMANDO ESPECIAL: /edit ───────────────────────────
     // Si el mensaje empieza con /edit aplica self-edit
     // Ejemplo: /edit agrega la regla fundamental en masterPlannerAgent
@@ -1298,7 +1346,8 @@ if (text.startsWith('/reindex')) {
     btn.disabled = false;
     input.focus();
   }
-async function handleSelfEdit(instruction, previewOnly) {
+let pendingStudioEdit = null;
+async function handleSelfEdit(instruction, previewOnly, targetFile) {
     console.log('[handleSelfEdit] instruction:', instruction, '| previewOnly:', previewOnly);
     const endpoint = previewOnly
       ? '/v1/studio/self-edit/preview'
@@ -1323,7 +1372,7 @@ async function handleSelfEdit(instruction, previewOnly) {
           'Content-Type':      'application/json',
           'x-studio-password': password
         },
-        body: JSON.stringify({ instruction })
+        body: JSON.stringify({ instruction, targetFile })
       });
 
       document.getElementById('typing-indicator').style.display = 'none';
@@ -1339,7 +1388,9 @@ async function handleSelfEdit(instruction, previewOnly) {
 
       if (data.ok) {
         const nav = data.navigation || {};
-        const val = data.validation || {};
+        const syntaxStatus = data.syntax?.valid === true
+          ? 'Validación de sintaxis completada'
+          : 'Validación de sintaxis sin confirmar';
         const diff = data.diff || {};
 
         if (previewOnly) {
@@ -1350,25 +1401,27 @@ async function handleSelfEdit(instruction, previewOnly) {
             `• Líneas: \`${nav.lines || 'N/A'}\`\n` +
             `• Tipo: \`${nav.operation || nav.edit_type || 'N/A'}\`\n` +
             `• Confianza: \`${nav.confidence || 'N/A'}/10\`\n\n` +
-            `**Validator:** Confianza \`${val.confidence || 8}/10\`\n\n` +
+            `**Sintaxis:** ${syntaxStatus}\n\n` +
             `**Original:**\n\`\`\`javascript\n${diff.original || ''}\n\`\`\`\n\n` +
             `**Modificado:**\n\`\`\`javascript\n${diff.modified || ''}\n\`\`\`\n\n` +
             `Para aplicar el cambio:\n\`/edit ${instruction}\``
           );
+        } else if (!data.branch) {
+          addMessage('assistant', 'El servidor recibió la edición, pero no informó la rama de destino. Revisa el commit en GitHub.');
         } else {
           addMessage('assistant',
-            `✅ **CAMBIO APLICADO** (${data.elapsed_seconds || 0}s)\n\n` +
+            `✅ **CAMBIO GUARDADO PARA REVISIÓN** (${data.elapsed_seconds || 0}s)\n\n` +
             `**Navigator:**\n` +
             `• Función: \`${nav.function || 'N/A'}\`\n` +
             `• Líneas: \`${nav.lines || 'N/A'}\`\n` +
             `• Confianza: \`${nav.confidence || 'N/A'}/10\`\n\n` +
-            `**Validator:** \`${val.confidence || 8}/10\`\n\n` +
+            `**Sintaxis:** ${syntaxStatus}\n\n` +
             `**Commit:** \`${data.commit || 'N/A'}\`\n\n` +
-            `🚀 Railway redesplegará en ~2 minutos.\n` +
-            `El cambio estará en producción automáticamente.`
+            `**Rama:** ${data.branch}\n` +
+            `Revisa el cambio en GitHub antes de publicarlo.`
           );
-          showNotif('✅ Cambio aplicado — Railway redesplegando...');
-          saveToMemory('edit', instruction, { commit: data.commit, section: nav.function });
+          showNotif('✅ Cambio en ' + data.branch);
+          saveToMemory('edit', instruction, { commit: data.commit, section: nav.function, branch: data.branch });
         }
       } else {
         addMessage('assistant',
