@@ -1236,6 +1236,31 @@ if (text.startsWith('/reindex')) {
       return;
     }
     
+    const factoryCommand = text.toLowerCase();
+    if (factoryCommand === '/factory probar' || factoryCommand === '/factory estado') {
+      try {
+        const response = await fetch('/v1/studio/factory/blueprint-check', {
+          method: factoryCommand === '/factory probar' ? 'POST' : 'GET',
+          headers: { 'x-studio-password': password }, cache: 'no-store'
+        });
+        if (!response.ok) throw new Error('Factory no pudo iniciar o consultar la prueba.');
+        const result = await response.json();
+        const messages = {
+          idle: 'Escribe /factory probar para iniciar una prueba del Builder.',
+          running: 'Factory está generando Human Blueprint. Consulta el avance con /factory estado.',
+          compiled: 'Factory generó los archivos y esbuild comprobó las importaciones internas.\n' + (result.files || []).join('\n'),
+          failed: 'La prueba de Factory falló: ' + result.error
+        };
+        addMessage('assistant', messages[result.status]);
+      } catch (error) {
+        addMessage('assistant', 'Error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+      return;
+    }
+
     if (text.toLowerCase() === '/demo human blueprint') {
       try {
         const response = await fetch('/v1/studio/demos/human-blueprint', {

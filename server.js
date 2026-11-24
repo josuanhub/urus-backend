@@ -10457,19 +10457,83 @@ app.get('/health', (req, res) => {
 });
 
 
-async function builderAgent(project_id, masterSpec, project) {
-  console.log(`[BuilderAgent] Iniciando para proyecto ${project_id}`);
-  const backendBase = 'https://www.urusverify.com';
-  const apiBase = `${backendBase}/v1/client/${project_id}/api`;
-  const uploadUrl = `${backendBase}/v1/factory/project/${project_id}/upload-data`;
-  const factoryKey = 'factory2026';
+// Compile a project entirely in memory, with no publishing or execution of model-generated code.
+async function checkFactoryBundle(files, build = require('esbuild').build) {
+  const projectPackage = JSON.parse(files['package.json']);
+  const dependencies = Object.keys({ ...projectPackage.dependencies, ...projectPackage.devDependencies });
+  return build({
+    entryPoints: ['src/main.jsx'],
+    bundle: true,
+    write: false,
+    outdir: 'out',
+    logLevel: 'silent',
+    metafile: true,
+    plugins: [{
+      name: 'factory-memory-files',
+      setup(plugin) {
+        const posix = require('node:path').posix;
+        plugin.onResolve({ filter: /.*/ }, args => {
+          if (args.kind !== 'entry-point' && !args.path.startsWith('.')) {
+            if (dependencies.some(name => args.path === name || args.path.startsWith(name + '/'))) {
+              return { path: args.path, external: true };
+            }
+            return { errors: [{ text: 'Importación no declarada: ' + args.path }] };
+          }
+          const candidate = args.kind === 'entry-point' ? args.path : posix.join(posix.dirname(args.importer), args.path);
+          const filename = [candidate, candidate + '.js', candidate + '.jsx', candidate + '.css', candidate + '/index.jsx']
+            .find(name => Object.hasOwn(files, name));
+          return filename ? { path: filename, namespace: 'factory' }
+            : { errors: [{ text: 'Archivo no generado: ' + candidate }] };
+        });
+        plugin.onLoad({ filter: /.*/, namespace: 'factory' }, args => ({
+          contents: files[args.path], loader: posix.extname(args.path).slice(1)
+        }));
+      }
+    }]
+  });
+}
+
+if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
+  let check;
+  app.post('/v1/studio/factory/blueprint-check', studioAuth, (req, res) => {
+    if (check?.status === 'running') return res.status(202).json(check);
+    const run = check = { status: 'running' };
+    res.status(202).json(run);
+    setImmediate(async () => {
+      try {
+        const spec = {
+          system_name: 'Human Blueprint',
+          description: 'Registrar una decisión pendiente, formular una hipótesis y darle seguimiento.',
+          modules: [{ name: 'Decisiones', screens: ['Decisión inicial', 'Seguimiento'], endpoints: [] }],
+          database_schema: { tables: [] }
+        };
+        const project = { company: 'URUS', industry: 'Desarrollo personal' };
+        const files = await buildFactoryFiles(spec, project, 'blueprint-check', '/demo-api', '', '');
+        const bundle = await checkFactoryBundle(files);
+        const inputs = Object.keys(bundle.metafile.inputs);
+        const missing = buildFileList(spec).filter(file => file.type === 'page' &&
+          !inputs.includes('factory:' + file.path));
+        if (missing.length) throw new Error('El router no usa todas las pantallas de la especificación.');
+        Object.assign(run, { status: 'compiled', files: Object.keys(files) });
+      } catch (error) {
+        const issue = error.errors?.[0]?.text || error.message;
+        Object.assign(run, { status: 'failed', error: String(issue || 'Error de compilación').slice(0, 240) });
+      }
+    });
+  });
+  app.get('/v1/studio/factory/blueprint-check', studioAuth, (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json(check || { status: 'idle' });
+  });
+}
+
+async function buildFactoryFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey) {
   const tables = masterSpec.database_schema?.tables?.map(t => t.name) || [];
   const palette = '#6C63FF, #00D4AA, #0A0A0F, #1A1A2E';
 
   const configFiles = buildFallbackConfigs(project, masterSpec, project_id, apiBase, factoryKey, palette);
   configFiles['postcss.config.cjs'] = 'module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };';
   configFiles['src/index.css'] = '@tailwind base;\n@tailwind components;\n@tailwind utilities;\n\n* { box-sizing: border-box; }\nbody { font-family: \'Inter\', sans-serif; background: #0A0A0F; color: #F5F5F5; margin: 0; }';
-  await new Promise(r => setTimeout(r, 15000));
 
   const pageFiles = await generatePageFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables);
   const allFiles = { ...configFiles, ...pageFiles };
@@ -10479,6 +10543,17 @@ async function builderAgent(project_id, masterSpec, project) {
     const validation = validateGeneratedFile(filePath, fileContent);
     if (!validation.valid) throw new Error(`Archivo inválido: ${filePath}: ${validation.error}`);
   }
+
+  return allFiles;
+}
+
+async function builderAgent(project_id, masterSpec, project) {
+  console.log(`[BuilderAgent] Iniciando para proyecto ${project_id}`);
+  const backendBase = 'https://www.urusverify.com';
+  const apiBase = `${backendBase}/v1/client/${project_id}/api`;
+  const uploadUrl = `${backendBase}/v1/factory/project/${project_id}/upload-data`;
+  const factoryKey = 'factory2026';
+  const allFiles = await buildFactoryFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey);
 
   const repoName = `urus-${slugifyCompany(project.company)}-${project_id.slice(0, 8)}`;
   console.log(`[BuilderAgent] Creando repo: ${repoName}`);
