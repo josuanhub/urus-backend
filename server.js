@@ -9939,6 +9939,25 @@ async function buildAndPersistIndex(filename, fileContent) {
 async function astNavigatorAgent(instruction, fileContent, targetFile = 'server.js') {
   console.log('[ASTNavigator v5] Usando índice persistente...');
   const lines = fileContent.split('\n');
+  const explicitName = instruction.match(/\bfunci[oó]n\s+`?([A-Za-z_$][\w$]*)/i)?.[1];
+  if (explicitName) {
+    const declarations = lines.flatMap((line, index) => {
+      const match = line.match(/^(\s*)(?:async\s+)?function\s+([\w$]+)\s*\(/);
+      return match?.[2] === explicitName ? [{ index, indent: match[1] }] : [];
+    });
+    if (declarations.length !== 1) {
+      throw new Error(`No se pudo identificar de forma única la función ${explicitName}.`);
+    }
+    const { index: startIdx, indent } = declarations[0];
+    const endIdx = lines.findIndex((line, index) => index > startIdx && line.trimEnd() === indent + '}');
+    if (endIdx < 0) throw new Error(`No se pudo delimitar la función ${explicitName}.`);
+    return {
+      target_function: explicitName, target_type: 'function', operation: 'replace',
+      context: instruction, start_line: startIdx + 1, end_line: endIdx + 1,
+      startIdx, endIdx, content: lines.slice(startIdx, endIdx + 1).join('\n'),
+      confidence: 10, search_string_found: explicitName, totalLines: lines.length
+    };
+  }
 let indexEntries = [];
   try {
     const result = await pool.query(
