@@ -10662,6 +10662,85 @@ export default function App() {
 }`;
 }
 
+function blueprintCheckPage(followup) {
+  return `import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+
+const followup = ${followup};
+const empty = { title: '', context: '', hypothesis: '', action: '', outcome: '' };
+const fields = { title: 'Título', context: 'Contexto', hypothesis: 'Hipótesis', action: 'Próxima acción' };
+
+export default function BlueprintPage() {
+  const [decision, setDecision] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    window.blueprintDecision('GET').then(record => {
+      if (active) setDecision(record || (followup ? null : empty));
+    }).catch(error => {
+      if (active) setError(error.message);
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  function update(event) {
+    const { name, value } = event.target;
+    setDecision(record => ({ ...record, [name]: value }));
+    setNotice('');
+  }
+
+  async function save(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const record = await window.blueprintDecision('PUT', decision);
+      setDecision(record);
+      setNotice(followup ? 'Seguimiento guardado.' : 'Decisión guardada.');
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <section style={{ padding: 24, maxWidth: 640 }}>
+    <h1>{followup ? 'Seguimiento' : 'Decisión inicial'}</h1>
+    {loading && <p role="status">Cargando decisión…</p>}
+    {error && <p role="alert">{error}</p>}
+    {notice && <p role="status">{notice}</p>}
+    {!loading && !error && !decision && <p>Crea primero una decisión inicial.</p>}
+    {decision && <form onSubmit={save}>
+      <fieldset disabled={saving} style={{ border: 0, padding: 0 }}>
+        {followup ? <>
+          <h2>{decision.title}</h2>
+          <p>{decision.action}</p>
+          <label style={{ display: 'grid', gap: 6, marginBottom: 16 }}>Resultado
+            <textarea name="outcome" value={decision.outcome} maxLength={2500} onChange={update} />
+          </label>
+        </> : Object.entries(fields).map(([name, label]) =>
+          <label key={name} style={{ display: 'grid', gap: 6, marginBottom: 16 }}>{label}
+            <input name={name} value={decision[name]} maxLength={2500}
+              required={name === 'title' || name === 'action'} onChange={update} />
+          </label>
+        )}
+        <button type="submit">{saving ? 'Guardando…' : followup ? 'Guardar seguimiento' : 'Guardar decisión'}</button>
+      </fieldset>
+    </form>}
+    {!saving && <p><Link to={followup ? '/pagedecisioninicial' : '/pageseguimiento'}>
+      {followup ? 'Ir a Decisión inicial' : 'Ir a Seguimiento'}
+    </Link></p>}
+  </section>;
+}`;
+}
+
 async function buildFactoryFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey) {
   const tables = masterSpec.database_schema?.tables?.map(t => t.name) || [];
   const palette = '#6C63FF, #00D4AA, #0A0A0F, #1A1A2E';
@@ -10697,7 +10776,12 @@ export default ToastProvider;`;
     "export { default, ToastContext, ToastProvider, useToast } from './Toast.jsx';";
 
   configFiles['src/App.jsx'] = buildFactoryApp(buildFileList(masterSpec));
-  const pageFiles = await generatePageFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables);
+  const pageFiles = masterSpec.previewStorage
+    ? {
+        'src/pages/PageDecisionInicial.jsx': blueprintCheckPage(false),
+        'src/pages/PageSeguimiento.jsx': blueprintCheckPage(true)
+      }
+    : await generatePageFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables);
   const allFiles = { ...configFiles, ...pageFiles };
   console.log(`[BuilderAgent] Total archivos: ${Object.keys(allFiles).length}`);
 
@@ -10847,16 +10931,6 @@ Importa desde los archivos declarados y las dependencias del proyecto. Evita fun
 
   if (fileSpec.name === 'LoadingSkeleton') {
     return context + '\nGenera un indicador de carga accesible y reutilizable.';
-  }
-
-  if (masterSpec.previewStorage && fileSpec.type === 'page') {
-    return context + `\nPantalla: ${fileSpec.description}.
-Esta vista usa un solo registro ficticio. Al montar, llama await window.blueprintDecision('GET') para recuperar el registro o null.
-El registro tiene cinco campos string: title, context, hypothesis, action, outcome. Inicializa campos vacíos como "".
-Para guardar llama await window.blueprintDecision('PUT', { title, context, hypothesis, action, outcome }). Devuelve el registro guardado.
-En Decisión inicial permite editar título, contexto, hipótesis y próxima acción. Preserva outcome al guardar.
-En Seguimiento muestra la decisión y permite editar outcome, conservando los otros cuatro campos. Si no existe decisión, indica que se cree primero.
-Usa labels, informa guardado y errores en pantalla. Usa solamente esa interfaz de guardado. No uses fetch, almacenamiento local ni dependencias adicionales.`;
   }
 
   const task = `\nPantalla: ${fileSpec.description}. Para enlaces internos usa "/" seguido del nombre exacto del componente destino en minúsculas. Módulo: ${fileSpec.moduleName}. Endpoints declarados: ${JSON.stringify(fileSpec.endpoints)}.
