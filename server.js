@@ -10150,7 +10150,9 @@ async function selfEditOrchestrator(instruction, previewOnly = false, targetFile
   }
 
   // PASO 3 — PRECISION EDITOR
-  const modifiedSection = await precisionEditorAgent(instruction, navigation, fileContent);
+  const editedSection = await precisionEditorAgent(instruction, navigation, fileContent);
+  const indent = navigation.content.match(/^[ \t]*/)[0];
+  const modifiedSection = indent + editedSection.trimStart();
 
   // PASO 4 — SYNTAX VALIDATOR
   const lines = fileContent.split('\n');

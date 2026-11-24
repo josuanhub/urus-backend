@@ -1265,11 +1265,7 @@ if (text.startsWith('/reindex')) {
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo generar el plan.');
         const evidence = data.evidence.map(item => item.file + ':' + item.line + ' · ' + item.symbol);
-        const requestedFunction = instruction.match(/\bfunci[oó]n\s+`?([A-Za-z_$][\w$]*)/i)?.[1];
-        const candidates = data.evidence.filter(item =>
-          item.symbol === requestedFunction && instruction.includes(item.file)
-        );
-        const target = candidates.length === 1 ? candidates[0] : null;
+        const target = data.target;
         if (data.plan && target && currentProject === project) {
           const scopedInstruction = 'En la función ' + target.symbol + ': ' + instruction;
           pendingStudioEdit = { project, file: target.file, instruction: scopedInstruction };
@@ -1579,7 +1575,7 @@ async function speakText(text) {
   }
 
   // ── NOTIF ──
-function showNotif(msg) {
+  function showNotif(msg) {
     const n = document.getElementById('notif');
     n.textContent = msg;
     n.classList.add('show');
