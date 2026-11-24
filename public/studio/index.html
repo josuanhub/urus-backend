@@ -1511,10 +1511,40 @@ async function handleSelfEdit(instruction, previewOnly, targetFile) {
     frame.title = 'Vista previa generada de Human Blueprint';
     frame.setAttribute('sandbox', 'allow-scripts');
     frame.style.cssText = 'display:block;width:100%;height:72vh;border:0;margin-top:12px';
+    const handleDecision = async event => {
+      const data = event.data;
+      if (event.source !== frame.contentWindow || event.origin !== 'null' ||
+          data?.type !== 'blueprint-decision-request' || !Number.isSafeInteger(data.id) ||
+          !['GET', 'PUT'].includes(data.method)) return;
+      const reply = { type: 'blueprint-decision-result', id: data.id };
+      try {
+        const options = { method: data.method, cache: 'no-store',
+          headers: { 'x-studio-password': password }, signal: AbortSignal.timeout(12000) };
+        if (data.method === 'PUT') {
+          const keys = ['title', 'context', 'hypothesis', 'action', 'outcome'];
+          if (!keys.every(key => typeof data.decision?.[key] === 'string' && data.decision[key].length <= 2500)) {
+            throw new Error('La pantalla generada envió un registro inválido.');
+          }
+          options.headers['Content-Type'] = 'application/json';
+          options.body = JSON.stringify(Object.fromEntries(keys.map(key => [key, data.decision[key]])));
+        }
+        const response = await fetch('/v1/studio/factory/blueprint-decision', options);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'No se pudo completar la operación.');
+        Object.assign(reply, { ok: true, decision: result.decision });
+      } catch (error) {
+        Object.assign(reply, { ok: false, error: error.message });
+      }
+      frame.contentWindow?.postMessage(reply, '*');
+    };
+    window.addEventListener('message', handleDecision);
     frame.srcdoc = html;
     dialog.append(close, frame);
     document.body.append(dialog);
-    dialog.addEventListener('close', () => dialog.remove(), { once: true });
+    dialog.addEventListener('close', () => {
+      window.removeEventListener('message', handleDecision);
+      dialog.remove();
+    }, { once: true });
     dialog.showModal();
   }
 

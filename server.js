@@ -10517,6 +10517,26 @@ function factoryPreviewDocument(bundle) {
 <style>${inlineStyle}</style><script type="importmap">${JSON.stringify({ imports })}</script>
 </head><body><div id="root">Cargando Human Blueprint…</div>
 <script>
+const pending = new Map();
+let requestId = 0;
+window.blueprintDecision = (method, decision) => new Promise((resolve, reject) => {
+  const id = ++requestId;
+  const timeout = setTimeout(() => {
+    pending.delete(id);
+    reject(new Error('Studio no respondió al guardado.'));
+  }, 15000);
+  pending.set(id, { resolve, reject, timeout });
+  parent.postMessage({ type: 'blueprint-decision-request', id, method, decision }, '*');
+});
+addEventListener('message', event => {
+  if (event.source !== parent || event.data?.type !== 'blueprint-decision-result') return;
+  const entry = pending.get(event.data.id);
+  if (!entry) return;
+  pending.delete(event.data.id);
+  clearTimeout(entry.timeout);
+  if (event.data.ok) entry.resolve(event.data.decision);
+  else entry.reject(new Error(event.data.error));
+});
 const root = document.getElementById('root');
 function showPreviewError(reason) {
   const notice = document.createElement('p');
@@ -10547,7 +10567,8 @@ if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
       try {
         const spec = {
           system_name: 'Human Blueprint',
-          description: 'Registrar una decisión pendiente, formular una hipótesis y darle seguimiento.',
+          description: 'Registrar una decisión y darle seguimiento. Guarda un solo registro de prueba en el servidor.',
+          previewStorage: true,
           modules: [{ name: 'Decisiones', screens: ['Decisión inicial', 'Seguimiento'], endpoints: [] }],
           database_schema: { tables: [] }
         };
@@ -10566,6 +10587,42 @@ if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
         Object.assign(run, { status: 'failed', error: String(issue || 'Error de compilación').slice(0, 240) });
       }
     });
+  });
+  async function ensureBlueprintPreviewStorage() {
+    await pool.query(`CREATE TABLE IF NOT EXISTS factory_blueprint_preview (
+      slot text PRIMARY KEY,
+      decision jsonb NOT NULL
+    )`);
+  }
+
+  const decisionRoute = '/v1/studio/factory/blueprint-decision';
+  app.get(decisionRoute, studioAuth, async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      await ensureBlueprintPreviewStorage();
+      const result = await pool.query('SELECT decision FROM factory_blueprint_preview WHERE slot = $1', ['human-blueprint']);
+      res.json({ decision: result.rows[0]?.decision ?? null });
+    } catch (error) {
+      console.error('[Factory Blueprint Storage]', error.code || error.name);
+      res.status(503).json({ error: 'No se pudo leer la decisión de prueba.' });
+    }
+  });
+  app.put(decisionRoute, studioAuth, async (req, res) => {
+    const fields = ['title', 'context', 'hypothesis', 'action', 'outcome'];
+    if (!fields.every(field => typeof req.body?.[field] === 'string' && req.body[field].length <= 2500) ||
+        !req.body.title.trim() || !req.body.action.trim()) {
+      return res.status(400).json({ error: 'Escribe un título y una próxima acción. Máximo 2500 caracteres por campo.' });
+    }
+    const decision = Object.fromEntries(fields.map(field => [field, req.body[field].trim()]));
+    try {
+      await ensureBlueprintPreviewStorage();
+      await pool.query(`INSERT INTO factory_blueprint_preview (slot, decision) VALUES ($1, $2)
+        ON CONFLICT (slot) DO UPDATE SET decision = EXCLUDED.decision`, ['human-blueprint', JSON.stringify(decision)]);
+      res.json({ decision });
+    } catch (error) {
+      console.error('[Factory Blueprint Storage]', error.code || error.name);
+      res.status(503).json({ error: 'No se pudo guardar la decisión de prueba.' });
+    }
   });
   app.get('/v1/studio/factory/blueprint-preview', studioAuth, (_req, res) => {
     res.set('Cache-Control', 'no-store');
@@ -10790,6 +10847,16 @@ Importa desde los archivos declarados y las dependencias del proyecto. Evita fun
 
   if (fileSpec.name === 'LoadingSkeleton') {
     return context + '\nGenera un indicador de carga accesible y reutilizable.';
+  }
+
+  if (masterSpec.previewStorage && fileSpec.type === 'page') {
+    return context + `\nPantalla: ${fileSpec.description}.
+Esta vista usa un solo registro ficticio. Al montar, llama await window.blueprintDecision('GET') para recuperar el registro o null.
+El registro tiene cinco campos string: title, context, hypothesis, action, outcome. Inicializa campos vacíos como "".
+Para guardar llama await window.blueprintDecision('PUT', { title, context, hypothesis, action, outcome }). Devuelve el registro guardado.
+En Decisión inicial permite editar título, contexto, hipótesis y próxima acción. Preserva outcome al guardar.
+En Seguimiento muestra la decisión y permite editar outcome, conservando los otros cuatro campos. Si no existe decisión, indica que se cree primero.
+Usa labels, informa guardado y errores en pantalla. Usa solamente esa interfaz de guardado. No uses fetch, almacenamiento local ni dependencias adicionales.`;
   }
 
   const task = `\nPantalla: ${fileSpec.description}. Para enlaces internos usa "/" seguido del nombre exacto del componente destino en minúsculas. Módulo: ${fileSpec.moduleName}. Endpoints declarados: ${JSON.stringify(fileSpec.endpoints)}.
