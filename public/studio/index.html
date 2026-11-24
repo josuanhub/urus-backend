@@ -1579,11 +1579,11 @@ async function speakText(text) {
   }
 
   // ── NOTIF ──
-  function showNotif(msg) {
+function showNotif(msg) {
     const n = document.getElementById('notif');
     n.textContent = msg;
     n.classList.add('show');
-    setTimeout(() => n.classList.remove('show'), 2500);
+    setTimeout(() => n.classList.remove('show'), 5000);
   }
 
   
