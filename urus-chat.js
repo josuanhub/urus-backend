@@ -244,6 +244,83 @@ module.exports = function urusChatRouter(pool) {
       .slice(0, 60);
   }
 
+  // --- Extrae hechos duraderos de lo que dijo el Operador y los guarda ---
+  async function extraerYGuardarHechos(message, sessionId) {
+    try {
+      const texto = String(message || "").trim();
+      if (texto.length < 15) return; // saludos y mensajes triviales no valen una llamada
+
+      const raw = await callModel({
+        provider: URUS_CHAT_PROVIDER,
+        model: URUS_CHAT_MODEL,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Extraes hechos duraderos sobre el Operador SOLO de lo que él afirma en su mensaje. " +
+              "Incluye: identidad, preferencias, proyectos, herramientas o stack, clientes o personas, y decisiones que él declara tomadas. " +
+              "NO incluyas: preguntas, ideas que solo está explorando, hipótesis, ni nada que no haya dicho él. " +
+              "Responde SOLO un array JSON de strings cortos en español, una afirmación por string. " +
+              "Si no hay ningún hecho duradero, responde exactamente []",
+          },
+          { role: "user", content: texto.slice(0, 1500) },
+        ],
+        temperature: 0.1,
+        max_tokens: 300,
+      });
+
+      const m = String(raw || "").match(/\[[\s\S]*\]/);
+      if (!m) return;
+
+      let hechos;
+      try { hechos = JSON.parse(m[0]); } catch { return; }
+      if (!Array.isArray(hechos)) return;
+
+      for (const h of hechos.slice(0, 5)) {
+        const hecho = String(h || "").trim();
+        if (hecho.length < 8) continue;
+
+        let vecStr = null;
+        try {
+          const vec = await generateEmbedding(hecho);
+          vecStr = "[" + vec.join(",") + "]";
+        } catch (e) {
+          console.warn("[URUS_CHAT] embedding del hecho falló:", e.message);
+        }
+
+        // Evitar duplicados: si ya hay un hecho casi idéntico, no guardar otro
+        if (vecStr) {
+          const dup = await pool.query(
+            `SELECT 1 FROM jarvis_memory
+             WHERE source = $1 AND type = 'learned_fact' AND embedding IS NOT NULL
+               AND 1 - (embedding <=> $2::vector) > 0.90
+             LIMIT 1`,
+            [MEMORY_SOURCE, vecStr]
+          );
+          if (dup.rowCount > 0) continue;
+        }
+
+        const meta = JSON.stringify({ session_id: sessionId, at: new Date().toISOString() });
+        if (vecStr) {
+          await pool.query(
+            `INSERT INTO jarvis_memory (content, type, source, metadata, embedding)
+             VALUES ($1, 'learned_fact', $2, $3, $4::vector)`,
+            [hecho, MEMORY_SOURCE, meta, vecStr]
+          );
+        } else {
+          await pool.query(
+            `INSERT INTO jarvis_memory (content, type, source, metadata)
+             VALUES ($1, 'learned_fact', $2, $3)`,
+            [hecho, MEMORY_SOURCE, meta]
+          );
+        }
+        console.log("[URUS_CHAT] hecho aprendido:", hecho);
+      }
+    } catch (e) {
+      console.warn("[URUS_CHAT] extracción de hechos falló:", e.message);
+    }
+  }
+  
   // ==================================================================
   // POST /v1/urus/learn  → enseñarle información sobre ti
   // Body: { content: "texto largo...", type: "identity|principle|protocol|context" }
@@ -612,6 +689,7 @@ module.exports = function urusChatRouter(pool) {
               at: new Date().toISOString(),
             }
           );
+          await extraerYGuardarHechos(message, sessionId);
         } catch (e) {
           console.warn("[URUS_CHAT] no se pudo guardar la conversación:", e.message);
         }
@@ -624,6 +702,7 @@ module.exports = function urusChatRouter(pool) {
         sesion_nueva: esNueva,
         memories_used: memories.length,
         continuidad_usada: recientes.length,
+        continuidad_global: usaGlobal,
         memories: memories.map((m) => ({
           content: String(m.content).slice(0, 300),
           type: m.type,
