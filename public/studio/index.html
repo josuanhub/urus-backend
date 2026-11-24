@@ -1265,7 +1265,7 @@ if (text.startsWith('/reindex')) {
               if (!preview.ok) throw new Error('No hay una vista previa disponible.');
               const { html } = await preview.json();
               const dialog = document.createElement('dialog');
-              dialog.style.cssText = 'width:min(1100px,96vw);color:#eee;background:#181818;border:1px solid #555';
+              dialog.style.cssText = 'position:fixed;inset:0;margin:auto;width:min(1100px,96vw);max-height:92vh;padding:16px;color:#eee;background:#181818;border:1px solid #555;border-radius:12px';
               const close = document.createElement('button');
               close.textContent = 'Cerrar';
               close.onclick = () => dialog.close();

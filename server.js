@@ -10467,6 +10467,8 @@ async function checkFactoryBundle(files, build = require('esbuild').build) {
     write: false,
     outdir: 'out',
     format: 'esm',
+    jsx: 'automatic',
+    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
     logLevel: 'silent',
     metafile: true,
     plugins: [{
@@ -10514,6 +10516,23 @@ function factoryPreviewDocument(bundle) {
 <meta http-equiv="Content-Security-Policy" content="${policy}">
 <style>${inlineStyle}</style><script type="importmap">${JSON.stringify({ imports })}</script>
 </head><body><div id="root">Cargando Human Blueprint…</div>
+<script>
+const root = document.getElementById('root');
+function showPreviewError(reason) {
+  const notice = document.createElement('p');
+  notice.setAttribute('role', 'alert');
+  notice.style.cssText = 'font:16px system-ui;padding:18px;color:#ffd0b0';
+  notice.textContent = 'La vista previa no pudo abrirse: ' + String(reason || 'error al cargar un módulo').slice(0, 240);
+  document.body.append(notice);
+}
+addEventListener('error', event => showPreviewError(event.message || 'falló la carga del código o de una dependencia'), true);
+addEventListener('unhandledrejection', event => showPreviewError(event.reason?.message || event.reason));
+setTimeout(() => {
+  if (root.textContent === 'Cargando Human Blueprint…' && !document.querySelector('[role="alert"]')) {
+    showPreviewError('la aplicación no montó su pantalla inicial');
+  }
+}, 10000);
+</script>
 <script type="module">${inlineScript}</script></body></html>`;
 }
 
