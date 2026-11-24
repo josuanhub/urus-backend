@@ -852,6 +852,7 @@
           </button>
           <div id="toolbar-right">
             <span id="char-count">0</span>
+            <button type="button" class="tool-btn" id="factory-preview-btn" onclick="runFactoryPreview()">Probar Human Blueprint</button>
             <button id="send-btn" onclick="sendMessage()">
               EJECUTAR
               <svg viewBox="0 0 24 24" fill="currentColor">
@@ -1237,7 +1238,7 @@ if (text.startsWith('/reindex')) {
     }
     
     const factoryCommand = text.toLowerCase();
-    if (factoryCommand === '/factory probar' || factoryCommand === '/factory estado') {
+    if (['/factory probar', '/factory estado'].includes(factoryCommand)) {
       try {
         const response = await fetch('/v1/studio/factory/blueprint-check', {
           method: factoryCommand === '/factory probar' ? 'POST' : 'GET',
@@ -1256,34 +1257,7 @@ if (text.startsWith('/reindex')) {
           const open = document.createElement('button');
           open.type = 'button';
           open.textContent = 'Abrir vista previa';
-          open.onclick = async () => {
-            open.disabled = true;
-            try {
-              const preview = await fetch('/v1/studio/factory/blueprint-preview', {
-                headers: { 'x-studio-password': password }, cache: 'no-store'
-              });
-              if (!preview.ok) throw new Error('No hay una vista previa disponible.');
-              const { html } = await preview.json();
-              const dialog = document.createElement('dialog');
-              dialog.style.cssText = 'position:fixed;inset:0;margin:auto;width:min(1100px,96vw);max-height:92vh;padding:16px;color:#eee;background:#181818;border:1px solid #555;border-radius:12px';
-              const close = document.createElement('button');
-              close.textContent = 'Cerrar';
-              close.onclick = () => dialog.close();
-              const frame = document.createElement('iframe');
-              frame.title = 'Vista previa generada de Human Blueprint';
-              frame.setAttribute('sandbox', 'allow-scripts');
-              frame.style.cssText = 'display:block;width:100%;height:72vh;border:0;margin-top:12px';
-              frame.srcdoc = html;
-              dialog.append(close, frame);
-              document.body.append(dialog);
-              dialog.addEventListener('close', () => dialog.remove(), { once: true });
-              dialog.showModal();
-            } catch (error) {
-              addMessage('assistant', 'Error: ' + error.message);
-            } finally {
-              open.disabled = false;
-            }
-          };
+          open.onclick = () => showFactoryPreview().catch(error => addMessage('assistant', error.message));
           btn.parentElement.querySelector('[data-factory-preview]')?.remove();
           open.dataset.factoryPreview = '';
           btn.parentElement.append(open);
@@ -1522,6 +1496,60 @@ async function handleSelfEdit(instruction, previewOnly, targetFile) {
       addMessage('assistant', `❌ Error de conexión: ${err.message}`);
     }
   }
+  async function showFactoryPreview() {
+    const preview = await fetch('/v1/studio/factory/blueprint-preview', {
+      headers: { 'x-studio-password': password }, cache: 'no-store'
+    });
+    if (!preview.ok) throw new Error('No hay una vista previa disponible.');
+    const { html } = await preview.json();
+    const dialog = document.createElement('dialog');
+    dialog.style.cssText = 'position:fixed;inset:0;margin:auto;width:min(1100px,96vw);max-height:92vh;padding:16px;color:#eee;background:#181818;border:1px solid #555;border-radius:12px';
+    const close = document.createElement('button');
+    close.textContent = 'Cerrar';
+    close.onclick = () => dialog.close();
+    const frame = document.createElement('iframe');
+    frame.title = 'Vista previa generada de Human Blueprint';
+    frame.setAttribute('sandbox', 'allow-scripts');
+    frame.style.cssText = 'display:block;width:100%;height:72vh;border:0;margin-top:12px';
+    frame.srcdoc = html;
+    dialog.append(close, frame);
+    document.body.append(dialog);
+    dialog.addEventListener('close', () => dialog.remove(), { once: true });
+    dialog.showModal();
+  }
+
+  async function runFactoryPreview() {
+    const button = document.getElementById('factory-preview-btn');
+    const endpoint = '/v1/studio/factory/blueprint-check';
+    const request = async method => {
+      const response = await fetch(endpoint, {
+        method, headers: { 'x-studio-password': password }, cache: 'no-store',
+        signal: AbortSignal.timeout(15000)
+      });
+      if (!response.ok) throw new Error('Factory respondió con HTTP ' + response.status + '.');
+      return response.json();
+    };
+    button.disabled = true;
+    button.textContent = 'Consultando Factory…';
+    try {
+      let result = await request('GET');
+      if (result.status === 'idle' || result.status === 'failed') result = await request('POST');
+      for (let i = 0; result.status === 'running' && i < 96; i++) {
+        button.textContent = 'Generando Human Blueprint…';
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        result = await request('GET');
+      }
+      if (result.status === 'compiled') await showFactoryPreview();
+      else if (result.status === 'failed') addMessage('assistant', 'Factory falló: ' + result.error);
+      else addMessage('assistant', 'Factory sigue generando. Puedes volver a pulsar el botón para consultar el avance.');
+    } catch (error) {
+      addMessage('assistant', 'Error al abrir Human Blueprint: ' + error.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Probar Human Blueprint';
+    }
+  }
+
   function quickSend(text) {
     document.getElementById('input').value = text;
     document.getElementById('input').focus();
