@@ -7871,6 +7871,10 @@ app.post('/v1/studio/tts', studioAuth, async (req, res) => {
   }
 });
 
+if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
+  require('./services/factory-blueprint-demo').mountBlueprintDemo(app, { pool, studioAuth, generateFactoryText });
+}
+
 app.post('/v1/studio/plan', studioAuth, async (req, res) => {
   const instruction = req.body?.instruction;
   if (typeof instruction !== 'string' || !instruction.trim() || instruction.length > 12000) {

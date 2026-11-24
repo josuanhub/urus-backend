@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Human Blueprint · URUS Studio</title>
+<style>
+:root{color-scheme:dark;--gold:#ddbf84;--line:#373028}*{box-sizing:border-box}body{margin:0;background:#141310;color:#f6efe2;font:16px system-ui,sans-serif}main{max-width:960px;margin:auto;padding:clamp(22px,6vw,76px) 22px}a{color:var(--gold)}h1{font:clamp(44px,8vw,76px)/1 Georgia;margin:26px 0 8px}header p{color:#c2b8a7}.workspace{display:grid;grid-template-columns:1fr 1.55fr;gap:20px;margin-top:36px}section,form{background:#1f1c17;border:1px solid var(--line);border-radius:14px;padding:22px;align-self:start}h2{font-size:19px;margin-top:0}label{display:block;margin:0 0 16px}textarea{display:block;width:100%;min-height:76px;margin-top:6px;padding:10px;border:1px solid #524737;border-radius:7px;background:#141310;font:inherit}button{background:var(--gold);color:#21190f;border:0;border-radius:8px;padding:12px 16px;font:inherit;font-weight:bold}button:disabled{opacity:.45}#status{min-height:25px;color:var(--gold)}@media(max-width:660px){.workspace{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main>
+<header><a href="/studio/">Volver a Studio</a><h1>Human Blueprint</h1><p>Trabaja una decisión y vuelve a registrar qué pasó. Usa datos ficticios en esta demo.</p></header>
+<div class="workspace">
+<section><h2>Caso de ejemplo</h2><p id="example">Cargando…</p></section>
+<form id="record">
+<label>Decisión pendiente<textarea name="decision" required maxlength="2500"></textarea></label>
+<label>Hipótesis que quiero comprobar<textarea name="hypothesis" maxlength="2500"></textarea></label>
+<label>Próxima acción<textarea name="action" required maxlength="2500"></textarea></label>
+<label>¿Qué pasó después?<textarea name="outcome" maxlength="2500"></textarea></label>
+<button disabled>Guardar decisión</button><p id="status" role="status"></p>
+</form></div></main>
+<script>
+const form = document.getElementById('record');
+const button = form.querySelector('button');
+const status = document.getElementById('status');
+const endpoint = '/v1/studio/demos/human-blueprint/' + encodeURIComponent(location.hash.slice(1));
+async function load() {
+  try {
+    const response = await fetch(endpoint, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Abre esta demo desde el enlace generado por Studio.');
+    const data = await response.json();
+    document.getElementById('example').textContent = data.example;
+    for (const field of ['decision', 'hypothesis', 'action', 'outcome']) {
+      form.elements[field].value = data.decision?.[field] || '';
+    }
+    button.disabled = false;
+  } catch (error) {
+    document.getElementById('example').textContent = error.message;
+  }
+}
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  button.disabled = true;
+  try {
+    const response = await fetch(endpoint, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.fromEntries(new FormData(form)))
+    });
+    if (!response.ok) throw new Error('No se pudo guardar. Revisa que la decisión y la acción estén completas.');
+    status.textContent = 'Guardado. Puedes volver al mismo enlace para continuar.';
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+load();
+</script></body></html>

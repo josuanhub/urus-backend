@@ -1236,6 +1236,30 @@ if (text.startsWith('/reindex')) {
       return;
     }
     
+    if (text.toLowerCase() === '/demo human blueprint') {
+      try {
+        const response = await fetch('/v1/studio/demos/human-blueprint', {
+          method: 'POST', headers: { 'x-studio-password': password }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo crear la demo.');
+        addMessage('assistant', 'Demo de Human Blueprint creada. Usa datos ficticios.');
+        const link = document.createElement('a');
+        link.href = data.path;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Abrir demo de Human Blueprint';
+        link.style.color = '#ddbf84';
+        btn.parentElement.appendChild(link);
+      } catch (error) {
+        addMessage('assistant', 'Error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+      return;
+    }
+
     if (text.toLowerCase() === 'hazlo') {
       const task = pendingStudioEdit;
       try {
