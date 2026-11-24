@@ -10578,6 +10578,33 @@ if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
   });
 }
 
+function buildFactoryApp(files) {
+  const pages = files.filter(file => file.type === 'page');
+  const imports = pages.map(file =>
+    `import ${file.name} from "./pages/${file.name}.jsx";`).join('\n');
+  const routes = pages.map(file =>
+    `<Route path="/${file.name.toLowerCase()}" element={<${file.name} />} />`).join('\n');
+  return `import React from 'react';
+import { Routes, Route, Navigate, NavLink } from 'react-router-dom';
+import { ToastProvider } from './components/Toast.jsx';
+${imports}
+export default function App() {
+  return <ToastProvider>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <nav aria-label="Pantallas" style={{ padding: 20, display: 'grid', gap: 12, alignContent: 'start' }}>
+        ${pages.map(file => `<NavLink to="/${file.name.toLowerCase()}">{${JSON.stringify(file.description)}}</NavLink>`).join('\n')}
+      </nav>
+      <main style={{ flex: 1, minWidth: 0 }}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/${pages[0].name.toLowerCase()}" replace />} />
+          ${routes}
+        </Routes>
+      </main>
+    </div>
+  </ToastProvider>;
+}`;
+}
+
 async function buildFactoryFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey) {
   const tables = masterSpec.database_schema?.tables?.map(t => t.name) || [];
   const palette = '#6C63FF, #00D4AA, #0A0A0F, #1A1A2E';
@@ -10612,6 +10639,7 @@ export default ToastProvider;`;
   configFiles['src/components/ToastProvider.js'] =
     "export { default, ToastContext, ToastProvider, useToast } from './Toast.jsx';";
 
+  configFiles['src/App.jsx'] = buildFactoryApp(buildFileList(masterSpec));
   const pageFiles = await generatePageFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables);
   const allFiles = { ...configFiles, ...pageFiles };
   console.log(`[BuilderAgent] Total archivos: ${Object.keys(allFiles).length}`);
@@ -10725,8 +10753,6 @@ async function generatePageFiles(masterSpec, project, project_id, apiBase, uploa
 }
 function buildFileList(masterSpec) {
   const list = [];
-  list.push({ path: 'src/App.jsx', name: 'App', type: 'router', description: 'Router principal' });
-  list.push({ path: 'src/components/Sidebar.jsx', name: 'Sidebar', type: 'component', description: 'Navegación lateral colapsable' });
   list.push({ path: 'src/components/LoadingSkeleton.jsx', name: 'LoadingSkeleton', type: 'component', description: 'Skeleton loader' });
 
   for (const mod of masterSpec.modules || []) {
@@ -10755,23 +10781,18 @@ Objetivo: ${masterSpec.description || ''}
 Stack: React 18, React Router y Tailwind. Paleta: ${palette}.
 Pantallas autorizadas (usa exactamente estos nombres de archivo y componentes): ${JSON.stringify(pages)}
 API de datos: ${apiBase}/{tabla}. Tablas disponibles: ${JSON.stringify(tables)}.
-Archivos compartidos disponibles: src/components/Sidebar.jsx, src/components/LoadingSkeleton.jsx, src/components/Toast.jsx, src/context/ToastContext.js y src/hooks/useApi.js. Usa imports relativos al archivo en construcción.
+Archivos compartidos disponibles: src/components/LoadingSkeleton.jsx, src/components/Toast.jsx, src/context/ToastContext.js y src/hooks/useApi.js. Usa imports relativos al archivo en construcción.
 Importa ToastProvider y useToast como exports nombrados desde src/components/Toast.jsx. El contexto y el proveedor viven en ese archivo. useToast devuelve { toast }; llama toast("mensaje") para avisos.
 Usa fetchApi de src/hooks/useApi.js para las tablas. Su parámetro endpoint es relativo a la API de datos.
+El router ya se monta desde src/main.jsx. Usa Link o hooks del router cuando corresponda y nunca montes otro router.
 Genera únicamente ${fileSpec.path} y devuelve solo JSX. Usa export default para el componente.
 Importa desde los archivos declarados y las dependencias del proyecto. Evita funcionalidades que no se pidieron.`;
 
-  if (fileSpec.type === 'router') {
-    return context + '\nMonta Routes y Route para todas las pantallas, Sidebar y ToastProvider. La ruta inicial muestra la primera pantalla. Coordina los destinos con Sidebar usando el nombre exacto del componente en minúsculas como segmento de ruta.';
-  }
-  if (fileSpec.name === 'Sidebar') {
-    return context + '\nGenera navegación con Link y props collapsed y onToggle. Para cada pantalla usa el nombre exacto del componente en minúsculas como segmento de ruta.';
-  }
   if (fileSpec.name === 'LoadingSkeleton') {
     return context + '\nGenera un indicador de carga accesible y reutilizable.';
   }
 
-  const task = `\nPantalla: ${fileSpec.description}. Módulo: ${fileSpec.moduleName}. Endpoints declarados: ${JSON.stringify(fileSpec.endpoints)}.
+  const task = `\nPantalla: ${fileSpec.description}. Para enlaces internos usa "/" seguido del nombre exacto del componente destino en minúsculas. Módulo: ${fileSpec.moduleName}. Endpoints declarados: ${JSON.stringify(fileSpec.endpoints)}.
 Implementa el flujo que describe la pantalla. Usa las tablas y rutas declaradas cuando apliquen. Si falta un endpoint, indica esa dependencia en la interfaz. Incluye estados de carga, error y vacío según corresponda.`;
   const importInstructions = /\b(?:importar|importaci[oó]n)\b/i.test(fileSpec.description)
     ? `\nPara la importación solicitada, envía FormData con el campo file a ${uploadUrl}. Usa el mecanismo de acceso existente, definido por el proyecto.`
