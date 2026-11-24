@@ -10466,6 +10466,9 @@ async function checkFactoryBundle(files, build = require('esbuild').build) {
     bundle: true,
     write: false,
     outdir: 'out',
+    format: 'esm',
+    jsx: 'automatic',
+    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
     logLevel: 'silent',
     metafile: true,
     plugins: [{
@@ -10493,8 +10496,49 @@ async function checkFactoryBundle(files, build = require('esbuild').build) {
   });
 }
 
+function factoryPreviewDocument(bundle) {
+  const script = bundle.outputFiles.find(file => file.path.endsWith('.js'))?.text;
+  if (!script) throw new Error('No se generó el JavaScript de la vista previa.');
+  const css = bundle.outputFiles.find(file => file.path.endsWith('.css'))?.text || '';
+  const imports = {
+    react: 'https://esm.sh/react@18.2.0',
+    'react/jsx-runtime': 'https://esm.sh/react@18.2.0/jsx-runtime',
+    'react-dom/client': 'https://esm.sh/react-dom@18.2.0/client?external=react',
+    'react-router-dom': 'https://esm.sh/react-router-dom@6.22.3?external=react,react-dom',
+    'react-dom': 'https://esm.sh/react-dom@18.2.0?external=react',
+    'lucide-react': 'https://esm.sh/lucide-react@0.383.0?external=react'
+  };
+  const policy = "default-src 'none'; script-src 'unsafe-inline' https://esm.sh; style-src 'unsafe-inline'; connect-src 'none'; img-src data:; base-uri 'none'; form-action 'none'";
+  const inlineScript = script.replace(/<\/script/gi, '<\\/script');
+  const inlineStyle = css.replace(/<\/style/gi, '<\\/style');
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="${policy}">
+<style>${inlineStyle}</style><script type="importmap">${JSON.stringify({ imports })}</script>
+</head><body><div id="root">Cargando Human Blueprint…</div>
+<script>
+const root = document.getElementById('root');
+function showPreviewError(reason) {
+  const notice = document.createElement('p');
+  notice.setAttribute('role', 'alert');
+  notice.style.cssText = 'font:16px system-ui;padding:18px;color:#ffd0b0';
+  notice.textContent = 'La vista previa no pudo abrirse: ' + String(reason || 'error al cargar un módulo').slice(0, 240);
+  document.body.append(notice);
+}
+addEventListener('error', event => showPreviewError(event.message || 'falló la carga del código o de una dependencia'), true);
+addEventListener('unhandledrejection', event => showPreviewError(event.reason?.message || event.reason));
+setTimeout(() => {
+  if (root.textContent === 'Cargando Human Blueprint…' && !document.querySelector('[role="alert"]')) {
+    showPreviewError('la aplicación no montó su pantalla inicial');
+  }
+}, 10000);
+</script>
+<script type="module">${inlineScript}</script></body></html>`;
+}
+
 if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
   let check;
+  let preview;
   app.post('/v1/studio/factory/blueprint-check', studioAuth, (req, res) => {
     if (check?.status === 'running') return res.status(202).json(check);
     const run = check = { status: 'running' };
@@ -10509,11 +10553,13 @@ if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
         };
         const project = { company: 'URUS', industry: 'Desarrollo personal' };
         const files = await buildFactoryFiles(spec, project, 'blueprint-check', '/demo-api', '', '');
+        files['src/main.jsx'] = files['src/main.jsx'].replaceAll('BrowserRouter', 'MemoryRouter');
         const bundle = await checkFactoryBundle(files);
         const inputs = Object.keys(bundle.metafile.inputs);
         const missing = buildFileList(spec).filter(file => file.type === 'page' &&
           !inputs.includes('factory:' + file.path));
         if (missing.length) throw new Error('El router no usa todas las pantallas de la especificación.');
+        preview = factoryPreviewDocument(bundle);
         Object.assign(run, { status: 'compiled', files: Object.keys(files) });
       } catch (error) {
         const issue = error.errors?.[0]?.text || error.message;
@@ -10521,10 +10567,42 @@ if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
       }
     });
   });
+  app.get('/v1/studio/factory/blueprint-preview', studioAuth, (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (check?.status !== 'compiled' || !preview) return res.sendStatus(404);
+    res.json({ html: preview });
+  });
   app.get('/v1/studio/factory/blueprint-check', studioAuth, (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json(check || { status: 'idle' });
   });
+}
+
+function buildFactoryApp(files) {
+  const pages = files.filter(file => file.type === 'page');
+  const imports = pages.map(file =>
+    `import ${file.name} from "./pages/${file.name}.jsx";`).join('\n');
+  const routes = pages.map(file =>
+    `<Route path="/${file.name.toLowerCase()}" element={<${file.name} />} />`).join('\n');
+  return `import React from 'react';
+import { Routes, Route, Navigate, NavLink } from 'react-router-dom';
+import { ToastProvider } from './components/Toast.jsx';
+${imports}
+export default function App() {
+  return <ToastProvider>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <nav aria-label="Pantallas" style={{ padding: 20, display: 'grid', gap: 12, alignContent: 'start' }}>
+        ${pages.map(file => `<NavLink to="/${file.name.toLowerCase()}">{${JSON.stringify(file.description)}}</NavLink>`).join('\n')}
+      </nav>
+      <main style={{ flex: 1, minWidth: 0 }}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/${pages[0].name.toLowerCase()}" replace />} />
+          ${routes}
+        </Routes>
+      </main>
+    </div>
+  </ToastProvider>;
+}`;
 }
 
 async function buildFactoryFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey) {
@@ -10561,6 +10639,7 @@ export default ToastProvider;`;
   configFiles['src/components/ToastProvider.js'] =
     "export { default, ToastContext, ToastProvider, useToast } from './Toast.jsx';";
 
+  configFiles['src/App.jsx'] = buildFactoryApp(buildFileList(masterSpec));
   const pageFiles = await generatePageFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables);
   const allFiles = { ...configFiles, ...pageFiles };
   console.log(`[BuilderAgent] Total archivos: ${Object.keys(allFiles).length}`);
@@ -10674,8 +10753,6 @@ async function generatePageFiles(masterSpec, project, project_id, apiBase, uploa
 }
 function buildFileList(masterSpec) {
   const list = [];
-  list.push({ path: 'src/App.jsx', name: 'App', type: 'router', description: 'Router principal' });
-  list.push({ path: 'src/components/Sidebar.jsx', name: 'Sidebar', type: 'component', description: 'Navegación lateral colapsable' });
   list.push({ path: 'src/components/LoadingSkeleton.jsx', name: 'LoadingSkeleton', type: 'component', description: 'Skeleton loader' });
 
   for (const mod of masterSpec.modules || []) {
@@ -10704,23 +10781,18 @@ Objetivo: ${masterSpec.description || ''}
 Stack: React 18, React Router y Tailwind. Paleta: ${palette}.
 Pantallas autorizadas (usa exactamente estos nombres de archivo y componentes): ${JSON.stringify(pages)}
 API de datos: ${apiBase}/{tabla}. Tablas disponibles: ${JSON.stringify(tables)}.
-Archivos compartidos disponibles: src/components/Sidebar.jsx, src/components/LoadingSkeleton.jsx, src/components/Toast.jsx, src/context/ToastContext.js y src/hooks/useApi.js. Usa imports relativos al archivo en construcción.
+Archivos compartidos disponibles: src/components/LoadingSkeleton.jsx, src/components/Toast.jsx, src/context/ToastContext.js y src/hooks/useApi.js. Usa imports relativos al archivo en construcción.
 Importa ToastProvider y useToast como exports nombrados desde src/components/Toast.jsx. El contexto y el proveedor viven en ese archivo. useToast devuelve { toast }; llama toast("mensaje") para avisos.
 Usa fetchApi de src/hooks/useApi.js para las tablas. Su parámetro endpoint es relativo a la API de datos.
+El router ya se monta desde src/main.jsx. Usa Link o hooks del router cuando corresponda y nunca montes otro router.
 Genera únicamente ${fileSpec.path} y devuelve solo JSX. Usa export default para el componente.
 Importa desde los archivos declarados y las dependencias del proyecto. Evita funcionalidades que no se pidieron.`;
 
-  if (fileSpec.type === 'router') {
-    return context + '\nMonta Routes y Route para todas las pantallas, Sidebar y ToastProvider. La ruta inicial muestra la primera pantalla. Coordina los destinos con Sidebar usando el nombre exacto del componente en minúsculas como segmento de ruta.';
-  }
-  if (fileSpec.name === 'Sidebar') {
-    return context + '\nGenera navegación con Link y props collapsed y onToggle. Para cada pantalla usa el nombre exacto del componente en minúsculas como segmento de ruta.';
-  }
   if (fileSpec.name === 'LoadingSkeleton') {
     return context + '\nGenera un indicador de carga accesible y reutilizable.';
   }
 
-  const task = `\nPantalla: ${fileSpec.description}. Módulo: ${fileSpec.moduleName}. Endpoints declarados: ${JSON.stringify(fileSpec.endpoints)}.
+  const task = `\nPantalla: ${fileSpec.description}. Para enlaces internos usa "/" seguido del nombre exacto del componente destino en minúsculas. Módulo: ${fileSpec.moduleName}. Endpoints declarados: ${JSON.stringify(fileSpec.endpoints)}.
 Implementa el flujo que describe la pantalla. Usa las tablas y rutas declaradas cuando apliquen. Si falta un endpoint, indica esa dependencia en la interfaz. Incluye estados de carga, error y vacío según corresponda.`;
   const importInstructions = /\b(?:importar|importaci[oó]n)\b/i.test(fileSpec.description)
     ? `\nPara la importación solicitada, envía FormData con el campo file a ${uploadUrl}. Usa el mecanismo de acceso existente, definido por el proyecto.`
