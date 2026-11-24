@@ -1,0 +1,1760 @@
+<!-- URUS Studio v2 con memoria -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URUS Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --bg2: #161616;
+    --bg3: #1c1c1c;
+    --border: #2a2a2a;
+    --border2: #333;
+    --gold: #c9a84c;
+    --gold2: #e0c068;
+    --gold-dim: rgba(201,168,76,0.15);
+    --gold-dimmer: rgba(201,168,76,0.06);
+    --text: #e8e8e8;
+    --text2: #a0a0a0;
+    --text3: #555;
+    --user-bg: #1a1500;
+    --user-border: rgba(201,168,76,0.2);
+    --ai-bg: #161616;
+    --ai-border: #222;
+    --code-bg: #0a0a0a;
+    --radius: 8px;
+    --radius-sm: 4px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 32px;
+    background: var(--bg);
+  }
+
+  .login-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .login-logo svg {
+    width: 48px;
+    height: 48px;
+    color: var(--gold);
+  }
+
+  .login-logo h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 6px;
+    color: var(--gold);
+  }
+
+  .login-logo p {
+    font-size: 0.7rem;
+    color: var(--text3);
+    letter-spacing: 3px;
+    font-weight: 300;
+  }
+
+  .login-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 300px;
+  }
+
+  .login-box input {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 14px 18px;
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    border-radius: var(--radius);
+    text-align: center;
+    transition: border 0.2s;
+  }
+
+  .login-box input:focus { border-color: var(--gold); }
+  .login-box input.error { border-color: #e05555; animation: shake 0.3s; }
+
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-6px)}
+    75%{transform:translateX(6px)}
+  }
+
+  .login-box button {
+    width: 100%;
+    background: var(--gold);
+    color: #000;
+    border: none;
+    padding: 14px;
+    font-size: 0.8rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 2px;
+    border-radius: var(--radius);
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .login-box button:hover { background: var(--gold2); }
+  .login-box button:active { transform: scale(0.98); }
+
+  /* ── APP ── */
+  #app { display: none; flex-direction: row; height: 100vh; }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 220px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sidebar-header svg { width: 22px; height: 22px; color: var(--gold); }
+
+  .sidebar-header span {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    color: var(--gold);
+  }
+
+  .sidebar-section {
+    padding: 16px 12px 8px;
+  }
+
+  .sidebar-label {
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--text3);
+    padding: 0 4px;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .proj-btn {
+    width: 100%;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    padding: 9px 10px;
+    text-align: left;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+    font-weight: 400;
+  }
+
+  .proj-btn:hover { color: var(--text); background: var(--bg3); }
+
+  .proj-btn.active {
+    color: var(--gold);
+    background: var(--gold-dimmer);
+    font-weight: 500;
+  }
+
+  .proj-btn .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text3);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .proj-btn.active .dot { background: var(--gold); }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 0.62rem;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  /* ── MAIN AREA ── */
+  #main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  #topbar {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+
+  #topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #project-name {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 1px;
+  }
+
+  #project-badge {
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--gold);
+    background: var(--gold-dimmer);
+    border: 1px solid rgba(201,168,76,0.2);
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  #topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .top-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+  }
+
+  .top-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  /* ── MESSAGES ── */
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-track { background: transparent; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg-row {
+    padding: 12px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: background 0.1s;
+  }
+
+  .msg-row:hover { background: rgba(255,255,255,0.01); }
+  .msg-row.user-row { background: var(--gold-dimmer); border-left: 2px solid var(--gold); padding-left: 22px; }
+  .msg-row.ai-row { border-left: 2px solid transparent; }
+
+  .msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .msg-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .user-avatar { background: var(--gold); color: #000; }
+  .ai-avatar { background: var(--bg3); color: var(--gold); border: 1px solid var(--border2); }
+
+  .msg-sender {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  .user-row .msg-sender { color: var(--gold); }
+  .ai-row .msg-sender { color: var(--text2); }
+
+  .msg-time {
+    font-size: 0.6rem;
+    color: var(--text3);
+    margin-left: auto;
+  }
+
+  .msg-content {
+    font-size: 0.85rem;
+    line-height: 1.7;
+    color: var(--text);
+    padding-left: 30px;
+  }
+
+  /* Markdown styling */
+  .msg-content p { margin-bottom: 10px; }
+  .msg-content p:last-child { margin-bottom: 0; }
+
+  .msg-content strong { color: var(--text); font-weight: 600; }
+
+  .msg-content code {
+    background: var(--code-bg);
+    color: var(--gold);
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    border: 1px solid var(--border);
+  }
+
+  .msg-content pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin: 12px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .msg-content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #d4d4d4;
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+
+  .copy-code-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+
+  .copy-code-btn:hover { color: var(--text); border-color: var(--text3); }
+
+  .msg-content ul, .msg-content ol {
+    padding-left: 20px;
+    margin: 8px 0;
+  }
+
+  .msg-content li { margin-bottom: 4px; line-height: 1.6; }
+
+  .msg-content h1,.msg-content h2,.msg-content h3 {
+    color: var(--text);
+    font-weight: 600;
+    margin: 16px 0 8px;
+    line-height: 1.3;
+  }
+
+  .msg-content h1 { font-size: 1.1rem; }
+  .msg-content h2 { font-size: 0.95rem; color: var(--gold); }
+  .msg-content h3 { font-size: 0.85rem; color: var(--text2); }
+
+  .msg-content blockquote {
+    border-left: 3px solid var(--gold);
+    padding: 8px 16px;
+    color: var(--text2);
+    margin: 10px 0;
+    background: var(--gold-dimmer);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .msg-content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+
+  .msg-actions {
+    padding-left: 30px;
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .msg-action-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 0.65rem;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    padding: 3px 0;
+    letter-spacing: 0.5px;
+    transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .msg-action-btn:hover { color: var(--text2); }
+
+  /* ── WELCOME ── */
+  #welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 16px;
+    color: var(--text3);
+    padding: 40px;
+  }
+
+  #welcome svg { width: 36px; height: 36px; color: var(--border2); }
+  #welcome h2 { font-size: 0.85rem; font-weight: 500; color: var(--text2); letter-spacing: 2px; }
+  #welcome p { font-size: 0.75rem; color: var(--text3); text-align: center; max-width: 300px; line-height: 1.6; }
+
+  .welcome-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  .chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .chip:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dimmer); }
+
+  /* ── TYPING ── */
+  #typing-indicator {
+    display: none;
+    padding: 12px 24px 0;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .typing-dots {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .typing-dots span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--text3);
+    animation: bounce 1.2s infinite;
+  }
+
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%,60%,100%{transform:translateY(0);opacity:0.4}
+    30%{transform:translateY(-5px);opacity:1}
+  }
+
+  .typing-label {
+    font-size: 0.65rem;
+    color: var(--text3);
+    letter-spacing: 1px;
+  }
+
+  /* ── INPUT AREA ── */
+  #input-area {
+    padding: 16px 20px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  #input-wrapper {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.2s;
+    overflow: hidden;
+  }
+
+  #input-wrapper:focus-within { border-color: rgba(201,168,76,0.4); }
+
+  #input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 14px 16px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    outline: none;
+    resize: none;
+    min-height: 52px;
+    max-height: 160px;
+    line-height: 1.5;
+  }
+
+  #input::placeholder { color: var(--text3); }
+
+  #input-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    gap: 6px;
+    border-top: 1px solid var(--border);
+  }
+
+  .tool-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .tool-btn:hover { color: var(--text); background: var(--bg3); }
+  .tool-btn.active { color: var(--gold); background: var(--gold-dimmer); }
+  .tool-btn svg { width: 14px; height: 14px; }
+
+  .tool-btn.recording {
+    color: #e05555;
+    background: rgba(224,85,85,0.1);
+    animation: pulse-red 1s infinite;
+  }
+
+  @keyframes pulse-red {
+    0%,100%{opacity:1}
+    50%{opacity:0.6}
+  }
+
+  #toolbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #char-count {
+    font-size: 0.6rem;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  #send-btn {
+    background: var(--gold);
+    color: #000;
+    border: none;
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #send-btn:hover { background: var(--gold2); }
+  #send-btn:disabled { background: var(--bg3); color: var(--text3); cursor: not-allowed; }
+  #send-btn svg { width: 12px; height: 12px; }
+
+  /* TTS bar */
+  #tts-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg3);
+    border-top: 1px solid var(--border);
+    font-size: 0.65rem;
+    color: var(--text2);
+  }
+
+  #tts-bar.visible { display: flex; }
+
+  #stop-tts-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+    margin-left: auto;
+  }
+
+  #stop-tts-btn:hover { border-color: #e05555; color: #e05555; }
+
+  .tts-wave {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+  }
+
+  .tts-wave span {
+    width: 2px;
+    border-radius: 1px;
+    background: var(--gold);
+    animation: wave 0.8s infinite ease-in-out;
+  }
+
+  .tts-wave span:nth-child(1){height:8px;animation-delay:0s}
+  .tts-wave span:nth-child(2){height:14px;animation-delay:0.1s}
+  .tts-wave span:nth-child(3){height:10px;animation-delay:0.2s}
+  .tts-wave span:nth-child(4){height:16px;animation-delay:0.15s}
+  .tts-wave span:nth-child(5){height:8px;animation-delay:0.05s}
+
+  @keyframes wave {
+    0%,100%{transform:scaleY(0.5);opacity:0.5}
+    50%{transform:scaleY(1);opacity:1}
+  }
+
+  /* Notification */
+  #notif {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.25s;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  #notif.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/>
+    </svg>
+    <h1>URUS</h1>
+    <p>STUDIO — ACCESO RESTRINGIDO</p>
+  </div>
+  <div class="login-box">
+    <input type="password" id="pwd-input" placeholder="Contraseña" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">ENTRAR</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/>
+      </svg>
+      <span>URUS</span>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">PROYECTOS</div>
+      <button class="proj-btn active" onclick="setProject('GENERAL','General')">
+        <span class="dot"></span>General
+      </button>
+      <button class="proj-btn" onclick="setProject('DEALERFLOW','DealerFlow')">
+        <span class="dot"></span>DealerFlow
+      </button>
+      <button class="proj-btn" onclick="setProject('JARVIS','JARVIS')">
+        <span class="dot"></span>JARVIS
+      </button>
+      <button class="proj-btn" onclick="setProject('GOVTECH','GovTech')">
+        <span class="dot"></span>GovTech
+      </button>
+      <button class="proj-btn" onclick="setProject('URUS_CORE','URUS Core')">
+        <span class="dot"></span>URUS Core
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      urusverify.com · v1.0
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main-area">
+
+    <!-- TOPBAR -->
+    <div id="topbar">
+      <div id="topbar-left">
+        <span id="project-name">General</span>
+        <span id="project-badge">ACTIVO</span>
+      </div>
+      <div id="topbar-right">
+        <button class="top-btn" onclick="clearChat()">Limpiar</button>
+      </div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div id="messages">
+      <div id="welcome">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/>
+        </svg>
+        <h2>URUS STUDIO</h2>
+        <p>Sistema operativo activo. Contexto cargado. Selecciona un proyecto y ejecuta.</p>
+        <div class="welcome-chips">
+          <div class="chip" onclick="quickSend('¿Cuál es el estado actual de DealerFlow?')">Estado DealerFlow</div>
+          <div class="chip" onclick="quickSend('Dame el código del endpoint de prospects para Iván')">Código prospects</div>
+          <div class="chip" onclick="quickSend('¿Qué falta para GovTech con Jeremy?')">GovTech pipeline</div>
+          <div class="chip" onclick="quickSend('¿Cómo está JARVIS configurado?')">Estado JARVIS</div>
+          <div class="chip" onclick="quickSend('/edit agrega la regla fundamental en masterPlannerAgent antes de Devuelve ÚNICAMENTE este JSON')">✏️ Editar masterPlanner</div>
+          <div class="chip" onclick="quickSend('/preview cambia el modelo a gpt-4o')">👁 Preview cambio</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TYPING -->
+    <div id="typing-indicator">
+      <div class="typing-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <span class="typing-label">URUS procesando...</span>
+    </div>
+
+    <!-- TTS BAR -->
+    <div id="tts-bar">
+      <div class="tts-wave">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <span id="tts-label">Reproduciendo respuesta...</span>
+      <button id="stop-tts-btn" onclick="stopTTS()">DETENER</button>
+    </div>
+
+    <!-- INPUT -->
+    <div id="input-area">
+      <div id="file-drop-zone" style="padding: 0 20px; margin-bottom: 8px;" ondragover="event.preventDefault(); this.style.borderColor='var(--gold)';" ondragleave="this.style.borderColor='var(--border2)';" ondrop="handleFileDrop(event)">
+  <div style="border: 1px dashed var(--border2); border-radius: 8px; padding: 10px; text-align: center; font-size: 0.7rem; color: var(--text3); cursor: pointer;" onclick="document.getElementById('hidden-file-input').click()">
+    📎 Arrastra una imagen o PDF aquí, o haz clic para seleccionar
+  </div>
+<input type="file" multiple id="hidden-file-input" accept="image/*,.pdf" style="display:none" onchange="handleFileSelect(event)">
+      </div>
+      <div id="input-wrapper">
+        <textarea id="input" placeholder="Escribe tu instrucción..." onkeydown="handleKey(event)" oninput="updateCount()"></textarea>
+        <div id="input-toolbar">
+          <button class="tool-btn" id="mic-btn" onclick="toggleMic()" title="Hablar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            Hablar
+          </button>
+          <button class="tool-btn" id="autospeak-btn" onclick="toggleAutoSpeak()" title="Respuesta automática en voz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+            Auto-voz
+          </button>
+          <div id="toolbar-right">
+            <span id="char-count">0</span>
+            <button type="button" class="tool-btn" id="factory-preview-btn" onclick="runFactoryPreview()">Probar Human Blueprint</button>
+            <button id="send-btn" onclick="sendMessage()">
+              EJECUTAR
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+          </div>
+</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="notif"></div>
+
+<script>
+// ── STATE ──
+  let password = '';
+  let studioMemory = { edits: [], conversations: [], errors: [] };
+  let currentProject = 'GENERAL';
+  let history = [];
+  let recognition = null;
+  let isRecording = false;
+  let autoSpeak = false;
+let currentUtterance = null;
+
+const STUDIO_CONTEXT = "You are URUS Studio Intelligence — the autonomous brain of the URUS operating system. You are not just an assistant — you are the system itself. You can edit your own code, diagnose problems, and repair yourself. OPERATOR: Josuan Bayón (josuanhub). Vision: autonomous Tony Stark tech lab — never leave Studio for anything. STACK: Node.js + Express on Railway, PostgreSQL, HTML vanilla in /public/, domain urusverify.com, WhatsApp via Twilio +12603006906, AI: Claude claude-sonnet-4-6 + OpenAI + Groq, deploy: Railway auto-deploy from GitHub main. GitHub: github.com/josuanhub/urus-backend. ACTIVE PRODUCTS: 1) URUS Core — cognitive engine with JSON output, plan limits, Stripe billing. 2) WhatsApp Lead Engine — receives via Twilio and Meta, qualifies leads, auto follow-up. 3) JARVIS — personal AI with persistent memory, runs loop every 2h sending WhatsApp insights to +19395851479. 4) DealerFlow — auto dealer CRM, active client Ivan Auto Imports (key: ivan2026), contract $1750 setup + $300/month. 5) URUS Factory — multi-agent orchestrator that generates complete systems from meeting transcripts. 6) Market Intelligence — RSS + NewsAPI + Serper ingestion, 7AM daily briefing. 7) URUS Studio — this interface. SELF-EDIT SYSTEM: 5 agents working in chain: 1) ASTNavigator v5 — reads PostgreSQL file_index (174 entries) to find exact line numbers, never guesses. 2) PrecisionEditor — applies minimal surgical change. 3) Validator — checks size, content, no truncation. 4) SyntaxValidator — checks brackets for JS, content for HTML. 5) HealthMonitor — pings /health after 3 min, GitHub Actions does auto-rollback if crashed. Commands: /edit applies change, /preview shows diff without applying, /memory searches history, /reindex rebuilds PostgreSQL index. File detection is automatic from instruction text. HOW TO DIAGNOSE CRASHES: Check Railway Deploy Logs for SyntaxError or ReferenceError. Common causes: 1) Code inserted before studioAuth definition (line ~7492) — move it after. 2) Template literal corruption — use single quotes in SQL. 3) Duplicate function definitions. HOW TO FIX WITHOUT EXTERNAL HELP: Use /edit to apply the fix directly. If server is crashed, go to GitHub and revert last commit manually. HOW TO ROLLBACK: GitHub commits page, click <> on last good commit, copy server.js content, paste in editor. TABLES: studio_memory (edits/conversations/errors), file_index (server.js index with 174 entries), dealer_prospects, dealer_inventory, jarvis_memory, factory_sessions. KEY ENDPOINTS: POST /api/studio/chat, POST /v1/studio/self-edit, POST /v1/studio/self-edit/preview, POST /v1/studio/reindex, POST /v1/studio/memory/save, GET /v1/studio/memory/load, GET /health, POST /v1/studio/tts, POST /v1/studio/notify. KEY FUNCTIONS IN server.js: astNavigatorAgent (L9471), precisionEditorAgent (L9584), selfEditOrchestrator (L9750), buildAndPersistIndex (L9422), masterPlannerAgent (L8447), detectTargetFile (L9290). IMPORTANT RULES: 1) Always /preview before /edit. 2) Run /reindex after editing server.js. 3) Never insert code before studioAuth. 4) Use single quotes in SQL inside /edit instructions. 5) If Navigator fails, be more specific with function name. You respond in Spanish. You are direct, strategic, technical. You know every line of this system. When something breaks, diagnose and fix it. When asked about strategy, think like a CTO.";
+  
+  const projectContexts = {
+    'GENERAL': 'Contexto general URUS. Responde cualquier consulta técnica o estratégica sobre el sistema.',
+    'DEALERFLOW': 'Proyecto DealerFlow. CRM para dealers de autos en Puerto Rico. Cliente activo: Iván Auto Imports. Auth: x-dealer-key ivan2026. Endpoints en /v1/dealer/. WhatsApp via Twilio a 787-390-5016. Contrato: $1,750 setup + $300/mes.',
+    'JARVIS': 'Proyecto JARVIS. IA personal de Josuan. Frontend: public/jarvis/jarvis.html. Motor: Groq/Llama primario. OpenAI solo para embeddings. Respuestas en español. TTS activo.',
+    'GOVTECH': 'Proyecto GovTech. Inteligencia municipal Puerto Rico. Contacto estratégico: Jeremy. Target: Municipio de Arecibo, alcalde Carlos "Tito" Ramírez. Modelo Palantir adaptado.',
+    'URUS_CORE': 'Proyecto URUS Core / Console. Factoría de software autónoma multitenant. Generación dinámica de estructuras de base de datos y endpoints universales en Node.js/Express/PostgreSQL.'
+  };
+  // ── LOGIN ──
+async function loadStudioMemory() {
+    try {
+      const res = await fetch('/v1/studio/memory/load', {
+        headers: { 'x-studio-password': password }
+      });
+      const data = await res.json();
+      if (!data.ok) return;
+      studioMemory.edits = data.recent_edits || [];
+      studioMemory.conversations = data.recent_conversations || [];
+      studioMemory.errors = data.recent_errors || [];
+      if (data.recent_edits?.length || data.recent_errors?.length) {
+        const welcome = document.getElementById('welcome');
+        if (welcome) {
+          const div = document.createElement('div');
+          div.style.cssText = 'background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:12px 16px;margin-top:16px;max-width:500px;';
+          div.innerHTML = '<div style="font-size:0.6rem;letter-spacing:2px;color:#c9a84c;margin-bottom:6px;">MEMORIA CARGADA</div><div style="font-size:0.78rem;color:#e8e8e8;">' + data.recent_edits.length + ' cambios recientes. ' + data.recent_errors.length + ' errores.</div>';
+          welcome.appendChild(div);
+        }
+      }
+    } catch(e) {
+      console.log('Memory load failed:', e.message);
+    }
+
+    try {
+      const convRes = await fetch('/v1/studio/conversations/last?project=' + encodeURIComponent(currentProject), {
+        headers: { 'x-studio-password': password }
+      });
+      const convData = await convRes.json();
+      if (convData.messages && convData.messages.length > 0) {
+        for (const msg of convData.messages) {
+          history.push({ role: msg.role, content: msg.content });
+          addMessage(msg.role, msg.content);
+        }
+        showNotif('💬 ' + convData.messages.length + ' mensajes cargados de la conversación anterior');
+      }
+    } catch(e) {
+      console.log('Conversation load failed:', e.message);
+    }
+  }
+  async function saveToMemory(type, content, metadata) {
+    try {
+      await fetch('/v1/studio/memory/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-studio-password': password
+        },
+        body: JSON.stringify({
+          type: type,
+          content: String(content).slice(0, 5000),
+          metadata: metadata || {},
+          project: currentProject
+})
+      });
+    } catch(e) {}
+  }
+
+function login() {
+    console.log('test cache');
+    const pwd = document.getElementById('pwd-input').value;
+    if (pwd === 'urus2026') {
+      if (!window.studioSessionId) { window.studioSessionId = crypto.randomUUID(); }
+      password = pwd;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      document.getElementById('input').focus();
+      loadStudioMemory();
+    } else {
+      const inp = document.getElementById('pwd-input');
+      inp.classList.add('error');
+      inp.value = '';
+      setTimeout(() => inp.classList.remove('error'), 400);
+    }
+  }
+  // ── PROJECT ──
+  function setProject(id, name) {
+    currentProject = id;
+    history = [];
+    document.getElementById('project-name').textContent = name;
+    document.querySelectorAll('.proj-btn').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    const msgs = document.getElementById('messages');
+    msgs.innerHTML = `
+      <div id="welcome" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:var(--text3);padding:40px;">
+        <p style="font-size:0.75rem;color:var(--text3);letter-spacing:1px;">MODO: ${name.toUpperCase()} — contexto cargado</p>
+      </div>`;
+    stopTTS();
+  }
+
+  function clearChat() {
+    history = [];
+    stopTTS();
+    const msgs = document.getElementById('messages');
+    msgs.innerHTML = `
+      <div id="welcome" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:var(--text3);padding:40px;">
+        <p style="font-size:0.75rem;color:var(--text3);letter-spacing:1px;">Chat limpiado.</p>
+      </div>`;
+    showNotif('Chat limpiado');
+  }
+
+  // ── MARKDOWN RENDERER ──
+  function renderMarkdown(text) {
+    let html = text;
+
+    // Escape HTML first
+    html = html.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    // Code blocks
+    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+      return `<pre><button class="copy-code-btn" onclick="copyCode(this)">COPIAR</button><code class="lang-${lang}">${code.trim()}</code></pre>`;
+    });
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Headers
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Bold
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+
+    // Italic
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+    // HR
+    html = html.replace(/^---+$/gm, '<hr>');
+
+    // Blockquote
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+    // Unordered lists
+    html = html.replace(/^[\*\-] (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+    // Ordered lists
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+    // Paragraphs — wrap lines not already in tags
+    html = html.split('\n').map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return '';
+      if (trimmed.startsWith('<')) return line;
+      return `<p>${line}</p>`;
+    }).join('\n');
+
+    return html;
+  }
+
+  // ── MESSAGES ──
+  function addMessage(role, content) {
+    const welcome = document.getElementById('welcome');
+    if (welcome) welcome.remove();
+
+    const msgs = document.getElementById('messages');
+    const now = new Date().toLocaleTimeString('es-PR', {hour:'2-digit',minute:'2-digit'});
+
+    const row = document.createElement('div');
+    row.className = `msg-row ${role === 'user' ? 'user-row' : 'ai-row'}`;
+
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    meta.innerHTML = `
+      <div class="msg-avatar ${role === 'user' ? 'user-avatar' : 'ai-avatar'}">${role === 'user' ? 'TÚ' : 'AI'}</div>
+      <span class="msg-sender">${role === 'user' ? 'TÚ' : 'URUS'}</span>
+      <span class="msg-time">${now}</span>`;
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'msg-content';
+
+    if (role === 'user') {
+      contentDiv.textContent = content;
+    } else {
+      contentDiv.innerHTML = renderMarkdown(content);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+
+    if (role === 'assistant') {
+      actions.innerHTML = `
+        <button class="msg-action-btn" onclick="copyText(this, \`${content.replace(/`/g,'\\`')}\`)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar
+        </button>
+        <button class="msg-action-btn" onclick="speakText(\`${content.replace(/`/g,'\\`')}\`)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          Escuchar
+        </button>`;
+    }
+
+    row.appendChild(meta);
+    row.appendChild(contentDiv);
+    if (role === 'assistant') row.appendChild(actions);
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    return content;
+  }
+
+  // ── SEND ──
+// ============================================================
+// CAMBIO EN studio.html (o donde tengas el Studio)
+//
+// Busca esta función en el HTML:
+//   async function sendMessage() {
+//
+// Reemplaza TODA esa función por esta:
+// ============================================================
+async function sendMessage() {
+const input = document.getElementById('input');
+    const text  = input.value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('send-btn');
+    btn.disabled  = true;
+    input.value   = '';
+    updateCount();
+
+    addMessage('user', text);
+
+    // ── ARCHIVOS PENDIENTES ───────────────────────────────
+    let userMessageContent = null;
+    if (window.pendingFiles && window.pendingFiles.length > 0) {
+      const contentBlocks = [{ type: 'text', text: text }];
+      for (const file of window.pendingFiles) {
+        if (file.mimeType && file.mimeType.startsWith('image/')) {
+          contentBlocks.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: file.mimeType,
+              data: file.base64
+            }
+          });
+        } else if (file.mimeType === 'application/pdf') {
+          contentBlocks.push({
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: file.mimeType,
+              data: file.base64
+            }
+          });
+        }
+      }
+      userMessageContent = contentBlocks;
+      window.pendingFiles = [];
+      renderPendingFiles();
+    }
+
+    // ── COMANDO ESPECIAL: /memory ──────────────────────────
+    if (text.startsWith('/memory ')) {
+      const query = text.slice(8).trim();
+      const res = await fetch('/v1/studio/memory/search?q=' + encodeURIComponent(query), { headers: { 'x-studio-password': password } });
+      const data = await res.json();
+      if (data.results?.length) {
+        addMessage('assistant', '🧠 MEMORIA: ' + data.results.slice(0,5).map(r => '[' + r.type.toUpperCase() + '] ' + r.content.slice(0,150)).join('\n\n'));
+      } else {
+        addMessage('assistant', '🧠 No encontré nada sobre: ' + query);
+      }
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+
+    if (text.startsWith('/files')) {
+      const path = text.slice(6).trim();
+      addMessage('assistant', '📁 Cargando archivos...');
+      fetch('/v1/studio/files' + (path ? '?path=' + encodeURIComponent(path) : ''), {
+        headers: { 'x-studio-password': password }
+      }).then(r => r.json()).then(data => {
+        if (data.ok && data.files) {
+          addMessage('assistant', '📁 **Archivos' + (path ? ' en ' + path : '') + ':**\n\n' + data.files.map(f => (f.type === 'dir' ? '📂 ' : '📄 ') + f.path).join('\n'));
+        } else {
+          addMessage('assistant', '❌ Error: ' + (data.error || 'No se pudo listar'));
+        }
+      }).catch(e => addMessage('assistant', '❌ ' + e.message));
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+    if (text.startsWith('/build ')) {
+      const parts = text.slice(7).trim().split(' → ');
+      const filename = parts[0]?.trim();
+      const instruction = parts[1]?.trim();
+      if (!filename || !instruction) {
+        addMessage('assistant', '💡 Uso: /build [archivo] → [instrucción]');
+        btn.disabled = false; input.focus(); return;
+      }
+      addMessage('assistant', '🔨 Construyendo ' + filename + '...');
+      fetch('/v1/studio/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+        body: JSON.stringify({ filename, instruction })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          addMessage('assistant', '✅ **ARCHIVO CREADO**\n\n📄 ' + data.filename + '\n📦 ' + data.size + ' chars\n🔗 Commit: ' + data.commit + '\n\n🚀 Railway redesplegará en ~2 minutos.');
+        } else {
+          addMessage('assistant', '❌ Error: ' + data.error);
+        }
+      }).catch(e => addMessage('assistant', '❌ ' + e.message));
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+
+if (text.startsWith('/run ')) {
+      const parts = text.slice(5).trim().split(' ');
+      const command = parts[0];
+      const filename = parts[1] || null;
+      addMessage('assistant', '⚙️ Ejecutando: ' + command + '...');
+      fetch('/v1/studio/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+        body: JSON.stringify({ command, args: filename ? { filename } : {} })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          addMessage('assistant', '✅ Resultado:\n\n' + JSON.stringify(data.result, null, 2));
+        } else {
+          addMessage('assistant', '❌ Error: ' + (data.error || 'desconocido') + (data.allowed ? '\nComandos disponibles: ' + data.allowed.join(', ') : ''));
+        }
+      }).catch(e => addMessage('assistant', '❌ ' + e.message));
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+
+    
+if (text.startsWith('/reindex')) {
+      const targetFilename = text.slice(9).trim();
+      addMessage('assistant', '🔄 Indexando ' + (targetFilename || 'server.js') + '...');
+      fetch('/v1/studio/reindex', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+        body: JSON.stringify(targetFilename ? { filename: targetFilename } : {})
+        
+    }).then(r => r.json()).then(data => {
+        addMessage('assistant', data.ok ? '✅ Índice actualizado: ' + data.total + ' entradas en ' + (data.files ? data.files.length : 1) + ' archivos.' : '❌ Error: ' + data.error);
+      }).catch(e => addMessage('assistant', '❌ Error: ' + e.message));
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+    
+    const factoryCommand = text.toLowerCase();
+    if (['/factory probar', '/factory estado'].includes(factoryCommand)) {
+      try {
+        const response = await fetch('/v1/studio/factory/blueprint-check', {
+          method: factoryCommand === '/factory probar' ? 'POST' : 'GET',
+          headers: { 'x-studio-password': password }, cache: 'no-store'
+        });
+        if (!response.ok) throw new Error('Factory no pudo iniciar o consultar la prueba.');
+        const result = await response.json();
+        const messages = {
+          idle: 'Escribe /factory probar para iniciar una prueba del Builder.',
+          running: 'Factory está generando Human Blueprint. Consulta el avance con /factory estado.',
+          compiled: 'Factory generó los archivos y esbuild comprobó las importaciones internas.\n' + (result.files || []).join('\n'),
+          failed: 'La prueba de Factory falló: ' + result.error
+        };
+        addMessage('assistant', messages[result.status]);
+        if (result.status === 'compiled') {
+          const open = document.createElement('button');
+          open.type = 'button';
+          open.textContent = 'Abrir vista previa';
+          open.onclick = () => showFactoryPreview().catch(error => addMessage('assistant', error.message));
+          btn.parentElement.querySelector('[data-factory-preview]')?.remove();
+          open.dataset.factoryPreview = '';
+          btn.parentElement.append(open);
+        }
+      } catch (error) {
+        addMessage('assistant', 'Error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+      return;
+    }
+
+    if (text.toLowerCase() === '/demo human blueprint') {
+      try {
+        const response = await fetch('/v1/studio/demos/human-blueprint', {
+          method: 'POST', headers: { 'x-studio-password': password }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo crear la demo.');
+        addMessage('assistant', 'Demo de Human Blueprint creada. Usa datos ficticios.');
+        const link = document.createElement('a');
+        link.href = data.path;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Abrir demo de Human Blueprint';
+        link.style.color = '#ddbf84';
+        btn.parentElement.appendChild(link);
+      } catch (error) {
+        addMessage('assistant', 'Error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+      return;
+    }
+
+    if (text.toLowerCase() === 'hazlo') {
+      const task = pendingStudioEdit;
+      try {
+        if (!task || task.project !== currentProject) {
+          addMessage('assistant', 'Primero prepara un plan en este proyecto con /plan y describe el cambio.');
+          return;
+        }
+        pendingStudioEdit = null;
+        await handleSelfEdit(task.instruction, false, task.file);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+      return;
+    }
+
+    if (text.startsWith('/plan ')) {
+      pendingStudioEdit = null;
+      const project = currentProject;
+      const instruction = text.slice(6).trim();
+      try {
+        const response = await fetch('/v1/studio/plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+          body: JSON.stringify({ instruction })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo generar el plan.');
+        const evidence = data.evidence.map(item => item.file + ':' + item.line + ' · ' + item.symbol);
+        const target = data.target;
+        if (data.plan && target && currentProject === project) {
+          const scopedInstruction = 'En la función ' + target.symbol + ': ' + instruction;
+          pendingStudioEdit = { project, file: target.file, instruction: scopedInstruction };
+        }
+        addMessage('assistant', data.plan
+          ? data.plan + '\n\n**Referencias del código**\n' + evidence.join('\n') +
+            (pendingStudioEdit ? '\n\n**Primera edición propuesta:** ' + target.file + ' · ' + target.symbol +
+              '\nEscribe **hazlo** para que Studio intente ese cambio en la rama de revisión.' : '')
+          : 'Revisé ' + data.filesScanned + ' archivos y no encontré referencias claras. Describe la pantalla o función que quieres cambiar.');
+      } catch (error) {
+        addMessage('assistant', 'Error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+      return;
+    }
+
+    // ── COMANDO ESPECIAL: /edit ───────────────────────────
+    // Si el mensaje empieza con /edit aplica self-edit
+    // Ejemplo: /edit agrega la regla fundamental en masterPlannerAgent
+    if (text.startsWith('/edit ')) {
+      const instruction = text.slice(6).trim();
+      await handleSelfEdit(instruction, false);
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+
+    // ── COMANDO ESPECIAL: /preview ────────────────────────
+    // Ve qué cambiaría sin aplicarlo
+    // Ejemplo: /preview agrega log en el webhook de twilio
+    if (text.startsWith('/preview ')) {
+      const instruction = text.slice(9).trim();
+      await handleSelfEdit(instruction, true);
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+
+    // ── CHAT NORMAL ───────────────────────────────────────
+    const projectCtx = projectContexts[currentProject] || '';
+    history.push({
+      role:    'user',
+      content: userMessageContent || `[PROYECTO: ${currentProject}]\n${projectCtx}\n\n${text}`
+    });
+
+    document.getElementById('typing-indicator').style.display = 'flex';
+    stopTTS();
+
+    try {
+      const res = await fetch('/api/studio/chat', {
+        method:  'POST',
+        headers: {
+'Content-Type':      'application/json',
+          'x-studio-password': password
+},
+        body: JSON.stringify({ messages: history.slice(-12), sessionId: window.studioSessionId, project: currentProject })
+      });
+
+      const data = await res.json();
+      document.getElementById('typing-indicator').style.display = 'none';
+
+      if (data.reply) {
+        history.push({ role: 'assistant', content: data.reply });
+        addMessage('assistant', data.reply);
+        saveToMemory('conversation', 'TÚ: ' + text + '\nURUS: ' + data.reply, { project: currentProject });
+        const wordCount = data.reply.split(' ').length; const hasCode = data.reply.includes('```'); if (autoSpeak && wordCount < 80 && !hasCode) speakText(data.reply);
+      } else {
+        addMessage('assistant', 'Error: ' + (data.error || 'Sin respuesta'));
+      }
+
+    } catch (err) {
+      document.getElementById('typing-indicator').style.display = 'none';
+      addMessage('assistant', 'Error de conexión con URUS Core.');
+    }
+
+    btn.disabled = false;
+    input.focus();
+  }
+let pendingStudioEdit = null;
+async function handleSelfEdit(instruction, previewOnly, targetFile) {
+    console.log('[handleSelfEdit] instruction:', instruction, '| previewOnly:', previewOnly);
+    const endpoint = previewOnly
+      ? '/v1/studio/self-edit/preview'
+      : '/v1/studio/self-edit';
+
+    const modeLabel = previewOnly ? '👁 PREVIEW' : '⚡ APLICANDO EDICIÓN';
+
+    addMessage('assistant',
+      `${modeLabel}\n\n` +
+      `**Instrucción:** ${instruction}\n\n` +
+      `🔍 Navigator analizando archivo...\n` +
+      `✏️ Editor preparando cambio...\n` +
+      `✅ Validator verificando...`
+    );
+
+    document.getElementById('typing-indicator').style.display = 'flex';
+
+    try {
+      const res = await fetch(endpoint, {
+        method:  'POST',
+        headers: {
+          'Content-Type':      'application/json',
+          'x-studio-password': password
+        },
+        body: JSON.stringify({ instruction, targetFile })
+      });
+
+      document.getElementById('typing-indicator').style.display = 'none';
+
+      let data;
+      try {
+        const rawText = await res.text();
+        data = JSON.parse(rawText);
+      } catch(e) {
+        data = { ok: false, error: 'Error del servidor (no JSON)' };
+      }
+      if (!data) data = { ok: false, error: 'Respuesta vacía' };
+
+      if (data.ok) {
+        const nav = data.navigation || {};
+        const syntaxStatus = data.syntax?.valid === true
+          ? 'Validación de sintaxis completada'
+          : 'Validación de sintaxis sin confirmar';
+        const diff = data.diff || {};
+
+        if (previewOnly) {
+          addMessage('assistant',
+            `✅ **PREVIEW GENERADO** (${data.elapsed_seconds || 0}s)\n\n` +
+            `**Navigator encontró:**\n` +
+            `• Función: \`${nav.function || 'N/A'}\`\n` +
+            `• Líneas: \`${nav.lines || 'N/A'}\`\n` +
+            `• Tipo: \`${nav.operation || nav.edit_type || 'N/A'}\`\n` +
+            `• Confianza: \`${nav.confidence || 'N/A'}/10\`\n\n` +
+            `**Sintaxis:** ${syntaxStatus}\n\n` +
+            `**Original:**\n\`\`\`javascript\n${diff.original || ''}\n\`\`\`\n\n` +
+            `**Modificado:**\n\`\`\`javascript\n${diff.modified || ''}\n\`\`\`\n\n` +
+            `Para aplicar el cambio:\n\`/edit ${instruction}\``
+          );
+        } else if (!data.branch) {
+          addMessage('assistant', 'El servidor recibió la edición, pero no informó la rama de destino. Revisa el commit en GitHub.');
+        } else {
+          addMessage('assistant',
+            `✅ **CAMBIO GUARDADO PARA REVISIÓN** (${data.elapsed_seconds || 0}s)\n\n` +
+            `**Navigator:**\n` +
+            `• Función: \`${nav.function || 'N/A'}\`\n` +
+            `• Líneas: \`${nav.lines || 'N/A'}\`\n` +
+            `• Confianza: \`${nav.confidence || 'N/A'}/10\`\n\n` +
+            `**Sintaxis:** ${syntaxStatus}\n\n` +
+            `**Commit:** \`${data.commit || 'N/A'}\`\n\n` +
+            `**Rama:** ${data.branch}\n` +
+            `Revisa el cambio en GitHub antes de publicarlo.`
+          );
+          showNotif('✅ Cambio en ' + data.branch);
+          saveToMemory('edit', instruction, { commit: data.commit, section: nav.function, branch: data.branch });
+        }
+      } else {
+        addMessage('assistant',
+          `❌ **${(data.stage || 'ERROR').toUpperCase()}**\n\n` +
+          `${data.error || 'Error desconocido'}\n\n` +
+          `${data.suggestion ? '💡 **Sugerencia:** ' + data.suggestion : ''}` +
+          `${data.hint ? '\n\n💡 **Tip:** ' + data.hint : ''}`
+        );
+      }
+
+    } catch (err) {
+      document.getElementById('typing-indicator').style.display = 'none';
+      addMessage('assistant', `❌ Error de conexión: ${err.message}`);
+    }
+  }
+  async function showFactoryPreview() {
+    const preview = await fetch('/v1/studio/factory/blueprint-preview', {
+      headers: { 'x-studio-password': password }, cache: 'no-store'
+    });
+    if (!preview.ok) throw new Error('No hay una vista previa disponible.');
+    const { html } = await preview.json();
+    const dialog = document.createElement('dialog');
+    dialog.style.cssText = 'position:fixed;inset:0;margin:auto;width:min(1100px,96vw);max-height:92vh;padding:16px;color:#eee;background:#181818;border:1px solid #555;border-radius:12px';
+    const close = document.createElement('button');
+    close.textContent = 'Cerrar';
+    close.onclick = () => dialog.close();
+    const frame = document.createElement('iframe');
+    frame.title = 'Vista previa generada de Human Blueprint';
+    frame.setAttribute('sandbox', 'allow-scripts');
+    frame.style.cssText = 'display:block;width:100%;height:72vh;border:0;margin-top:12px';
+    frame.srcdoc = html;
+    dialog.append(close, frame);
+    document.body.append(dialog);
+    dialog.addEventListener('close', () => dialog.remove(), { once: true });
+    dialog.showModal();
+  }
+
+  async function runFactoryPreview() {
+    const button = document.getElementById('factory-preview-btn');
+    const endpoint = '/v1/studio/factory/blueprint-check';
+    const request = async method => {
+      const response = await fetch(endpoint, {
+        method, headers: { 'x-studio-password': password }, cache: 'no-store',
+        signal: AbortSignal.timeout(15000)
+      });
+      if (!response.ok) throw new Error('Factory respondió con HTTP ' + response.status + '.');
+      return response.json();
+    };
+    button.disabled = true;
+    button.textContent = 'Consultando Factory…';
+    try {
+      let result = await request('GET');
+      if (result.status === 'idle' || result.status === 'failed') result = await request('POST');
+      for (let i = 0; result.status === 'running' && i < 96; i++) {
+        button.textContent = 'Generando Human Blueprint…';
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        result = await request('GET');
+      }
+      if (result.status === 'compiled') await showFactoryPreview();
+      else if (result.status === 'failed') addMessage('assistant', 'Factory falló: ' + result.error);
+      else addMessage('assistant', 'Factory sigue generando. Puedes volver a pulsar el botón para consultar el avance.');
+    } catch (error) {
+      addMessage('assistant', 'Error al abrir Human Blueprint: ' + error.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Probar Human Blueprint';
+    }
+  }
+
+  function quickSend(text) {
+    document.getElementById('input').value = text;
+    document.getElementById('input').focus();
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function updateCount() {
+    const len = document.getElementById('input').value.length;
+    document.getElementById('char-count').textContent = len > 0 ? len : '';
+  }
+
+  // ── COPY ──
+  function copyCode(btn) {
+    const code = btn.nextElementSibling.textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      btn.textContent = '✓ COPIADO';
+      setTimeout(() => btn.textContent = 'COPIAR', 2000);
+});
+  }
+
+  function copyText(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Copiado';
+      setTimeout(() => btn.innerHTML = orig, 2000);
+    });
+  }
+
+  // ── TTS ──
+async function speakText(text) {
+    stopTTS();
+    showNotif('🔊 Generando audio...');
+    const clean = text.replace(/```[\s\S]*?```/g, 'bloque de código.').replace(/`[^`]+`/g, '').replace(/#{1,3} /g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/\[|\]/g, '').trim();
+    if (!clean || clean.length < 5) return;
+    try {
+      const res = await fetch('/v1/studio/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+        body: JSON.stringify({ text: clean.slice(0, 4000) })
+      });
+      if (!res.ok) { showNotif('❌ Error generando audio'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => {
+        document.getElementById('tts-bar').classList.remove('visible');
+        URL.revokeObjectURL(url);
+      };
+      document.getElementById('tts-bar').classList.add('visible');
+      document.getElementById('tts-label').textContent = 'URUS hablando...';
+      audio.play();
+    } catch(e) {
+      console.log('TTS failed:', e.message);
+      showNotif('❌ Error generando audio');
+    }
+  }
+
+  function stopTTS() {
+    window.speechSynthesis.cancel();
+    document.getElementById('tts-bar').classList.remove('visible');
+    currentUtterance = null;
+  }
+
+  function toggleAutoSpeak() {
+    autoSpeak = !autoSpeak;
+    const btn = document.getElementById('autospeak-btn');
+    btn.classList.toggle('active', autoSpeak);
+    showNotif(autoSpeak ? 'Auto-voz activada' : 'Auto-voz desactivada');
+  }
+
+  // ── VOICE INPUT ──
+  function toggleMic() {
+    if (isRecording) {
+      stopMic();
+    } else {
+      startMic();
+    }
+  }
+
+  function startMic() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      showNotif('Tu navegador no soporta reconocimiento de voz');
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'es-PR';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      isRecording = true;
+      document.getElementById('mic-btn').classList.add('recording');
+      document.getElementById('mic-btn').innerHTML = `
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><circle cx="12" cy="12" r="8"/></svg>
+        Grabando...`;
+    };
+
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+      document.getElementById('input').value = transcript;
+      updateCount();
+    };
+
+    recognition.onend = () => {
+      stopMic();
+      const text = document.getElementById('input').value.trim();
+      if (text) sendMessage();
+    };
+
+    recognition.onerror = () => stopMic();
+
+    recognition.start();
+  }
+
+  function stopMic() {
+    isRecording = false;
+    if (recognition) { try { recognition.stop(); } catch(e){} }
+    const btn = document.getElementById('mic-btn');
+    btn.classList.remove('recording');
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+<line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+      Hablar`;
+  }
+
+  // ── NOTIF ──
+  function showNotif(msg) {
+    const n = document.getElementById('notif');
+    n.textContent = msg;
+    n.classList.add('show');
+    setTimeout(() => n.classList.remove('show'), 6000);
+  }
+
+  
+  
+  // Preload voices
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+ 
+function handleFileDrop(event) {
+  event.preventDefault();
+  event.currentTarget.style.borderColor = 'var(--border2)';
+  const files = Array.from(event.dataTransfer.files || []);
+  files.forEach(processFile);
+}
+
+function handleFileSelect(event) {
+  const files = Array.from(event.target.files || []);
+  files.forEach(processFile);
+}
+function processFile(file) {
+const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64Data = e.target.result.split(',')[1];
+    if (!window.pendingFiles) window.pendingFiles = [];
+    window.pendingFiles.push({ name: file.name, mimeType: file.type, base64Data: base64Data });
+    renderPendingFiles();
+  };
+  reader.readAsDataURL(file);
+  }
+
+function renderPendingFiles() {
+  let zone = document.getElementById('pending-files-zone');
+  if (!zone) {
+    zone = document.createElement('div');
+    zone.id = 'pending-files-zone';
+    zone.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;padding:4px 0;';
+    const dropZone = document.getElementById('file-drop-zone');
+    if (dropZone && dropZone.parentNode) {
+      dropZone.parentNode.insertBefore(zone, dropZone);
+    }
+  }
+  zone.innerHTML = '';
+  if (!window.pendingFiles || window.pendingFiles.length === 0) return;
+  window.pendingFiles.forEach(function(file, index) {
+    const chip = document.createElement('div');
+    chip.style.cssText = 'display:inline-flex;align-items:center;background:#e0e0e0;border-radius:12px;padding:2px 8px;font-size:12px;gap:4px;max-width:200px;';
+    const label = document.createElement('span');
+    label.textContent = file.name.length > 20 ? file.name.substring(0, 20) + '…' : file.name;
+    label.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    const removeBtn = document.createElement('span');
+    removeBtn.textContent = '×';
+    removeBtn.style.cssText = 'cursor:pointer;font-size:14px;line-height:1;color:#666;flex-shrink:0;';
+    removeBtn.addEventListener('click', function() {
+      window.pendingFiles.splice(index, 1);
+      renderPendingFiles();
+    });
+    chip.appendChild(label);
+    chip.appendChild(removeBtn);
+    zone.appendChild(chip);
+  });
+}
+
+</script>
+</body>
+</html>
+
