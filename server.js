@@ -10535,6 +10535,32 @@ async function buildFactoryFiles(masterSpec, project, project_id, apiBase, uploa
   configFiles['postcss.config.cjs'] = 'module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };';
   configFiles['src/index.css'] = '@tailwind base;\n@tailwind components;\n@tailwind utilities;\n\n* { box-sizing: border-box; }\nbody { font-family: \'Inter\', sans-serif; background: #0A0A0F; color: #F5F5F5; margin: 0; }';
 
+  configFiles['src/components/Toast.jsx'] = `import React, { createContext, useContext, useState } from 'react';
+
+export const ToastContext = createContext(null);
+export const useToast = () => useContext(ToastContext);
+
+export function ToastProvider({ children }) {
+  const [message, setMessage] = useState('');
+  function toast(input) {
+    setMessage(typeof input === 'string' ? input : input?.title || input?.description || '');
+  }
+  return (
+    <ToastContext.Provider value={{ toast }}>
+      {children}
+      {message && <aside role="status">
+        {message} <button type="button" onClick={() => setMessage('')}>Cerrar</button>
+      </aside>}
+    </ToastContext.Provider>
+  );
+}
+
+export default ToastProvider;`;
+  configFiles['src/context/ToastContext.js'] =
+    "export { default, ToastContext, ToastProvider, useToast } from '../components/Toast.jsx';";
+  configFiles['src/components/ToastProvider.js'] =
+    "export { default, ToastContext, ToastProvider, useToast } from './Toast.jsx';";
+
   const pageFiles = await generatePageFiles(masterSpec, project, project_id, apiBase, uploadUrl, factoryKey, palette, tables);
   const allFiles = { ...configFiles, ...pageFiles };
   console.log(`[BuilderAgent] Total archivos: ${Object.keys(allFiles).length}`);
@@ -10650,7 +10676,6 @@ function buildFileList(masterSpec) {
   const list = [];
   list.push({ path: 'src/App.jsx', name: 'App', type: 'router', description: 'Router principal' });
   list.push({ path: 'src/components/Sidebar.jsx', name: 'Sidebar', type: 'component', description: 'Navegación lateral colapsable' });
-  list.push({ path: 'src/components/Toast.jsx', name: 'Toast', type: 'component', description: 'Notificaciones globales' });
   list.push({ path: 'src/components/LoadingSkeleton.jsx', name: 'LoadingSkeleton', type: 'component', description: 'Skeleton loader' });
 
   for (const mod of masterSpec.modules || []) {
@@ -10679,6 +10704,8 @@ Objetivo: ${masterSpec.description || ''}
 Stack: React 18, React Router y Tailwind. Paleta: ${palette}.
 Pantallas autorizadas (usa exactamente estos nombres de archivo y componentes): ${JSON.stringify(pages)}
 API de datos: ${apiBase}/{tabla}. Tablas disponibles: ${JSON.stringify(tables)}.
+Archivos compartidos disponibles: src/components/Sidebar.jsx, src/components/LoadingSkeleton.jsx, src/components/Toast.jsx, src/context/ToastContext.js y src/hooks/useApi.js. Usa imports relativos al archivo en construcción.
+Importa ToastProvider y useToast como exports nombrados desde src/components/Toast.jsx. El contexto y el proveedor viven en ese archivo. useToast devuelve { toast }; llama toast("mensaje") para avisos.
 Usa fetchApi de src/hooks/useApi.js para las tablas. Su parámetro endpoint es relativo a la API de datos.
 Genera únicamente ${fileSpec.path} y devuelve solo JSX. Usa export default para el componente.
 Importa desde los archivos declarados y las dependencias del proyecto. Evita funcionalidades que no se pidieron.`;
@@ -10688,9 +10715,6 @@ Importa desde los archivos declarados y las dependencias del proyecto. Evita fun
   }
   if (fileSpec.name === 'Sidebar') {
     return context + '\nGenera navegación con Link y props collapsed y onToggle. Para cada pantalla usa el nombre exacto del componente en minúsculas como segmento de ruta.';
-  }
-  if (fileSpec.name === 'Toast') {
-    return context + '\nExporta ToastProvider y useToast, además del componente por defecto. Incluye estados de éxito y error.';
   }
   if (fileSpec.name === 'LoadingSkeleton') {
     return context + '\nGenera un indicador de carga accesible y reutilizable.';
