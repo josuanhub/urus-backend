@@ -10466,6 +10466,7 @@ async function checkFactoryBundle(files, build = require('esbuild').build) {
     bundle: true,
     write: false,
     outdir: 'out',
+    format: 'esm',
     logLevel: 'silent',
     metafile: true,
     plugins: [{
@@ -10493,8 +10494,32 @@ async function checkFactoryBundle(files, build = require('esbuild').build) {
   });
 }
 
+function factoryPreviewDocument(bundle) {
+  const script = bundle.outputFiles.find(file => file.path.endsWith('.js'))?.text;
+  if (!script) throw new Error('No se generó el JavaScript de la vista previa.');
+  const css = bundle.outputFiles.find(file => file.path.endsWith('.css'))?.text || '';
+  const imports = {
+    react: 'https://esm.sh/react@18.2.0',
+    'react/jsx-runtime': 'https://esm.sh/react@18.2.0/jsx-runtime',
+    'react-dom/client': 'https://esm.sh/react-dom@18.2.0/client?external=react',
+    'react-router-dom': 'https://esm.sh/react-router-dom@6.22.3?external=react,react-dom',
+    'react-dom': 'https://esm.sh/react-dom@18.2.0?external=react',
+    'lucide-react': 'https://esm.sh/lucide-react@0.383.0?external=react'
+  };
+  const policy = "default-src 'none'; script-src 'unsafe-inline' https://esm.sh; style-src 'unsafe-inline'; connect-src 'none'; img-src data:; base-uri 'none'; form-action 'none'";
+  const inlineScript = script.replace(/<\/script/gi, '<\\/script');
+  const inlineStyle = css.replace(/<\/style/gi, '<\\/style');
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="${policy}">
+<style>${inlineStyle}</style><script type="importmap">${JSON.stringify({ imports })}</script>
+</head><body><div id="root">Cargando Human Blueprint…</div>
+<script type="module">${inlineScript}</script></body></html>`;
+}
+
 if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
   let check;
+  let preview;
   app.post('/v1/studio/factory/blueprint-check', studioAuth, (req, res) => {
     if (check?.status === 'running') return res.status(202).json(check);
     const run = check = { status: 'running' };
@@ -10509,17 +10534,24 @@ if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
         };
         const project = { company: 'URUS', industry: 'Desarrollo personal' };
         const files = await buildFactoryFiles(spec, project, 'blueprint-check', '/demo-api', '', '');
+        files['src/main.jsx'] = files['src/main.jsx'].replaceAll('BrowserRouter', 'MemoryRouter');
         const bundle = await checkFactoryBundle(files);
         const inputs = Object.keys(bundle.metafile.inputs);
         const missing = buildFileList(spec).filter(file => file.type === 'page' &&
           !inputs.includes('factory:' + file.path));
         if (missing.length) throw new Error('El router no usa todas las pantallas de la especificación.');
+        preview = factoryPreviewDocument(bundle);
         Object.assign(run, { status: 'compiled', files: Object.keys(files) });
       } catch (error) {
         const issue = error.errors?.[0]?.text || error.message;
         Object.assign(run, { status: 'failed', error: String(issue || 'Error de compilación').slice(0, 240) });
       }
     });
+  });
+  app.get('/v1/studio/factory/blueprint-preview', studioAuth, (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (check?.status !== 'compiled' || !preview) return res.sendStatus(404);
+    res.json({ html: preview });
   });
   app.get('/v1/studio/factory/blueprint-check', studioAuth, (_req, res) => {
     res.set('Cache-Control', 'no-store');

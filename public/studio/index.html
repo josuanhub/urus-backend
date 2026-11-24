@@ -1252,6 +1252,42 @@ if (text.startsWith('/reindex')) {
           failed: 'La prueba de Factory falló: ' + result.error
         };
         addMessage('assistant', messages[result.status]);
+        if (result.status === 'compiled') {
+          const open = document.createElement('button');
+          open.type = 'button';
+          open.textContent = 'Abrir vista previa';
+          open.onclick = async () => {
+            open.disabled = true;
+            try {
+              const preview = await fetch('/v1/studio/factory/blueprint-preview', {
+                headers: { 'x-studio-password': password }, cache: 'no-store'
+              });
+              if (!preview.ok) throw new Error('No hay una vista previa disponible.');
+              const { html } = await preview.json();
+              const dialog = document.createElement('dialog');
+              dialog.style.cssText = 'width:min(1100px,96vw);color:#eee;background:#181818;border:1px solid #555';
+              const close = document.createElement('button');
+              close.textContent = 'Cerrar';
+              close.onclick = () => dialog.close();
+              const frame = document.createElement('iframe');
+              frame.title = 'Vista previa generada de Human Blueprint';
+              frame.setAttribute('sandbox', 'allow-scripts');
+              frame.style.cssText = 'display:block;width:100%;height:72vh;border:0;margin-top:12px';
+              frame.srcdoc = html;
+              dialog.append(close, frame);
+              document.body.append(dialog);
+              dialog.addEventListener('close', () => dialog.remove(), { once: true });
+              dialog.showModal();
+            } catch (error) {
+              addMessage('assistant', 'Error: ' + error.message);
+            } finally {
+              open.disabled = false;
+            }
+          };
+          btn.parentElement.querySelector('[data-factory-preview]')?.remove();
+          open.dataset.factoryPreview = '';
+          btn.parentElement.append(open);
+        }
       } catch (error) {
         addMessage('assistant', 'Error: ' + error.message);
       } finally {
