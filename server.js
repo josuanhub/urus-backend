@@ -374,6 +374,7 @@ app.use("/v1/decision", decisionRoutes);
 app.use("/v1/jarvis", require("./routes/jarvis.routes"));
 app.use("/v1/urus", require("./urus-chat")(pool));
 app.use("/v1/urus", require("./urus-agents")(pool));
+app.use("/v1/os-brain", require("./urus-core/routes")({ pool, openai }));
 app.use("/v1/tenant", require("./routes/tenant.routes"));
 const trustRoutes = require("./routes/trust.routes");
 app.use("/v1/agent", trustRoutes);
@@ -3308,6 +3309,38 @@ console.log("✅ Dealer OS tables ready");
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_file_index_filename ON file_index(filename)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_file_index_name ON file_index(name)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_studio_memory_type ON studio_memory(type, created_at DESC)`);
+ 
+    // ── URUS INTELLIGENCE OS v2 ──────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS os_projects (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      description TEXT NOT NULL DEFAULT '',
+      instructions TEXT NOT NULL DEFAULT '',
+      default_agent TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS os_runs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      project_id UUID REFERENCES os_projects(id) ON DELETE SET NULL,
+      intent TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      plan JSONB,
+      events JSONB NOT NULL DEFAULT '[]'::jsonb,
+      result JSONB,
+      error TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_os_runs_project ON os_runs(project_id, created_at DESC)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_os_runs_status ON os_runs(status)`);
+  // ─────────────────────────────────────────────────────────
   console.log("DB schema ensured");
 }
 
