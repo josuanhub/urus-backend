@@ -1,5 +1,7 @@
 /**
- * URUS AGENTS — 5 agentes en paralelo (sin OpenAI, con Tavily gratis)
+ * URUS AGENTS — 8 agentes en paralelo (sin OpenAI, con Tavily gratis)
+ * CORREGIDO: se eliminó el bloque RISK_ASSESSOR duplicado fuera del objeto,
+ * y la síntesis ahora muestra los 8 analistas (antes descartaba 3).
  */
 
 const express = require("express");
@@ -59,14 +61,6 @@ Sé detallado con fechas. Máximo 250 palabras.`,
 3. Proponer optimizaciones
 Sé preciso con números. Máximo 250 palabras.`,
 };
-
-  RISK_ASSESSOR: `Eres RISK_ASSESSOR. Tu rol es:
-1. Identificar riesgos reales y concretos
-2. Evaluar probabilidad e impacto
-3. Proponer mitigaciones específicas
-Sé meticuloso. Máximo 250 palabras.`,
-
-
 
 module.exports = function urusAgentsRouter(pool) {
   const router = express.Router();
@@ -155,7 +149,8 @@ module.exports = function urusAgentsRouter(pool) {
   }
 
   async function masterOrchestrate(query, context = "") {
-const agents = ["STRATEGIST", "RESEARCHER", "VERIFIER", "ANALYZER", "SIMULATOR", "RISK_ASSESSOR", "TIMELINE_PLANNER", "BUDGET_OPTIMIZER"];    const results = await Promise.all(agents.map((agent) => runAgent(agent, query, context)));
+    const agents = Object.keys(AGENT_PROMPTS);
+    const results = await Promise.all(agents.map((agent) => runAgent(agent, query, context)));
 
     const synthesis = {
       query: query,
@@ -186,22 +181,32 @@ const agents = ["STRATEGIST", "RESEARCHER", "VERIFIER", "ANALYZER", "SIMULATOR",
       const contextWithWeb = context + (web.ok ? `\n\nINFORMACIÓN DE INTERNET:\n${web.texto}` : "");
       const synthesis = await masterOrchestrate(query, contextWithWeb);
 
-      const finalSynthesis = `ANÁLISIS DE 5 AGENTES:
+      const out = synthesis.agents_output;
+      const finalSynthesis = `ANÁLISIS DE 8 AGENTES:
 
 ESTRATEGIA (STRATEGIST):
-${synthesis.agents_output.STRATEGIST || "N/A"}
+${out.STRATEGIST || "N/A"}
 
 INVESTIGACIÓN (RESEARCHER):
-${synthesis.agents_output.RESEARCHER || "N/A"}
+${out.RESEARCHER || "N/A"}
 
 VERIFICACIÓN (VERIFIER):
-${synthesis.agents_output.VERIFIER || "N/A"}
+${out.VERIFIER || "N/A"}
 
 ANÁLISIS DE PATRONES (ANALYZER):
-${synthesis.agents_output.ANALYZER || "N/A"}
+${out.ANALYZER || "N/A"}
 
 SIMULACIÓN DE ESCENARIOS (SIMULATOR):
-${synthesis.agents_output.SIMULATOR || "N/A"}
+${out.SIMULATOR || "N/A"}
+
+RIESGOS (RISK_ASSESSOR):
+${out.RISK_ASSESSOR || "N/A"}
+
+CRONOGRAMA (TIMELINE_PLANNER):
+${out.TIMELINE_PLANNER || "N/A"}
+
+PRESUPUESTO (BUDGET_OPTIMIZER):
+${out.BUDGET_OPTIMIZER || "N/A"}
 
 ---
 Confianza: ${synthesis.confidence}%`;
@@ -243,6 +248,6 @@ Confianza: ${synthesis.confidence}%`;
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
-  
+
   return router;
 };
