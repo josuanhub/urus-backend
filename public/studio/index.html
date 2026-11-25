@@ -799,6 +799,7 @@
           <div class="chip" onclick="quickSend('Dame el código del endpoint de prospects para Iván')">Código prospects</div>
           <div class="chip" onclick="quickSend('¿Qué falta para GovTech con Jeremy?')">GovTech pipeline</div>
           <div class="chip" onclick="quickSend('¿Cómo está JARVIS configurado?')">Estado JARVIS</div>
+          <div class="chip" onclick="quickSend('/plan nuevo ')">Planificar aplicación nueva</div>
           <div class="chip" onclick="quickSend('/edit agrega la regla fundamental en masterPlannerAgent antes de Devuelve ÚNICAMENTE este JSON')">✏️ Editar masterPlanner</div>
           <div class="chip" onclick="quickSend('/preview cambia el modelo a gpt-4o')">👁 Preview cambio</div>
         </div>
@@ -947,17 +948,21 @@ async function loadStudioMemory() {
     } catch(e) {}
   }
 
-function login() {
-    console.log('test cache');
+async function login() {
     const pwd = document.getElementById('pwd-input').value;
-    if (pwd === 'urus2026') {
+    try {
+      const response = await fetch('/v1/studio/session', {
+        headers: { 'x-studio-password': pwd }, cache: 'no-store'
+      });
+      if (!response.ok) throw Error('No se pudo iniciar la sesión.');
+
       if (!window.studioSessionId) { window.studioSessionId = crypto.randomUUID(); }
       password = pwd;
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
       document.getElementById('input').focus();
       loadStudioMemory();
-    } else {
+    } catch {
       const inp = document.getElementById('pwd-input');
       inp.classList.add('error');
       inp.value = '';
@@ -1073,14 +1078,17 @@ function login() {
 
     if (role === 'assistant') {
       actions.innerHTML = `
-        <button class="msg-action-btn" onclick="copyText(this, \`${content.replace(/`/g,'\\`')}\`)">
+        <button type="button" class="msg-action-btn">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           Copiar
         </button>
-        <button class="msg-action-btn" onclick="speakText(\`${content.replace(/`/g,'\\`')}\`)">
+        <button type="button" class="msg-action-btn">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
           Escuchar
         </button>`;
+      const [copy, speak] = actions.querySelectorAll('button');
+      copy.onclick = () => copyText(copy, content);
+      speak.onclick = () => speakText(content);
     }
 
     row.appendChild(meta);
@@ -1295,6 +1303,18 @@ if (text.startsWith('/reindex')) {
       return;
     }
 
+    if (['/construir', '/construccion'].includes(text.toLowerCase())) {
+      try {
+        await handleStudioBuild(text.toLowerCase() === '/construir');
+      } catch (error) {
+        addMessage('assistant', 'Error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+      return;
+    }
+
     if (text.toLowerCase() === 'hazlo') {
       const task = pendingStudioEdit;
       try {
@@ -1314,15 +1334,23 @@ if (text.startsWith('/reindex')) {
     if (text.startsWith('/plan ')) {
       pendingStudioEdit = null;
       const project = currentProject;
-      const instruction = text.slice(6).trim();
+      const request = text.slice(6).trim();
+      const newProduct = /^nuevo(?:\s|$)/i.test(request);
+      const instruction = newProduct ? request.slice(5).trim() : request;
+      if (newProduct) pendingStudioBuild = null;
       try {
         const response = await fetch('/v1/studio/plan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
-          body: JSON.stringify({ instruction })
+          body: JSON.stringify({ instruction, mode: newProduct ? 'new' : 'edit' })
         });
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo generar el plan.');
+        if (newProduct) {
+          pendingStudioBuild = { id: crypto.randomUUID(), project, instruction, plan: data.plan };
+          addMessage('assistant', data.plan + '\n\nEscribe **/construir** para aprobar y generar una vista previa en Factory.');
+          return;
+        }
         const evidence = data.evidence.map(item => item.file + ':' + item.line + ' · ' + item.symbol);
         const target = data.target;
         if (data.plan && target && currentProject === project) {
@@ -1406,6 +1434,51 @@ if (text.startsWith('/reindex')) {
     input.focus();
   }
 let pendingStudioEdit = null;
+let pendingStudioBuild = null;
+const studioBuildEndpoint = '/v1/studio/factory/builds';
+
+async function handleStudioBuild(approve) {
+  const key = 'studio-build:' + currentProject;
+  let id = sessionStorage.getItem(key);
+  if (approve) {
+    const draft = pendingStudioBuild;
+    if (!draft || draft.project !== currentProject) {
+      addMessage('assistant', 'Primero prepara un plan en este proyecto con **/plan nuevo**.');
+      return;
+    }
+    const response = await fetch(studioBuildEndpoint, {
+      method: 'POST', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', 'x-studio-password': password },
+      body: JSON.stringify({ id: draft.id, instruction: draft.instruction, plan: draft.plan })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw Error(result.error || 'Factory no pudo aceptar el plan.');
+    id = result.id;
+    sessionStorage.setItem(key, id);
+    pendingStudioBuild = null;
+  }
+  if (!id) {
+    addMessage('assistant', 'Este proyecto todavía no tiene una construcción.');
+    return;
+  }
+  const response = await fetch(studioBuildEndpoint + '/' + encodeURIComponent(id), {
+    headers: { 'x-studio-password': password }, cache: 'no-store'
+  });
+  const { status, error } = await response.json().catch(() => ({}));
+  if (!response.ok) throw Error(error || 'Factory no pudo consultar el avance.');
+  if (status === 'ready') {
+    await showFactoryPreview(id);
+    return;
+  }
+  const messages = {
+    planning: 'Factory está preparando las pantallas. Consulta el avance con **/construccion**.',
+    building: 'Factory está generando y compilando el código. Consulta el avance con **/construccion**.',
+    plan_failed: 'Factory no pudo preparar las pantallas.',
+    build_failed: 'Factory no pudo generar una vista previa que compile.',
+    timed_out: 'Factory dejó de reportar avances. Prepara un plan nuevo para reintentar.'
+  };
+  addMessage('assistant', messages[status] || 'Factory devolvió un estado desconocido.');
+}
 async function handleSelfEdit(instruction, previewOnly, targetFile) {
     console.log('[handleSelfEdit] instruction:', instruction, '| previewOnly:', previewOnly);
     const endpoint = previewOnly
@@ -1496,8 +1569,11 @@ async function handleSelfEdit(instruction, previewOnly, targetFile) {
       addMessage('assistant', `❌ Error de conexión: ${err.message}`);
     }
   }
-  async function showFactoryPreview() {
-    const preview = await fetch('/v1/studio/factory/blueprint-preview', {
+  async function showFactoryPreview(buildId) {
+    const endpoint = buildId
+      ? studioBuildEndpoint + '/' + encodeURIComponent(buildId) + '/preview'
+      : '/v1/studio/factory/blueprint-preview';
+    const preview = await fetch(endpoint, {
       headers: { 'x-studio-password': password }, cache: 'no-store'
     });
     if (!preview.ok) throw new Error('No hay una vista previa disponible.');
@@ -1508,7 +1584,7 @@ async function handleSelfEdit(instruction, previewOnly, targetFile) {
     close.textContent = 'Cerrar';
     close.onclick = () => dialog.close();
     const frame = document.createElement('iframe');
-    frame.title = 'Vista previa generada de Human Blueprint';
+    frame.title = buildId ? 'Vista previa de Factory' : 'Vista previa generada de Human Blueprint';
     frame.setAttribute('sandbox', 'allow-scripts');
     frame.style.cssText = 'display:block;width:100%;height:72vh;border:0;margin-top:12px';
     const handleDecision = async event => {
@@ -1537,7 +1613,7 @@ async function handleSelfEdit(instruction, previewOnly, targetFile) {
       }
       frame.contentWindow?.postMessage(reply, '*');
     };
-    window.addEventListener('message', handleDecision);
+    if (!buildId) window.addEventListener('message', handleDecision);
     frame.srcdoc = html;
     dialog.append(close, frame);
     document.body.append(dialog);

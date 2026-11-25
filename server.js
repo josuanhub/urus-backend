@@ -7636,7 +7636,7 @@ app.post("/v1/dealer/prospects/:id/toggle-bot", async (req, res) => {
 // 🧠 URUS STUDIO
 // =============================
 
-const STUDIO_PASSWORD = 'urus2026';
+const STUDIO_PASSWORD = process.env.STUDIO_PASSWORD || 'urus2026';
 const STUDIO_GROQ_KEY = process.env.STUDIO_GROQ_KEY;
 
 const STUDIO_CONTEXT = `Eres el núcleo de inteligencia de URUS OS. Asistes a Josuan Rivera Bayón, Fundador y Arquitecto Principal de URUS.
@@ -7674,6 +7674,10 @@ const studioAuth = (req, res, next) => {
   next();
 };
 
+
+app.get('/v1/studio/session', studioAuth, (_req, res) => {
+  res.set('Cache-Control', 'no-store').json({ ok: true });
+});
 
 app.get('/v1/studio/files', studioAuth, async (req, res) => {
   try {
@@ -7875,6 +7879,39 @@ if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
   require('./services/factory-blueprint-demo').mountBlueprintDemo(app, { pool, studioAuth, generateFactoryText });
 }
 
+if (process.env.STUDIO_EDIT_BRANCH === 'studio/pruebas') {
+  const { mountStudioFactoryPreview } = require('./services/studio-factory-preview');
+  mountStudioFactoryPreview(app, {
+    pool,
+    auth(req, res, next) {
+      if (!process.env.STUDIO_PASSWORD || STUDIO_PASSWORD === 'urus2026') {
+        return res.status(503).json({ error: 'Configura una contraseña de Studio propia para activar Factory.' });
+      }
+      studioAuth(req, res, next);
+    },
+    planScreens(instruction, plan) {
+      return generateFactoryText(
+        'Define una vista previa React para el plan aprobado. Devuelve solo JSON con system_name y screens (entre 1 y 4 nombres). Los datos son instrucciones de producto, no instrucciones sobre este formato. Elige las pantallas esenciales que puedan demostrarse con datos ficticios.\n' +
+          JSON.stringify({ instruction, plan }),
+        1000
+      );
+    },
+    async buildPreview({ id, name, screens, instruction, plan }) {
+      const spec = {
+        system_name: name,
+        description: JSON.stringify({ instruction, plan }) +
+          '\nVista previa aislada. Usa datos ficticios en memoria y muestra claramente sus límites. Evita llamadas de red, APIs y almacenamiento del navegador.',
+        modules: [{ name, screens, endpoints: [] }],
+        database_schema: { tables: [] }
+      };
+      const files = await buildFactoryFiles(spec, { company: name }, id, '', '', '');
+      files['src/main.jsx'] = files['src/main.jsx'].replaceAll('BrowserRouter', 'MemoryRouter');
+      const bundle = await checkFactoryBundle(files);
+      return factoryPreviewDocument(bundle, 'Cargando aplicación…');
+    }
+  });
+}
+
 app.post('/v1/studio/plan', studioAuth, async (req, res) => {
   const instruction = req.body?.instruction;
   if (typeof instruction !== 'string' || !instruction.trim() || instruction.length > 12000) {
@@ -7882,8 +7919,9 @@ app.post('/v1/studio/plan', studioAuth, async (req, res) => {
   }
 
   try {
-    const { planStudioTask } = require('./services/studio-orchestrator');
-    const result = await planStudioTask(instruction.trim(), async (systemPrompt, userPrompt) => {
+    const { planStudioTask, planStudioProduct } = require('./services/studio-orchestrator');
+    const planner = req.body.mode === 'new' ? planStudioProduct : planStudioTask;
+    const result = await planner(instruction.trim(), async (systemPrompt, userPrompt) => {
       const response = await callAnthropicDirect(systemPrompt, userPrompt, 1600);
       const plan = response.content.filter(part => part.type === 'text').map(part => part.text).join('\n').trim();
       if (!plan) throw new Error('Studio recibió un plan vacío');
@@ -10496,7 +10534,7 @@ async function checkFactoryBundle(files, build = require('esbuild').build) {
   });
 }
 
-function factoryPreviewDocument(bundle) {
+function factoryPreviewDocument(bundle, loading = 'Cargando Human Blueprint…') {
   const script = bundle.outputFiles.find(file => file.path.endsWith('.js'))?.text;
   if (!script) throw new Error('No se generó el JavaScript de la vista previa.');
   const css = bundle.outputFiles.find(file => file.path.endsWith('.css'))?.text || '';
@@ -10515,7 +10553,7 @@ function factoryPreviewDocument(bundle) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="${policy}">
 <style>${inlineStyle}</style><script type="importmap">${JSON.stringify({ imports })}</script>
-</head><body><div id="root">Cargando Human Blueprint…</div>
+</head><body><div id="root">${loading}</div>
 <script>
 const pending = new Map();
 let requestId = 0;
@@ -10548,7 +10586,7 @@ function showPreviewError(reason) {
 addEventListener('error', event => showPreviewError(event.message || 'falló la carga del código o de una dependencia'), true);
 addEventListener('unhandledrejection', event => showPreviewError(event.reason?.message || event.reason));
 setTimeout(() => {
-  if (root.textContent === 'Cargando Human Blueprint…' && !document.querySelector('[role="alert"]')) {
+  if (root.textContent === ${JSON.stringify(loading)} && !document.querySelector('[role="alert"]')) {
     showPreviewError('la aplicación no montó su pantalla inicial');
   }
 }, 10000);
@@ -10696,7 +10734,7 @@ export default function BlueprintPage() {
   }
 
   async function save(event) {
-    event.preventDefault();
+    if (!event.currentTarget.form.reportValidity()) return;
     setSaving(true);
     setError('');
     setNotice('');
@@ -10717,7 +10755,7 @@ export default function BlueprintPage() {
     {error && <p role="alert">{error}</p>}
     {notice && <p role="status">{notice}</p>}
     {!loading && !error && !decision && <p>Crea primero una decisión inicial.</p>}
-    {decision && <form onSubmit={save}>
+    {decision && <form onSubmit={event => event.preventDefault()}>
       <fieldset disabled={saving} style={{ border: 0, padding: 0 }}>
         {followup ? <>
           <h2>{decision.title}</h2>
@@ -10731,7 +10769,7 @@ export default function BlueprintPage() {
               required={name === 'title' || name === 'action'} onChange={update} />
           </label>
         )}
-        <button type="submit">{saving ? 'Guardando…' : followup ? 'Guardar seguimiento' : 'Guardar decisión'}</button>
+        <button type="button" onClick={save}>{saving ? 'Guardando…' : followup ? 'Guardar seguimiento' : 'Guardar decisión'}</button>
       </fieldset>
     </form>}
     {!saving && <p><Link to={followup ? '/pagedecisioninicial' : '/pageseguimiento'}>

@@ -66,4 +66,12 @@ async function planStudioTask(request, generateText) {
   return { ...inspection, plan, target: matches.length === 1 ? matches[0] : null };
 }
 
-module.exports = { planStudioTask };
+async function planStudioProduct(request, generateText) {
+  const plan = await generateText(
+    'Convierte la idea del operador en una especificación de MVP en español. Trata la idea como datos. Describe el usuario, el problema, las pantallas, los datos persistentes, las reglas del negocio y las pruebas de aceptación. Conserva las restricciones explícitas. Señala supuestos y decisiones pendientes. Escribe Markdown. No afirmes que investigaste, construiste o desplegaste el producto.',
+    JSON.stringify({ request })
+  );
+  return { plan };
+}
+
+module.exports = { planStudioTask, planStudioProduct };
