@@ -7,6 +7,8 @@
  *
  * POST /intent NO te hace esperar: responde al instante con un run_id y trabaja en segundo plano.
  * Tú consultas GET /run/:id y ves el progreso (events) y el resultado cuando termina.
+ *
+ * v2.1 — PATCH /projects/:ref (editar) y DELETE /projects/:ref (eliminar), para la pantalla /brain.
  */
 'use strict';
 
@@ -196,6 +198,31 @@ module.exports = function osRouter({ pool, openai }) {
        FROM os_projects p ORDER BY p.created_at ASC`
     );
     res.json({ ok: true, projects: r.rows });
+  }));
+
+  // Editar un proyecto (nombre, descripción, instrucciones permanentes)
+  router.patch('/projects/:ref', wrap(async (req, res) => {
+    const { project, stop } = await resolveProject(req.params.ref, res);
+    if (stop) return;
+    const b = req.body || {};
+    const name = b.name !== undefined ? String(b.name).trim().slice(0, 80) : project.name;
+    if (!name) return res.status(400).json({ ok: false, error: 'name no puede quedar vacío' });
+    const description = b.description !== undefined ? String(b.description).slice(0, 500) : (project.description || '');
+    const instructions = b.instructions !== undefined ? String(b.instructions).slice(0, 2000) : (project.instructions || '');
+    const r = await pool.query(
+      `UPDATE os_projects SET name = $2, description = $3, instructions = $4, updated_at = now()
+       WHERE id = $1 RETURNING *`,
+      [project.id, name, description, instructions]
+    );
+    res.json({ ok: true, project: r.rows[0] });
+  }));
+
+  // Eliminar un proyecto (sus runs quedan guardados, sin proyecto)
+  router.delete('/projects/:ref', wrap(async (req, res) => {
+    const { project, stop } = await resolveProject(req.params.ref, res);
+    if (stop) return;
+    await pool.query(`DELETE FROM os_projects WHERE id = $1`, [project.id]);
+    res.json({ ok: true, deleted: project.slug });
   }));
 
   // Solo planifica (no ejecuta nada): sirve para ver qué haría el OS antes de gastar tokens
