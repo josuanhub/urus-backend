@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URUS Brain</title>
+<style>
+:root{--bg:#0d0c0a;--panel:#16140f;--line:#2c2718;--gold:#c9a24a;--gold2:#e6c878;--text:#ece6d6;--mute:#8d8672;--bad:#d9705f;--ok:#7fae7a}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2{font-family:Georgia,"Times New Roman",serif;font-weight:400;margin:0}
+button,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.hide{display:none!important}
+#login{min-height:100%;display:grid;place-items:center;padding:24px}
+#login form{width:100%;max-width:360px}
+#login h1{font-size:2.4rem;color:var(--gold2);margin-bottom:4px}
+#login p{color:var(--mute);margin:0 0 20px}
+input[type=password]{width:100%;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:12px}
+.btn{background:var(--gold);color:#17130a;border:0;border-radius:6px;padding:11px 18px;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:wait}
+.btn.ghost{background:transparent;color:var(--gold2);border:1px solid var(--line)}
+#err{color:var(--bad);min-height:1.4em;margin:10px 0 0;font-size:.9rem}
+#app{display:grid;grid-template-columns:230px 1fr;height:100%}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:22px 14px;overflow:auto}
+aside h1{font-size:1.5rem;color:var(--gold2);padding:0 8px 18px}
+.proj{display:block;width:100%;text-align:left;background:none;border:0;border-left:2px solid transparent;color:var(--mute);padding:9px 10px;cursor:pointer;border-radius:0 6px 6px 0}
+.proj:hover{color:var(--text)}
+.proj.on{color:var(--gold2);border-left-color:var(--gold);background:#1d1a12}
+.out{margin:18px 8px 0;font-size:.85rem}
+main{overflow:auto;padding:28px clamp(16px,4vw,48px) 60px;max-width:900px;width:100%}
+main h2{font-size:1.7rem;margin-bottom:4px}
+.sub{color:var(--mute);margin:0 0 18px}
+textarea{width:100%;min-height:110px;resize:vertical;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.row{display:flex;gap:10px;align-items:center;margin:12px 0 22px;flex-wrap:wrap}
+.state{color:var(--mute);font-size:.9rem}
+#log{list-style:none;margin:0 0 20px;padding:0;border-left:1px solid var(--line)}
+#log li{padding:3px 0 3px 14px;color:var(--mute);font-size:.9rem}
+#log li.done{color:var(--ok)}
+#result{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 24px 24px}
+#result h3,#result h4,#result h5{font-family:Georgia,serif;font-weight:400;color:var(--gold2);margin:1.4em 0 .3em}
+#result p{margin:.6em 0;max-width:72ch}
+#result ul,#result ol{max-width:72ch;padding-left:1.3em}
+#result code{background:#221e12;padding:1px 5px;border-radius:4px;font-size:.9em}
+#result pre{background:#110f0a;border:1px solid var(--line);border-radius:6px;padding:12px;overflow-x:auto;font-size:.85rem}
+#result hr{border:0;border-top:1px solid var(--line);margin:1.4em 0}
+.tools{display:flex;gap:10px;margin-top:14px}
+@media(max-width:720px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:12px;display:flex;gap:6px;overflow-x:auto;align-items:center}aside h1{padding:0 8px 0 0;font-size:1.2rem}.proj{width:auto;white-space:nowrap;border-left:0;border-bottom:2px solid transparent;border-radius:0}.proj.on{border-bottom-color:var(--gold)}.out{margin:0 0 0 auto}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<section id="login">
+  <form id="loginForm">
+    <h1>URUS Brain</h1>
+    <p>Escribe tu contraseña para entrar.</p>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="Contraseña" required>
+    <button class="btn" type="submit">Entrar</button>
+    <p id="err" role="alert"></p>
+  </form>
+</section>
+
+<div id="app" class="hide">
+  <aside>
+    <h1>Brain</h1>
+    <nav id="projects" aria-label="Proyectos"></nav>
+    <button class="btn ghost out" id="logout" type="button">Salir</button>
+  </aside>
+  <main>
+    <h2 id="title">Proyecto</h2>
+    <p class="sub">Escribe qué quieres que haga. El Brain planifica, investiga, escribe y guarda el resultado en este proyecto.</p>
+    <textarea id="intent" placeholder="Ejemplo: escribe el mensaje de venta de mi taller de oratoria"></textarea>
+    <div class="row">
+      <button class="btn" id="run" type="button">Ejecutar</button>
+      <span class="state" id="state"></span>
+    </div>
+    <ul id="log" class="hide"></ul>
+    <article id="result" class="hide"></article>
+    <div class="tools hide" id="tools">
+      <button class="btn ghost" id="copy" type="button">Copiar resultado</button>
+    </div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
