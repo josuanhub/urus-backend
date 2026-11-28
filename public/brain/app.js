@@ -9,14 +9,14 @@
   ];
   var $ = function (id) { return document.getElementById(id); };
   var pw = sessionStorage.getItem('brain_pw') || '';
-  var current = null, polling = null, lastText = '';
+  var tab = 'run', current = null, polling = null, lastText = '';
 
   function api(path, opts) {
     opts = opts || {};
     opts.headers = Object.assign({ 'x-studio-password': pw, 'Content-Type': 'application/json' }, opts.headers || {});
     return fetch(API + path, opts).then(function (r) {
       if (r.status === 401 || r.status === 503) { var e = new Error('auth'); e.auth = true; throw e; }
-      return r.json();
+      return r.text().then(function (t) { try { return JSON.parse(t); } catch (e) { return { ok: false, error: 'el servidor no reconoce esta acción todavía (HTTP ' + r.status + ')' }; } });
     });
   }
 
@@ -50,7 +50,7 @@
     api('/projects').then(function (d) {
       var arr = d && (d.projects || d.items);
       if (Array.isArray(arr) && arr.length) {
-        list = arr.filter(function (p) { return p && p.slug; }).map(function (p) { return { slug: p.slug, name: p.name || p.slug }; });
+        list = arr.filter(function (p) { return p && p.slug; }).map(function (p) { return { slug: p.slug, name: p.name || p.slug, description: p.description || '', instructions: p.instructions || '' }; });
       }
     }).catch(function () {}).then(function () {
       var nav = $('projects'); nav.textContent = '';
@@ -67,14 +67,16 @@
     current = p;
     $('title').textContent = p.name;
     Array.prototype.forEach.call($('projects').children, function (b) { b.classList.toggle('on', b.dataset.slug === p.slug); });
+    stop(); $('log').classList.add('hide'); $('result').classList.add('hide'); $('tools').classList.add('hide'); setState('');
+    if (tab === 'hist') loadHist(); if (tab === 'mem') loadMem(); if (tab === 'set') fillSet();
   }
 
   function stop() { if (polling) { clearInterval(polling); polling = null; } }
-  function setState(t) { $('state').textContent = t || ''; }
+  function setState(t, ms) { $('state').textContent = t || ''; if (ms) setTimeout(function () { if ($('state').textContent === t) $('state').textContent = ''; }, ms); }
 
   function labelFor(ev) {
     switch (ev.type) {
-      case 'plan_ready': return 'Plan listo: ' + ev.steps + ' pasos';
+      case 'plan_ready': return 'Plan listo: ' + ev.steps + (ev.steps === 1 ? ' paso' : ' pasos');
       case 'step_start': return 'Empieza: ' + (ev.title || ev.step);
       case 'tool_call': return 'Usa herramienta: ' + ev.tool;
       case 'step_done': return 'Terminó: ' + ev.step;
@@ -82,13 +84,13 @@
       case 'qa_start': return 'Revisando calidad';
       case 'qa_done': return ev.passed ? 'Calidad aprobada' : 'Calidad: se corrigió algo';
       case 'done': return 'Listo';
+      case 'failed': return 'Falló: ' + (ev.error || '');
       default: return null;
     }
   }
 
-  $('run').addEventListener('click', function () {
-    var intent = $('intent').value.trim();
-    if (!intent) { setState('Escribe primero qué quieres hacer.'); return; }
+  function startRun(intent) {
+    $('planBox').classList.add('hide');
     stop();
     $('run').disabled = true;
     $('result').classList.add('hide'); $('tools').classList.add('hide');
@@ -100,6 +102,55 @@
         setState('Trabajando… suele tardar 1 a 3 minutos.');
         poll(d.run_id);
       }).catch(fail);
+  }
+
+  $('run').addEventListener('click', function () {
+    var intent = $('intent').value.trim();
+    if (!intent) { setState('Escribe primero qué quieres hacer.'); return; }
+    if (!$('review').checked) { startRun(intent); return; }
+    $('planBox').classList.add('hide'); $('run').disabled = true; setState('Armando el plan…');
+    api('/plan', { method: 'POST', body: JSON.stringify({ intent: intent, project: current.slug }) }).then(function (d) {
+      $('run').disabled = false; setState('');
+      if (!d || !d.ok) throw new Error((d && d.error) || 'no pude armar el plan');
+      showPlan(d.plan, intent);
+    }).catch(fail);
+  });
+
+  function showPlan(plan, intent) {
+    var box = $('planBox'); box.textContent = '';
+    function para(label, text) { var q = document.createElement('p'); var b = document.createElement('strong'); b.textContent = label + ' '; q.appendChild(b); q.appendChild(document.createTextNode(text || '')); box.appendChild(q); }
+    para('Entendí:', plan.intent_understood); para('Entregaré:', plan.final_deliverable);
+    var ol = document.createElement('ol');
+    (plan.steps || []).forEach(function (st) { var li = document.createElement('li'); li.textContent = st.title + ' (' + st.agent + ')'; ol.appendChild(li); });
+    box.appendChild(ol);
+    if (plan.requires_approval) para('Ojo:', 'este plan pide tu aprobación explícita antes de ejecutarse.');
+    var tools = document.createElement('div'); tools.className = 'tools';
+    if (plan.needs_clarification) { para('Antes necesito saber:', plan.clarifying_question); }
+    else {
+      var ok = document.createElement('button'); ok.type = 'button'; ok.className = 'btn'; ok.textContent = 'Aprobar y ejecutar';
+      ok.addEventListener('click', function () { startRun(intent); }); tools.appendChild(ok);
+    }
+    var no = document.createElement('button'); no.type = 'button'; no.className = 'btn ghost'; no.textContent = plan.needs_clarification ? 'Corregir mi encargo' : 'Cancelar';
+    no.addEventListener('click', function () { box.classList.add('hide'); $('intent').focus(); }); tools.appendChild(no);
+    box.appendChild(tools); box.classList.remove('hide');
+  }
+
+  /* ---- ajustes del proyecto ---- */
+  function fillSet() {
+    $('setName').value = current.name || ''; $('setDesc').value = current.description || ''; $('setIns').value = current.instructions || ''; $('setState').textContent = '';
+  }
+  $('setSave').addEventListener('click', function () {
+    var name = $('setName').value.trim(); if (!name) { $('setState').textContent = 'El nombre no puede quedar vacío.'; return; }
+    $('setState').textContent = 'Guardando…';
+    api('/projects/' + encodeURIComponent(current.slug), { method: 'PATCH', body: JSON.stringify({ name: name, description: $('setDesc').value, instructions: $('setIns').value }) })
+      .then(function (d) { if (d && d.ok) { $('setState').textContent = 'Guardado.'; loadProjects(); } else $('setState').textContent = 'No se pudo: ' + ((d && d.error) || ''); }).catch(fail);
+  });
+  $('setDel').addEventListener('click', function () {
+    if (!window.confirm('¿Eliminar “' + current.name + '”? Sus encargos quedan guardados, pero el proyecto desaparece de la lista.')) return;
+    api('/projects/' + encodeURIComponent(current.slug), { method: 'DELETE' }).then(function (d) {
+      if (d && d.ok) { current = null; tab = 'run'; Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (x) { x.classList.toggle('on', x.dataset.tab === 'run'); }); ['run', 'hist', 'mem', 'set'].forEach(function (t) { $('sec-' + t).classList.toggle('hide', t !== 'run'); }); loadProjects(); }
+      else $('setState').textContent = 'No se pudo: ' + ((d && d.error) || '');
+    }).catch(fail);
   });
 
   function fail(e) {
@@ -121,6 +172,7 @@
           $('log').appendChild(li);
         }
         if (run.status === 'completed') { stop(); $('run').disabled = false; setState('Completado.'); show(run); }
+        else if (run.status === 'needs_input') { stop(); $('run').disabled = false; setState('Necesita más datos: ' + ((run.result && run.result.question) || 'aclara tu encargo')); }
         else if (run.status === 'failed') { stop(); $('run').disabled = false; setState('Falló: ' + (run.error || 'sin detalle')); }
       }).catch(fail);
     }
@@ -135,7 +187,86 @@
     $('result').classList.remove('hide'); $('tools').classList.remove('hide');
   }
   $('copy').addEventListener('click', function () {
-    navigator.clipboard.writeText(lastText).then(function () { setState('Copiado.'); }, function () { setState('No pude copiar; selecciona el texto a mano.'); });
+    navigator.clipboard.writeText(lastText).then(function () { setState('Copiado.', 2000); }, function () { setState('No pude copiar; selecciona el texto a mano.'); });
+  });
+
+
+  /* ---- pestañas ---- */
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
+    b.addEventListener('click', function () {
+      tab = b.dataset.tab;
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (x) { x.classList.toggle('on', x === b); });
+      ['run', 'hist', 'mem', 'set'].forEach(function (t) { $('sec-' + t).classList.toggle('hide', t !== tab); });
+      if (tab === 'hist') loadHist(); if (tab === 'mem') loadMem(); if (tab === 'set') fillSet();
+    });
+  });
+  function item(tag, main, small, cls) {
+    var el = document.createElement(tag); el.className = 'item';
+    var d = document.createElement('div'); d.textContent = main; el.appendChild(d);
+    if (small) { var sm = document.createElement('small'); sm.textContent = small; if (cls) sm.className = cls; el.appendChild(sm); }
+    return el;
+  }
+  var fmt = function (d) { try { return new Date(d).toLocaleString('es'); } catch (e) { return ''; } };
+
+  /* ---- historial ---- */
+  var STATUS = { completed: 'completado', failed: 'falló', running: 'en curso', planning: 'planificando', needs_input: 'necesita datos' };
+  function loadHist() {
+    var box = $('histList'); box.textContent = 'Cargando…';
+    api('/runs?limit=30&project=' + encodeURIComponent(current.slug)).then(function (d) {
+      box.textContent = '';
+      var runs = (d && d.runs) || [];
+      if (!runs.length) { box.textContent = 'Todavía no hay encargos en este proyecto.'; return; }
+      runs.forEach(function (r) {
+        var b = item('button', r.intent, (STATUS[r.status] || r.status) + ' · ' + fmt(r.created_at), r.status === 'failed' ? 'bad' : '');
+        b.type = 'button'; b.classList.add('btn-item');
+        b.addEventListener('click', function () { openRun(r.id, r.intent); });
+        box.appendChild(b);
+      });
+    }).catch(fail);
+  }
+  function openRun(id, intent) {
+    tab = 'run';
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (x) { x.classList.toggle('on', x.dataset.tab === 'run'); });
+    ['run', 'hist', 'mem', 'set'].forEach(function (t) { $('sec-' + t).classList.toggle('hide', t !== 'run'); });
+    $('intent').value = intent || ''; $('result').classList.add('hide'); $('tools').classList.add('hide');
+    $('log').textContent = ''; $('log').classList.remove('hide'); $('run').disabled = true; setState('Cargando…');
+    poll(id);
+  }
+
+  /* ---- memoria del proyecto ---- */
+  function loadMem() {
+    var box = $('memList'); box.textContent = 'Cargando…';
+    api('/projects/' + encodeURIComponent(current.slug) + '/memory?limit=30').then(function (d) {
+      box.textContent = '';
+      var m = (d && d.memories) || [];
+      if (!m.length) { box.textContent = 'Este proyecto todavía no tiene memoria.'; return; }
+      m.forEach(function (x) { box.appendChild(item('div', (x.content || '').slice(0, 600), x.type + ' · ' + fmt(x.created_at))); });
+    }).catch(fail);
+  }
+  function saveMem(content, type, stateEl, done) {
+    stateEl.textContent = 'Guardando…';
+    api('/projects/' + encodeURIComponent(current.slug) + '/memory', { method: 'POST', body: JSON.stringify({ content: content, type: type }) })
+      .then(function (d) { stateEl.textContent = d && d.ok ? 'Guardado.' : 'No se pudo guardar: ' + ((d && d.error) || ''); if (d && d.ok && done) done(); })
+      .catch(fail);
+  }
+  $('memSave').addEventListener('click', function () {
+    var t = $('memText').value.trim(); if (!t) { $('memState').textContent = 'Escribe algo primero.'; return; }
+    saveMem(t, $('memType').value, $('memState'), function () { $('memText').value = ''; loadMem(); });
+  });
+  $('savemem').addEventListener('click', function () {
+    if (!lastText) return;
+    saveMem('Resultado del encargo: ' + $('intent').value.trim() + '\n\n' + lastText, 'note', $('state'), null);
+    setTimeout(function () { if ($('state').textContent === 'Guardado.') $('state').textContent = ''; }, 2500);
+  });
+
+  /* ---- nuevo proyecto ---- */
+  $('newProj').addEventListener('click', function () {
+    var name = (window.prompt('Nombre del proyecto:') || '').trim(); if (!name) return;
+    var desc = (window.prompt('¿De qué trata? (opcional)') || '').trim();
+    api('/projects', { method: 'POST', body: JSON.stringify({ name: name, description: desc }) }).then(function (d) {
+      if (d && d.ok) { current = { slug: d.project.slug, name: d.project.name }; loadProjects(); }
+      else setState('No se pudo crear: ' + ((d && d.error) || ''));
+    }).catch(fail);
   });
 
   /* Markdown mínimo y seguro: todo se escapa primero, nada se ejecuta. */
