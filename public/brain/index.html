@@ -17,7 +17,7 @@ button,textarea,input{font:inherit;color:inherit}
 #login form{width:100%;max-width:360px}
 #login h1{font-size:2.4rem;color:var(--gold2);margin-bottom:4px}
 #login p{color:var(--mute);margin:0 0 20px}
-input[type=password]{width:100%;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:12px}
+input[type=password],input[type=text]{width:100%;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:12px}
 .btn{background:var(--gold);color:#17130a;border:0;border-radius:6px;padding:11px 18px;font-weight:600;cursor:pointer}
 .btn:disabled{opacity:.5;cursor:wait}
 .btn.ghost{background:transparent;color:var(--gold2);border:1px solid var(--line)}
@@ -29,7 +29,6 @@ aside h1{font-size:1.5rem;color:var(--gold2);padding:0 8px 18px}
 .proj:hover{color:var(--text)}
 .proj.on{color:var(--gold2);border-left-color:var(--gold);background:#1d1a12}
 .out{margin:18px 8px 0;font-size:.85rem}
-main{overflow:auto;padding:28px clamp(16px,4vw,48px) 60px;max-width:900px;width:100%}
 main h2{font-size:1.7rem;margin-bottom:4px}
 .sub{color:var(--mute);margin:0 0 18px}
 textarea{width:100%;min-height:110px;resize:vertical;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px}
@@ -46,6 +45,24 @@ textarea{width:100%;min-height:110px;resize:vertical;padding:14px;background:var
 #result pre{background:#110f0a;border:1px solid var(--line);border-radius:6px;padding:12px;overflow-x:auto;font-size:.85rem}
 #result hr{border:0;border-top:1px solid var(--line);margin:1.4em 0}
 .tools{display:flex;gap:10px;margin-top:14px}
+main{overflow:auto;padding:28px clamp(16px,4vw,48px) 60px}
+.wrap{max-width:860px;margin:0 auto}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:10px 0 18px}
+.tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--mute);padding:8px 14px;cursor:pointer}
+.tab.on{color:var(--gold2);border-bottom-color:var(--gold)}
+.list .item{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:8px;color:var(--text)}
+button.item{cursor:pointer}button.item:hover{border-color:var(--gold)}
+.item small{display:block;color:var(--mute)}
+.item .bad{color:var(--bad)}
+select{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;color:var(--text)}
+.proj.add{margin-top:10px;color:var(--gold)}
+.tools{flex-wrap:wrap}
+.chk{display:flex;gap:8px;align-items:center;color:var(--mute);font-size:.9rem;margin:-10px 0 18px}
+.plan{background:var(--panel);border:1px solid var(--gold);border-radius:10px;padding:14px 18px;margin:0 0 20px}
+.plan p{margin:.3em 0}.plan ol{padding-left:1.2em;margin:.5em 0 12px}.plan .tools{margin-top:6px}
+.fld{display:block;color:var(--mute);font-size:.9rem;margin-bottom:12px}.fld input,.fld textarea{margin-top:4px;color:var(--text)}
+.danger{color:var(--bad);border-color:var(--bad)}
+
 @media(max-width:720px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:12px;display:flex;gap:6px;overflow-x:auto;align-items:center}aside h1{padding:0 8px 0 0;font-size:1.2rem}.proj{width:auto;white-space:nowrap;border-left:0;border-bottom:2px solid transparent;border-radius:0}.proj.on{border-bottom-color:var(--gold)}.out{margin:0 0 0 auto}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -65,21 +82,63 @@ textarea{width:100%;min-height:110px;resize:vertical;padding:14px;background:var
   <aside>
     <h1>Brain</h1>
     <nav id="projects" aria-label="Proyectos"></nav>
+    <button class="proj add" id="newProj" type="button">+ Nuevo proyecto</button>
     <button class="btn ghost out" id="logout" type="button">Salir</button>
   </aside>
   <main>
+   <div class="wrap">
     <h2 id="title">Proyecto</h2>
-    <p class="sub">Escribe qué quieres que haga. El Brain planifica, investiga, escribe y guarda el resultado en este proyecto.</p>
-    <textarea id="intent" placeholder="Ejemplo: escribe el mensaje de venta de mi taller de oratoria"></textarea>
-    <div class="row">
-      <button class="btn" id="run" type="button">Ejecutar</button>
-      <span class="state" id="state"></span>
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-tab="run" type="button">Encargo</button>
+      <button class="tab" data-tab="hist" type="button">Historial</button>
+      <button class="tab" data-tab="mem" type="button">Memoria</button>
+      <button class="tab" data-tab="set" type="button">Ajustes</button>
     </div>
-    <ul id="log" class="hide"></ul>
-    <article id="result" class="hide"></article>
-    <div class="tools hide" id="tools">
-      <button class="btn ghost" id="copy" type="button">Copiar resultado</button>
-    </div>
+
+    <section id="sec-run">
+      <p class="sub">Escribe qué quieres que haga. El Brain planifica, investiga, escribe y guarda el resultado en este proyecto.</p>
+      <textarea id="intent" placeholder="Ejemplo: escribe el mensaje de venta de mi taller de oratoria"></textarea>
+      <div class="row">
+        <button class="btn" id="run" type="button">Ejecutar</button>
+        <span class="state" id="state"></span>
+      </div>
+      <label class="chk"><input type="checkbox" id="review" checked> Revisar el plan antes de ejecutar</label>
+      <div id="planBox" class="plan hide"></div>
+      <ul id="log" class="hide"></ul>
+      <article id="result" class="hide"></article>
+      <div class="tools hide" id="tools">
+        <button class="btn ghost" id="copy" type="button">Copiar resultado</button>
+        <button class="btn ghost" id="savemem" type="button">Guardar en la memoria del proyecto</button>
+      </div>
+    </section>
+
+    <section id="sec-hist" class="hide">
+      <p class="sub">Tus encargos anteriores en este proyecto. Pulsa uno para ver su resultado.</p>
+      <div id="histList" class="list"></div>
+    </section>
+
+    <section id="sec-mem" class="hide">
+      <p class="sub">Lo que este proyecto recuerda. Lo que guardes aquí lo leen los agentes en los próximos encargos.</p>
+      <textarea id="memText" placeholder="Una nota, decisión o idea para este proyecto"></textarea>
+      <div class="row">
+        <select id="memType"><option value="note">Nota</option><option value="decision">Decisión</option><option value="idea">Idea</option><option value="insight">Aprendizaje</option><option value="journal">Diario</option></select>
+        <button class="btn" id="memSave" type="button">Guardar</button>
+        <span class="state" id="memState"></span>
+      </div>
+      <div id="memList" class="list"></div>
+    </section>
+    <section id="sec-set" class="hide">
+      <p class="sub">Cómo se llama este proyecto y qué instrucciones permanentes siguen los agentes en él.</p>
+      <label class="fld">Nombre<input type="text" id="setName" maxlength="80"></label>
+      <label class="fld">De qué trata<input type="text" id="setDesc" maxlength="500"></label>
+      <label class="fld">Instrucciones permanentes<textarea id="setIns" maxlength="2000"></textarea></label>
+      <div class="row">
+        <button class="btn" id="setSave" type="button">Guardar cambios</button>
+        <button class="btn ghost danger" id="setDel" type="button">Eliminar proyecto</button>
+        <span class="state" id="setState"></span>
+      </div>
+    </section>
+   </div>
   </main>
 </div>
 <script src="app.js"></script>
